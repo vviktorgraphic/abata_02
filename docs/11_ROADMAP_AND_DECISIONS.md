@@ -6,7 +6,7 @@
 ## Kiindulási helyzet
 
 **IMPLEMENTED:** technikai alap, MySQL séma, migrációfuttató, publikus két hónapos naptár, read-only availability API, mentés nélküli booking-validáció és demo seeder.
-**IMPLEMENTED:** admin authentication foundation és 2FA SMTP adapter; tranzakciós publikus booking persistence; minimális `person_night` ár és snapshot; booking-request outbox és e-mail. **PLANNED:** teljes admin üzleti felület/jóváhagyás, pricing CRUD és összetett komponensek, e-mail retry/admin resend, iCal és production hardening.
+**IMPLEMENTED:** admin authentication/2FA, admin booking management, tranzakciós booking persistence, közös összetett pricing engine és admin CRUD/preview, immutable pricing/policy/cancellation snapshot, booking és státusz outbox/e-mail. **PLANNED:** automatikus e-mail retry/stale reclaim, iCal, online fizetés és production hardening.
 
 ## Tervezett sprintek
 
@@ -83,16 +83,20 @@ Tulajdonosi döntés után ebben a fájlban dátummal, indoklással és érintet
 
 Az admin authentication foundation komponensei **IMPLEMENTED** állapotúak: credential check, e-mailes 2FA, session/CSRF, rate limiting, audit persistence, mailer/SMTP, migráció és minimális auth UI. A végleges elfogadás feltétele a composition root bekötése, friss adatbázisos migráció, teljes teszt és Mailpit/browser smoke.
 
-A következő funkcionális sprintbe nem tartozik bele automatikusan a teljes admin booking CRUD, pricing admin/összetett pricing, iCal vagy általános e-mail retry rendszer. Ezek továbbra is **PLANNED**.
+Az admin booking CRUD és az összetett pricing admin/engine **IMPLEMENTED**. Az iCal és az általános automatikus e-mail retry rendszer továbbra is **PLANNED**.
 
 Nyitott kapuk: abszolút session maximum; production SMTP port/TLS/auth/feladó; végleges rate-limit küszöbök és retention.
 
 ## Sprint 4 teljesítési állapot
 
-**IMPLEMENTED:** `POST /api/bookings`, tranzakciós készletzár és confirmed/blocked recheck, pending overlap, bookinghoz kötött idempotencia, gyermekéletkorok, configured `person_night` HUF kalkuláció és immutable snapshot, booking-request outbox és commit utáni SMTP-kísérlet.
+**IMPLEMENTED Sprint 4 történeti alap:** `POST /api/bookings`, tranzakciós készletzár, pending overlap, idempotencia, gyermekéletkorok és immutable snapshot/outbox. A Sprint 6 ezt közös összetett HUF pricing engine-re bővítette.
 
-**PLANNED:** admin approval/list/detail; pricing admin CRUD; gyermekár, IFA, hétvége/szezon kombináció és más árelemek; outbox retry/admin resend/stale claim recovery; iCal és online fizetés.
+**IMPLEMENTED a későbbi sprintekben:** admin approval/list/detail és pricing admin CRUD/összetett komponensmodell. **PLANNED:** production pricing értékek, outbox retry/stale claim recovery, iCal és online fizetés.
 
 ## Sprint 5 teljesítési állapot
 
-**IMPLEMENTED:** admin lista/részlet, explicit state machine, tranzakciós státuszváltás/history/audit/outbox, concurrency lock, blocked-period kezelés, státusz-email és security guard. **NEXT:** Pricing Administration. **PLANNED:** automatikus outbox retry/stale reclaim, iCal és payment.
+**IMPLEMENTED:** admin lista/részlet, explicit state machine, tranzakciós státuszváltás/history/audit/outbox, concurrency lock, blocked-period kezelés, státusz-email és security guard. A Pricing Administration Sprint 6-ban elkészült. **PLANNED:** automatikus outbox retry/stale reclaim, iCal és payment.
+
+## Sprint 6 teljesítési állapot
+
+**IMPLEMENTED:** pricing admin CRUD/active state és közös booking/preview engine; policy checkbox és verziózott elfogadási snapshot; 7 naptári napos kötbérmentes határ, azon belül immutable accommodation fee 50%-a; cancellation snapshot, audit és vendéglevél. **NEXT:** iCal vagy production hardening a nyitott tulajdonosi döntések lezárása után. **PLANNED:** production árértékek, hétvégi napok, IFA érték/jogi mentességi kategóriák, online beszedés és automatikus outbox retry.

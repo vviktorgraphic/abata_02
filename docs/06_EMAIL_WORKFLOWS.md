@@ -1,6 +1,6 @@
 # E-mail folyamatok
 
-**Állapot:** 2FA mailer, booking-request e-mail és szűk outbox IMPLEMENTED; általános retry/admin workflow PLANNED
+**Állapot:** 2FA, booking-request és booking-status/cancellation e-mail, outbox és manuális failed resend IMPLEMENTED; automatikus retry/stale reclaim PLANNED
 **Utolsó ellenőrzés:** 2026-07-16, Sprint 3 munkafa (commit előtt)
 
 Ez a dokumentum az 1.0 tranzakciós e-mail folyamatait tervezi. Kapcsolódó dokumentumok: [admin és hitelesítés](04_ADMIN_AND_AUTHENTICATION.md), [adatbázis- és domainmodell](02_DATABASE_AND_DOMAIN_MODEL.md), [árképzés](05_PRICING.md), [iCal](07_ICAL_SYNC.md), [biztonság](09_SECURITY.md), [tesztelés és üzemeltetés](10_TESTING_AND_OPERATIONS.md).
@@ -9,7 +9,7 @@ Ez a dokumentum az 1.0 tranzakciós e-mail folyamatait tervezi. Kapcsolódó dok
 
 **IMPLEMENTED Sprint 3:** `Mailer` port, strukturált `Message`, HTML/plain-text 2FA sablonrenderer, tesztelhető in-memory mailer és socket-alapú SMTP adapter. Az adapter Mailpithez plain SMTP-t, production konfigurációhoz titkosítást és opcionális authentikációt támogat; a PHP `mail()` függvényét nem használja. Transporthiba nem adja vissza a provider nyers válaszát, így credential vagy PII nem kerül kivételszövegbe.
 
-**PLANNED:** outbox, retry worker, általános foglalási e-mail események, provider-idempotencia, bounce/complaint és admin újraküldés.
+**IMPLEMENTED:** booking request és confirmed/rejected/cancelled outbox, commit utáni SMTP, valamint sikertelen státuszlevél védett admin újraküldése. **PLANNED:** automatikus retry worker, stale claim reclaim, provider-idempotencia és bounce/complaint kezelés.
 
 **DECISION REQUIRED:** a production host tulajdonosi értéke `s54.tarhely.com`, de a port, TLS mód, authentikáció, felhasználónév, feladó cím és reply-to továbbra is nyitott. Ezek hiányában production SMTP smoke nem tekinthető teljesítettnek.
 
@@ -167,3 +167,6 @@ A levél az A Bata nevet, publikus referenciát, dátumokat, éjszakák és vend
 ## Státuszértesítések – IMPLEMENTED Sprint 5
 
 Confirmed/rejected/cancelled outbox ugyanabban a tranzakcióban készül, SMTP commit után fut, és sent/failed auditot ír. Hiba nem rollbackeli a bookingot; failed levél adminból újraküldhető. Invalidated és belső admin note nem kerül vendéglevélbe. Az automatikus retry/max-attempt/stale reclaim továbbra is **PLANNED / OWNER DECISION REQUIRED**.
+## Sprint 6 cancellation notification — IMPLEMENTED
+
+A `confirmed -> cancelled` tranzakció cancellation snapshotot és státusz-email outbox rekordot hoz létre. SMTP I/O továbbra is csak commit után történik. A vendéglevél közli, hogy a lemondás kötbérmentes, vagy megadja az immutable accommodation-fee snapshotból számolt 50%-os kötbért HUF-ban. A szöveg nem állít automatikus terhelést vagy beszedést. A Bata branding a HTML- és plain-text változatban megmarad.

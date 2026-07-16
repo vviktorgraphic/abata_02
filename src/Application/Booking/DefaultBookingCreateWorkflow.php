@@ -13,7 +13,9 @@ final readonly class DefaultBookingCreateWorkflow implements BookingCreateWorkfl
         private TransactionalBookingRepository $repository,
         private BookingPricingProvider $pricing,
         private BookingOutboxDispatcher $outbox,
-        private BookingClock $clock = new BudapestBookingClock(),
+        private BookingClock $clock,
+        private string $bookingPolicyUrl,
+        private string $bookingPolicyVersion,
     ) {
     }
 
@@ -31,6 +33,9 @@ final readonly class DefaultBookingCreateWorkflow implements BookingCreateWorkfl
             $request->adults,
             $request->childAges,
             $request->notes === '' ? null : $request->notes,
+            $this->clock->now()->format('Y-m-d H:i:s'),
+            $this->bookingPolicyVersion,
+            $this->bookingPolicyUrl,
         ), $this->pricing);
 
         // Persistence has committed before SMTP is attempted. A delivery failure

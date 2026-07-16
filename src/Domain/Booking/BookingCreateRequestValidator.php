@@ -82,6 +82,11 @@ final readonly class BookingCreateRequestValidator
             $errors['privacy_accepted'] = 'Az adatkezelési tájékoztató elfogadása kötelező.';
         }
 
+        $bookingPolicyAccepted = ($payload['booking_policy_accepted'] ?? null) === true;
+        if (!$bookingPolicyAccepted) {
+            $errors['booking_policy_accepted'] = 'A foglalási szabályzat elfogadása kötelező.';
+        }
+
         $idempotencyKey = trim((string) ($payload['idempotency_key'] ?? ''));
         if (preg_match('/^[A-Za-z0-9._:-]{16,128}$/D', $idempotencyKey) !== 1) {
             $errors['idempotency_key'] = 'Érvényes idempotenciakulcs szükséges.';
@@ -118,7 +123,8 @@ final readonly class BookingCreateRequestValidator
 
         return new BookingCreateRequest(
             new BookingPeriod($arrival, $departure), $name, $email, $phone,
-            $adults, $children, array_values($childAges), $notes, $privacyAccepted, $idempotencyKey,
+            $adults, $children, array_values($childAges), $notes, $privacyAccepted,
+            $bookingPolicyAccepted, $idempotencyKey,
         );
     }
 

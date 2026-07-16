@@ -19,6 +19,9 @@ final readonly class BookingPersistenceCommand
         public int $adults,
         public array $childAges,
         public ?string $notes,
+        public string $bookingPolicyAcceptedAt,
+        public string $bookingPolicyVersion,
+        public string $bookingPolicyUrl,
     ) {
         if (!preg_match('/^[a-f0-9]{64}$/', $requestHash)) {
             throw new \InvalidArgumentException('The canonical request hash must be a lowercase SHA-256 hex value.');

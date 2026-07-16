@@ -16,11 +16,11 @@ A lezárt döntések forrása a [tulajdonosi döntési napló](99_OWNER_DECISION
 
 ## P1 – kapcsolódó modul előtt
 
-1. Production ársávértékek és prioritások; a Sprint 4 egyetlen implementált alapegysége a konfigurált `person_night`.
+1. Production ársávértékek és prioritások. A három alapegység és az admin szerkeszthetőség IMPLEMENTED; konkrét production érték továbbra sincs feltételezve.
 2. Gyermekkor-kategóriák és szorzók.
 3. Maximális vendégszám és csecsemőszabály.
-4. IFA konkrét értékek, mentességek és kerekítés; a szerkeszthetőség RESOLVED.
-5. Előleg és lemondási szabály.
+4. IFA konkrét értéke és a jogilag alkalmazható mentességi kategóriák. A szerkeszthető exemption modell és HALF_UP egész-HUF kerekítés RESOLVED/IMPLEMENTED.
+5. Előleg és online beszedés. A lemondási szabály RESOLVED: legalább 7 nappal érkezés előtt 0, később az immutable accommodation fee 50%-a.
 6. A `pending` iCal exportja. A blokkolás és élettartam RESOLVED: nem blokkol és nem jár le automatikusan.
 7. Szallas.hu és Google Calendar interoperabilitási tesztfixture-ek és szinkrongyakoriság; a két szolgáltató támogatása RESOLVED.
 
@@ -46,3 +46,11 @@ A lezárt döntések forrása a [tulajdonosi döntési napló](99_OWNER_DECISION
 - Pricing Administration konkrét értékei és kombinációs szabályai.
 
 **RESOLVED Sprint 5:** `pending -> confirmed|rejected|invalidated`, `confirmed -> cancelled|invalidated`.
+
+## Sprint 6 után nyitott
+
+- Konkrét production ársávok és összegek, a hétvégének minősülő napok, seasonal/fixed-fee értékek.
+- IFA production összege és jogilag jóváhagyott exemption kategóriák/kulcsok.
+- Előleg és bármilyen tényleges fizetési/beszedési folyamat.
+
+**RESOLVED Sprint 6:** külön booking-policy checkbox, konfigurált URL/verzió snapshot; mindhárom base unit; determinisztikus pricing precedencia és konfliktusleállás; 7 napos/50%-os cancellation formula immutable snapshotból.

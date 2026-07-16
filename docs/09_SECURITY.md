@@ -163,3 +163,10 @@ Secret incidensnél nem elég a fájl törlése: credential azonnali visszavoná
 ## Sprint 5 kontrollok – IMPLEMENTED
 
 Admin auth, CSRF, no-store/security headerek, prepared queryk, output escaping, body/note limit, mass-assignment whitelist, action rate limit és szerveroldali reference lookup működik. Audit metadata nem tartalmaz note-ot, vendég PII-t, session- vagy CSRF-tokent.
+## Sprint 6 kontrollok — IMPLEMENTED
+
+- Booking-policy bypass ellen külön szerveroldali boolean validáció és tranzakciós snapshot véd; a kliensoldali `required` csak kiegészítő kontroll.
+- Policy URL csak relatív vagy HTTPS; HTTP kizárólag development/local/testing környezetben engedett.
+- Pricing state change route-ok admin authot, CSRF-et, no-store választ, rate limitet, PRG-t, szigorú mass-assignment whitelistet és numerikus/dátum boundary validációt használnak.
+- Azonos prioritású, átfedő aktív szabály nem oldható fel véletlenszerűen; explicit konfliktus és PII-mentes audit keletkezik.
+- Lemondási összeg kizárólag az immutable booking snapshot accommodation-fee mezőjéből készül, Europe/Budapest naptári dátummal.

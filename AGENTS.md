@@ -18,7 +18,9 @@
 - A public booking request starts as `pending`; pending requests neither block each other nor expire automatically. Only `confirmed` bookings and blocked periods block public creation.
 - Keep booking idempotency records with their booking; do not add time-based cleanup without a new owner decision.
 - Persist a server-calculated immutable pricing snapshot and an e-mail outbox record in the same booking transaction. Never perform SMTP I/O inside that transaction.
-- The only implemented pricing base is configured `person_night`, with every person priced equally. Do not invent child discounts, IFA, weekend/season combinations, or other pricing rules.
+- Pricing uses the single shared Sprint 6 engine and immutable snapshots. Supported configurable units are `per_person_per_night`, `per_night`, and `per_booking`; do not invent production prices, child discounts, weekend days, tax values, or legal exemption categories.
 - Admin booking transitions are limited to `pending -> confirmed|rejected|invalidated` and `confirmed -> cancelled|invalidated`; every attempt is audited.
 - Serialize public booking creation, confirmation, and blocked-period creation with the single-property inventory lock.
 - Status SMTP delivery runs only after commit; `invalidated` has no guest notification.
+- Public booking creation requires separately recorded privacy and booking-policy acceptance. Snapshot `BOOKING_POLICY_URL` and `BOOKING_POLICY_VERSION` with the booking.
+- Cancellation uses the immutable accommodation-fee snapshot: at least seven Budapest calendar days before arrival is free, otherwise the penalty is 50%; payment collection is not implemented.

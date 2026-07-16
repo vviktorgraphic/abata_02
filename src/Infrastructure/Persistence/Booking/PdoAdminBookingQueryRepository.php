@@ -68,6 +68,9 @@ final class PdoAdminBookingQueryRepository
                     b.guest_email AS email, b.guest_phone AS phone, b.arrival_date,
                     b.departure_date, DATEDIFF(b.departure_date, b.arrival_date) AS nights,
                     b.adults, b.children, b.notes, b.total_amount, b.currency,
+                    b.booking_policy_accepted_at, b.booking_policy_version, b.booking_policy_url,
+                    b.cancelled_at, b.cancellation_penalty_rate, b.cancellation_penalty_amount,
+                    b.cancellation_currency, b.cancellation_rule_version, b.cancellation_calculation_snapshot,
                     b.created_at, b.updated_at
              FROM bookings b
              WHERE b.reference = :reference OR b.id = :id
@@ -102,6 +105,16 @@ final class PdoAdminBookingQueryRepository
             'children_ages' => $this->childAges($bookingId),
             'notes' => $row['notes'] !== null ? (string) $row['notes'] : null,
             'privacy_accepted_at' => null,
+            'booking_policy_accepted_at' => $row['booking_policy_accepted_at'] !== null ? (string) $row['booking_policy_accepted_at'] : null,
+            'booking_policy_version' => $row['booking_policy_version'] !== null ? (string) $row['booking_policy_version'] : null,
+            'booking_policy_url' => $row['booking_policy_url'] !== null ? (string) $row['booking_policy_url'] : null,
+            'cancelled_at' => $row['cancelled_at'] !== null ? (string) $row['cancelled_at'] : null,
+            'cancellation_penalty_rate' => $row['cancellation_penalty_rate'] !== null ? (string) $row['cancellation_penalty_rate'] : null,
+            'cancellation_penalty_amount' => $row['cancellation_penalty_amount'] !== null ? (string) $row['cancellation_penalty_amount'] : null,
+            'cancellation_currency' => $row['cancellation_currency'] !== null ? (string) $row['cancellation_currency'] : null,
+            'cancellation_rule_version' => $row['cancellation_rule_version'] !== null ? (int) $row['cancellation_rule_version'] : null,
+            'cancellation_calculation_snapshot' => $row['cancellation_calculation_snapshot'] !== null
+                ? $this->decodeJson((string) $row['cancellation_calculation_snapshot'], 'Stored cancellation snapshot is invalid.') : null,
             'total_amount' => (string) $row['total_amount'],
             'currency' => (string) $row['currency'],
             'pricing_snapshot' => $snapshot,
@@ -201,12 +214,18 @@ final class PdoAdminBookingQueryRepository
             return null;
         }
 
-        try {
-            $decoded = json_decode((string) $json, true, 512, JSON_THROW_ON_ERROR);
-        } catch (JsonException $error) {
-            throw new \RuntimeException('Stored pricing snapshot is invalid.', 0, $error);
-        }
+        return $this->decodeJson((string) $json, 'Stored pricing snapshot is invalid.');
+    }
 
-        return is_array($decoded) ? $decoded : null;
+    /** @return array<string, mixed> */
+    private function decodeJson(string $json, string $message): array
+    {
+        try {
+            $decoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+        } catch (JsonException $error) {
+            throw new \RuntimeException($message, 0, $error);
+        }
+        if (!is_array($decoded)) throw new \RuntimeException($message);
+        return $decoded;
     }
 }

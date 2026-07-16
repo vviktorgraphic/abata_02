@@ -188,6 +188,7 @@
         payload.adults = Number(payload.adults);
         payload.children = Number(payload.children);
         payload.privacy_accepted = formData.has('privacy_accepted');
+        payload.booking_policy_accepted = formData.has('booking_policy_accepted');
         payload.child_ages = formData.getAll('child_ages[]').map(Number);
         state.idempotencyKey ||= newIdempotencyKey();
         payload.idempotency_key = state.idempotencyKey;

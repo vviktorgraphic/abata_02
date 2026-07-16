@@ -33,6 +33,8 @@ final class TransactionalBookingRepositoryTest extends TestCase
     protected function tearDown(): void
     {
         foreach ($this->bookingIds as $id) {
+            $this->pdo->prepare("DELETE FROM audit_logs WHERE target_type = 'booking' AND target_id = :id")
+                ->execute(['id' => (string) $id]);
             $statement = $this->pdo->prepare('DELETE FROM bookings WHERE id = :id');
             $statement->execute(['id' => $id]);
         }
@@ -59,6 +61,22 @@ final class TransactionalBookingRepositoryTest extends TestCase
         self::assertSame(1, $this->countBookingRows('booking_pricing_snapshots', $created->bookingId));
         self::assertSame(1, $this->countBookingRows('email_outbox', $created->bookingId));
         self::assertSame(1, $this->countBookingRows('booking_idempotency', $created->bookingId));
+        $booking = $this->pdo->prepare(
+            'SELECT booking_policy_accepted_at, booking_policy_version, booking_policy_url
+             FROM bookings WHERE id = :id'
+        );
+        $booking->execute(['id' => $created->bookingId]);
+        self::assertSame([
+            'booking_policy_accepted_at' => '2040-01-01 12:00:00',
+            'booking_policy_version' => 'test-v1',
+            'booking_policy_url' => '/booking-policy',
+        ], $booking->fetch(PDO::FETCH_ASSOC));
+        $audit = $this->pdo->prepare(
+            "SELECT COUNT(*) FROM audit_logs
+             WHERE event_type = 'booking_policy.accepted' AND target_type = 'booking' AND target_id = :id"
+        );
+        $audit->execute(['id' => (string) $created->bookingId]);
+        self::assertSame(1, (int) $audit->fetchColumn());
     }
 
     public function testSameKeyWithDifferentPayloadIsRejected(): void
@@ -120,6 +138,9 @@ final class TransactionalBookingRepositoryTest extends TestCase
             2,
             [6, 99],
             null,
+            '2040-01-01 12:00:00',
+            'test-v1',
+            '/booking-policy',
         );
 
         try {
@@ -166,6 +187,7 @@ final class TransactionalBookingRepositoryTest extends TestCase
     public static function transactionalFailureStages(): iterable
     {
         yield 'after booking insert' => ['booking_inserted'];
+        yield 'after policy audit insert' => ['policy_audit_inserted'];
         yield 'after status history insert' => ['history_inserted'];
     }
 
@@ -252,6 +274,9 @@ final class TransactionalBookingRepositoryTest extends TestCase
             2,
             [6, 9],
             'Integration note',
+            '2040-01-01 12:00:00',
+            'test-v1',
+            '/booking-policy',
         );
     }
 

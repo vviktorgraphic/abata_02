@@ -70,7 +70,7 @@ try {
         'valid_from' => $date(0),
         'valid_until' => $date(730),
         'nightly_price' => '10000.00',
-        'base_unit' => 'person_night',
+        'base_unit' => 'per_person_per_night',
         'currency' => 'HUF',
     ]);
     $pdo->commit();

@@ -35,7 +35,7 @@ templates/booking/           publikus szerveroldali HTML template
 tests/                       unit, feature és integration tesztek
 ```
 
-**IMPLEMENTED részben:** A booking, pricing, admin-auth és SMTP modulok követik ezt a réteghatárt. Az iCal és a teljes admin üzleti modul továbbra is **PLANNED**.
+**IMPLEMENTED:** A booking, közös pricing engine/admin CRUD, admin-auth és SMTP modulok követik ezt a réteghatárt. Az iCal továbbra is **PLANNED**.
 
 ## Webes request flow
 
@@ -142,7 +142,7 @@ stateDiagram-v2
     Hitelesitett --> Kijelentkezve: logout / session lejárat / visszavonás
 ```
 
-Szövegesen: a Sprint 3 auth folyamat **IMPLEMENTED**. Az első faktor után rövid életű, hashelt e-mailes kód készül, a rendszer korlátozza a próbálkozást és újraküldést, siker után session ID-t rotál, védett cookie-t használ, minden auth POST-on CSRF-et ellenőriz, logoutkor visszavon. A teljes admin üzleti felület **PLANNED**. Részletek: [admin és hitelesítés](04_ADMIN_AND_AUTHENTICATION.md), [biztonság](09_SECURITY.md).
+Szövegesen: az auth folyamat és az admin booking/pricing üzleti felület **IMPLEMENTED**. Az első faktor után rövid életű, hashelt e-mailes kód készül, a rendszer korlátozza a próbálkozást és újraküldést, siker után session ID-t rotál, védett cookie-t használ, minden admin POST-on CSRF-et ellenőriz. Részletek: [admin és hitelesítés](04_ADMIN_AND_AUTHENTICATION.md), [biztonság](09_SECURITY.md).
 
 ## iCal import
 
@@ -247,9 +247,9 @@ Infrastructure --+  (Application portok implementációja)
 
 | Modul | Application/Domain | Infrastructure | HTTP/CLI | Állapot |
 |---|---|---|---|---|
-| Booking write | `Application/Booking`, `Domain/Booking` | PDO write repository, transaction/inventory lock | publikus create controller | **IMPLEMENTED** publikus create; admin action **PLANNED** |
+| Booking write | `Application/Booking`, `Domain/Booking` | PDO write repository, transaction/inventory lock | publikus create és admin action controller | **IMPLEMENTED** |
 | Admin auth | `Application/Authentication`, `Application/TwoFactor`, session szabályok | PDO session/code repo, password verifier | login/2FA/logout controller | **IMPLEMENTED** |
-| Pricing | `Application/Pricing`, tiszta kalkulátor | rule/snapshot repo | publikus quote, admin CRUD | **PLANNED** |
+| Pricing | `Application/Pricing`, `Domain/Pricing` közös engine | rule/snapshot repo | publikus create, admin CRUD/preview | **IMPLEMENTED** |
 | E-mail | booking-request renderer és mail port | SMTP adapter, atomi outbox claim | commit utáni egyszeri küldés **IMPLEMENTED**; retry/admin resend **PLANNED** |
 | iCal | import/export use case és ICS modell | HTTP kliens, parser, PDO adapter | tokenes feed, cron import | **DEFERRED** |
 | Audit | közös audit esemény port | append-only PDO adapter | admin read-only lista | Port/írás **IMPLEMENTED**; lista **PLANNED** |

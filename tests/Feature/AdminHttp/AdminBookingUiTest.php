@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\AdminHttp;
 
+use App\Domain\Booking\CancellationResult;
 use App\Http\Controller\Admin\AdminView;
 use PHPUnit\Framework\TestCase;
 
@@ -35,16 +36,38 @@ final class AdminBookingUiTest extends TestCase
 
     public function test_detail_contains_csrf_status_history_pricing_and_email_state(): void
     {
-        $html = $this->view->render('booking-detail', ['csrfToken' => 'safe-token', 'booking' => [
+        $html = $this->view->render('booking-detail', [
+            'csrfToken' => 'safe-token',
+            'cancellationPreview' => new CancellationResult(
+                '2026-07-26T12:00:00+02:00',
+                '0.5000',
+                '20000.00',
+                'HUF',
+                1,
+                [
+                    'free_cancellation_deadline' => '2026-07-25',
+                    'accommodation_fee' => '40000.00',
+                ],
+            ),
+            'booking' => [
             'reference'=>'AB-1','status'=>'pending','contact_name'=>'Vendég','email'=>'v@example.test','phone'=>'+36',
             'arrival_date'=>'2026-08-01','departure_date'=>'2026-08-03','nights'=>2,'adults'=>2,'children'=>0,
             'children_ages'=>[],'notes'=>null,'privacy_accepted_at'=>null,'total_amount'=>'40000','currency'=>'HUF',
+            'booking_policy_accepted_at'=>'2026-07-16 10:00:00','booking_policy_version'=>'2026-07-16',
+            'booking_policy_url'=>'/booking-policy',
             'pricing_snapshot'=>['pricing_base'=>'person_night'],'status_history'=>[['old_status'=>null,'status'=>'pending','created_at'=>'2026-07-16','admin_note'=>null]],
             'email_outbox'=>[['type'=>'booking_request','status'=>'failed','attempts'=>1]],'created_at'=>'2026-07-16','updated_at'=>'2026-07-16',
         ]]);
         self::assertStringContainsString('Ár-pillanatkép', $html);
         self::assertStringContainsString('Státusztörténet', $html);
         self::assertStringContainsString('Küldés sikertelen', $html);
+        self::assertStringContainsString('Foglalási szabályzat', $html);
+        self::assertStringContainsString('2026-07-16', $html);
+        self::assertStringContainsString('/booking-policy', $html);
+        self::assertStringContainsString('Díjmentes lemondás határideje', $html);
+        self::assertStringContainsString('2026-07-25', $html);
+        self::assertStringContainsString('20000.00 HUF', $html);
+        self::assertStringContainsString('40000.00 HUF', $html);
         self::assertSame(3, substr_count($html, 'name="_csrf"'));
         self::assertStringContainsString('maxlength="500"', $html);
     }

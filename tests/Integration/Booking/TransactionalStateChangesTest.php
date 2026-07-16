@@ -105,6 +105,45 @@ final class TransactionalStateChangesTest extends TestCase
         }
     }
 
+    public function testCancellationPersistsSnapshotSpecificAuditAndOutboxAtomically(): void
+    {
+        $id = $this->booking('confirmed', '2042-02-10', '2042-02-13');
+        $repository = new TransactionalBookingRepository(
+            $this->pdo,
+            null,
+            null,
+            static fn (): \DateTimeImmutable => new \DateTimeImmutable('2042-02-05T12:00:00+01:00'),
+        );
+
+        $repository->transition($this->reference($id), 'cancelled', $this->adminId);
+
+        $statement = $this->pdo->prepare(
+            'SELECT cancelled_at, cancellation_penalty_rate, cancellation_penalty_amount,
+                    cancellation_currency, cancellation_rule_version, cancellation_calculation_snapshot
+             FROM bookings WHERE id = :id'
+        );
+        $statement->execute(['id' => $id]);
+        $booking = $statement->fetch();
+        self::assertSame('2042-02-05 12:00:00', $booking['cancelled_at']);
+        self::assertSame('0.5000', $booking['cancellation_penalty_rate']);
+        self::assertSame('15000.00', $booking['cancellation_penalty_amount']);
+        self::assertSame('HUF', $booking['cancellation_currency']);
+        self::assertSame(1, (int) $booking['cancellation_rule_version']);
+        $snapshot = json_decode($booking['cancellation_calculation_snapshot'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('30000.00', $snapshot['accommodation_fee']);
+        self::assertSame('2042-02-03', $snapshot['free_cancellation_deadline']);
+        self::assertSame(5, $snapshot['days_before_arrival']);
+
+        $audit = $this->pdo->prepare(
+            "SELECT event_type FROM audit_logs WHERE target_type = 'booking' AND target_id = :id ORDER BY id DESC LIMIT 1"
+        );
+        $audit->execute(['id' => (string) $id]);
+        self::assertSame('booking.cancelled_with_penalty', $audit->fetchColumn());
+        $payload = json_decode($this->row('email_outbox', $id)['payload'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('15000.00', $payload['cancellation_penalty_amount']);
+        self::assertSame('30000.00', $payload['cancellation_accommodation_fee']);
+    }
+
     public function testForbiddenAndMissingTransitionsLeaveNoSideEffects(): void
     {
         $id = $this->booking('rejected', '2042-03-10', '2042-03-13');
@@ -231,6 +270,26 @@ final class TransactionalStateChangesTest extends TestCase
         $statement->execute(compact('reference', 'status', 'arrival', 'departure'));
         $id = (int) $this->pdo->lastInsertId();
         $this->bookingIds[] = $id;
+        $snapshot = $this->pdo->prepare(
+            'INSERT INTO booking_pricing_snapshots (booking_id, snapshot) VALUES (:booking_id, :snapshot)'
+        );
+        $snapshot->execute([
+            'booking_id' => $id,
+            'snapshot' => json_encode([
+                'version' => 1,
+                'line_items' => [[
+                    'type' => 'accommodation',
+                    'description' => 'Sprint 5 immutable base',
+                    'quantity' => 3,
+                    'unit_amount' => '10000.00',
+                    'total' => '30000.00',
+                ]],
+                'subtotal' => '30000.00',
+                'taxes' => '0.00',
+                'total' => '30000.00',
+                'currency' => 'HUF',
+            ], JSON_THROW_ON_ERROR),
+        ]);
         return $id;
     }
 

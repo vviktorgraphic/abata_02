@@ -9,5 +9,5 @@
     <script src="/assets/js/admin-auth.js" defer></script>
 </head>
 <body>
-<header class="brand-header"><a class="brand" href="/admin" aria-label="A Bata admin kezdőlap">A Bata</a><nav aria-label="Admin navigáció"><a href="/admin/bookings">Foglalások</a><a href="/admin/blocked-periods">Blokkolt időszakok</a></nav></header>
+<header class="brand-header"><a class="brand" href="/admin" aria-label="A Bata admin kezdőlap">A Bata</a><nav aria-label="Admin navigáció"><a href="/admin/bookings">Foglalások</a><a href="/admin/blocked-periods">Blokkolt időszakok</a><a href="/admin/pricing">Árképzés</a></nav></header>
 <main class="admin-main">

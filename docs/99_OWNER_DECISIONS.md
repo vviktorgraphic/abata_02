@@ -49,7 +49,7 @@ Az implementáció a 15 perces idle határt csúszó lejáratként kezeli. Ez ne
 - **RESOLVED:** további vendégnevek nem szükségesek. A kapcsolattartó a bookingon, a gyermekek életkora külön rekordokban tárolódik; mesterséges név és életkorból születési dátum nem készül.
 - **RESOLVED:** az idempotenciakulcs és request hash hash-elve, a bookinghoz kötve, időalapú automatikus törlés nélkül marad meg.
 - **RESOLVED:** bookingonként immutable ár-pillanatkép készül, és sikeres commit után foglalásiigény-e-mail küldése indul. SMTP-hiba nem törli a bookingot.
-- **IMPLEMENTED szűk ármodell:** konfigurált `person_night`, minden felnőtt és gyermek azonos egységáron, HUF. Gyermekkedvezmény, IFA, hétvégi/szezonális együttalkalmazás és más komponens nincs feltételezve.
+- **HISTORICAL Sprint 4 ármodell:** konfigurált `person_night`, minden személy azonos egységáron. **IMPLEMENTED Sprint 6:** három base unit és admin-szerkeszthető komponensmodell; production értékek, hétvégi napok és jogi IFA-mentességek továbbra is OPEN.
 - **RESOLVED branding:** felhasználói név **A Bata**, fő design tokenek `#19194B`, `#F0A236`, `#FFFFFF`.
 
 ## Kapcsolódó dokumentumok
@@ -58,6 +58,14 @@ Az implementáció a 15 perces idle határt csúszó lejáratként kezeli. Ez ne
 - [Admin és hitelesítés](04_ADMIN_AND_AUTHENTICATION.md)
 - [E-mail folyamatok](06_EMAIL_WORKFLOWS.md)
 - [Roadmap](11_ROADMAP_AND_DECISIONS.md)
+
+## Sprint 6 pricing, policy és cancellation
+
+- **RESOLVED:** a booking-policy elfogadás az adatkezeléstől külön, kötelező és előre ki nem jelölt; URL-je és verziója konfigurált és bookingonként snapshotolt.
+- **RESOLVED:** támogatott base unit: `per_person_per_night`, `per_night`, `per_booking`; a pricing engine sorrendje determinisztikus, azonos nyertes prioritás konfliktus.
+- **RESOLVED:** legalább 7 Europe/Budapest naptári nappal érkezés előtt a confirmed booking kötbérmentesen lemondható; később a booking immutable pricing snapshot `accommodation_fee` értékének 50%-a a HUF kötbér.
+- **RESOLVED:** a cancellation snapshot és vendéglevél nem jelent automatikus terhelést; online beszedés nincs implementálva.
+- **OPEN:** production ársávok/összegek, hétvégi napok, szezonális/fix díjak, IFA érték és jogilag jóváhagyott exemption kategóriák.
 
 ## Sprint 5 admin booking management
 

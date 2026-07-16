@@ -10,8 +10,8 @@ Ez a dokumentum az 1.0 árkalkuláció implementálható keretét rögzíti. Nem
 - A `pricing_rules` tábla dátumtartományt (`valid_from` inkluzív, `valid_until` exkluzív), `nightly_price` értéket, `minimum_nights`, `priority` és `is_active` mezőket tárol.
 - A `bookings` táblában `total_amount DECIMAL(12,2)` és alapértelmezetten `HUF` pénznem található.
 - A publikus validáció dátumot és vendégszámot ellenőriz, de nem számol és nem ment árat.
-- Nincs pricing repository, kalkulátor, admin pricing UI, ár-pillanatkép, kedvezmény-, díj-, adó- vagy override-modell.
-- A `pricing_rules.nightly_price` jelentése a sémából nem dönthető el egyértelműen: lehet szállás/éj vagy személy/éj. A tábla nincs bekötve futásidejű kódba.
+- **IMPLEMENTED (Sprint 6):** pricing repository, közös domain engine, admin CRUD és preview, tételes immutable snapshot, fix díj-, IFA- és konfigurálható exemption modell. A publikus booking és az admin preview ugyanazt az engine-határt használja.
+- **IMPLEMENTED (Sprint 6):** a támogatott alapegységek `per_person_per_night`, `per_night` és `per_booking`; a korábbi `person_night` értéket a 013 migráció konvertálja.
 
 > **Eltérés / DECISION REQUIRED:** a jelenlegi `nightly_price` egyetlen összeg, miközben a tervezett modell személyenkénti, életkor-, szezon-, hétvége- és díjalapú komponenseket kíván. A meglévő táblát nem szabad végleges modellként kezelni; bővítése vagy kiváltása kizárólag verziózott migrációval történhet.
 
@@ -160,8 +160,14 @@ A publikus API mezőszintű, PII-mentes validációs hibát adjon; belső konfig
 
 ## 8. Sprint 4 minimális ármodell — IMPLEMENTED
 
-Az egyetlen implementált alapegység a `pricing_rules` táblában konfigurált `person_night`. A nyertes aktív szabályt az időszak, a minimum éjszaka és a prioritás választja ki. A képlet: `éjszakák × (felnőttek + gyermekek) × konfigurált személy/éj ár`; minden személy azonos egységárral számít. Az eredmény egész fillérben készül, majd két tizedes HUF stringként kerül a bookingba.
+A Sprint 4 történeti implementációja kizárólag konfigurált `person_night` alapot használt. A Sprint 6 migráció ezt `per_person_per_night` értékre alakítja, és a közös engine már mindhárom dokumentált alapegységet támogatja. Gyermekkedvezmény továbbra sincs feltételezve.
 
-Hiányzó szabály vagy azonos nyertes prioritás konfigurációs hiba; booking nem jön létre hamis `0.00` árral. Az immutable snapshot tartalmazza a számítás időpontját, intervallumot, éjszakaszámot, vendégadatokat, szabályazonosítót, `person_night` alapot, line itemet, subtotal/total értéket és `HUF` pénznemet.
+## Sprint 6 állapot
+
+**IMPLEMENTED:** determinisztikus sorrend: éjszakák, stay-length, base unit, seasonal adjustment, weekend adjustment, fixed fees, tourism tax, exemption, HALF_UP egész-HUF line-item kerekítés, immutable snapshot. Azonos nyertes prioritásnál a kalkuláció leáll és `pricing.configuration_conflict` audit készül. A szabályok dátumtartománya fél-nyitott, inaktiválhatók, és létrehozó/módosító adminhoz kötöttek.
+
+**OPEN / PRODUCTION CONFIGURATION:** konkrét ársávok és összegek; a hétvégének számító napok; szezonális és fix díj értékek; IFA összege; a jogilag alkalmazható mentességi kategóriák és exemption kulcsok. Gyermekkedvezmény nincs implementálva, minden beküldött gyermek a választott alapegység szokásos személyszámába tartozik.
+
+Hiányzó szabály vagy azonos nyertes prioritás konfigurációs hiba; booking nem jön létre hamis `0.00` árral. Az immutable snapshot tartalmazza a számítás időpontját, intervallumot, éjszakaszámot, vendégadatokat, szabályazonosítókat, a három támogatott alapegység egyikét, line itemeket, accommodation fee/tax/total értéket és `HUF` pénznemet.
 
 **PLANNED, döntés szükséges:** gyermekár/kedvezmény, IFA és mentességek, hétvégi és szezonális szabályok együttalkalmazása, fix díj, kedvezmény és admin felülírás. Ezekből a kód nem talál ki üzleti értéket. A demo seed kizárólag szemléltető fejlesztési adat, nem production ár.

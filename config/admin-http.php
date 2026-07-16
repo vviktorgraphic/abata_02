@@ -19,11 +19,14 @@ use App\Http\Controller\Admin\LogoutController;
 use App\Http\Controller\Admin\TwoFactorController;
 use App\Http\Controller\Admin\BookingManagementController;
 use App\Http\Controller\Admin\BlockedPeriodController;
+use App\Http\Controller\Admin\PricingAdminController;
 use App\Http\Controller\Admin\AdminActionGuard;
 use App\Http\Controller\Admin\SecurityAdminActionRateLimiter;
 use App\Infrastructure\Persistence\Booking\PdoAdminBookingQueryRepository;
 use App\Infrastructure\Persistence\Booking\PdoBlockedPeriodRepository;
 use App\Infrastructure\Persistence\Booking\TransactionalBookingRepository;
+use App\Infrastructure\Persistence\Pricing\PdoPricingEngineAdapter;
+use App\Infrastructure\Persistence\Pricing\PdoPricingRuleRepository;
 use App\Application\Booking\BlockedPeriodService;
 use App\Application\Mail\BookingStatusNotificationDispatcher;
 use App\Application\Mail\BookingStatusMailRenderer;
@@ -110,5 +113,14 @@ return [
     'dashboard' => new DashboardController($workflow, $view, $csrf, $queries),
     'bookings' => new BookingManagementController($workflow, $view, $csrf, $actionGuard, $queries, $transitions, $statusNotifications),
     'blocked_periods' => new BlockedPeriodController($workflow, $view, $csrf, $actionGuard, new BlockedPeriodService($blockedRepository), $blockedRepository),
+    'pricing' => new PricingAdminController(
+        $workflow,
+        $view,
+        $csrf,
+        $actionGuard,
+        new PdoPricingRuleRepository($pdo),
+        new PdoPricingEngineAdapter($pdo),
+        $audit,
+    ),
     'logout' => new LogoutController($workflow, $csrf, $view),
 ];
