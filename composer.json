@@ -23,7 +23,8 @@
     "scripts": {
         "db:check": "php bin/db-check.php",
         "test": "phpunit",
-        "migrate": "php bin/migrate.php"
+        "migrate": "php bin/migrate.php",
+        "seed:demo": "php bin/seed-demo.php"
     },
     "config": {
         "sort-packages": true

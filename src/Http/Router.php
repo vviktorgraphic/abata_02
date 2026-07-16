@@ -14,6 +14,11 @@ final class Router
         $this->routes['GET'][$path] = $handler;
     }
 
+    public function post(string $path, callable $handler): void
+    {
+        $this->routes['POST'][$path] = $handler;
+    }
+
     public function dispatch(string $method, string $path): void
     {
         $handler = $this->routes[strtoupper($method)][$path] ?? null;
@@ -25,6 +30,6 @@ final class Router
             return;
         }
 
-        $handler();
+        $handler($_GET);
     }
 }
