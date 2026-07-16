@@ -19,6 +19,7 @@ final readonly class BookingCreateRequest
         public array $childAges,
         public string $notes,
         public bool $privacyAccepted,
+        public bool $bookingPolicyAccepted,
         public string $idempotencyKey,
     ) {
     }
@@ -42,6 +43,7 @@ final readonly class BookingCreateRequest
             'notes' => $this->notes,
             'phone' => $this->phone,
             'privacy_accepted' => $this->privacyAccepted,
+            'booking_policy_accepted' => $this->bookingPolicyAccepted,
         ];
     }
 

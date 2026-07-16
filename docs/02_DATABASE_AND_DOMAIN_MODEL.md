@@ -7,6 +7,12 @@ Ez a dokumentum a migrációkban és a kapcsolódó PHP-kódban igazolt jelenleg
 
 ## 1. Jelenlegi, megvalósított séma — IMPLEMENTED
 
+### Sprint 6 séma-kiegészítés — IMPLEMENTED
+
+A forward-only `013_add_pricing_policy_and_cancellation.sql` a bookinghoz adja a policy-elfogadás atomikus snapshotját (`booking_policy_accepted_at`, `booking_policy_version`, `booking_policy_url`) és a cancellation snapshot mezőit (`cancelled_at`, rate, amount, HUF currency, rule version és JSON calculation snapshot), konzisztencia-ellenőrzésekkel és indexekkel.
+
+A `pricing_rules` egységes, bővíthető modellje támogatja a `stay_length`, `base`, `seasonal`, `weekend`, `fixed_fee`, `tourism_tax` és admin által konfigurált `exemption` típusokat; a három alapegységet; adjustment módot; éjszaka- és hétköznap-feltételeket; prioritást; active/soft-delete állapotot; valamint létrehozó és módosító admin FK-kat. A 013 migráció a korábbi `person_night` értéket `per_person_per_night` értékre alakítja, korábbi migráció módosítása nélkül.
+
 Minden üzleti tábla InnoDB, `utf8mb4` karakterkészletű és `utf8mb4_unicode_ci` kollációjú. A foglalási napok `DATE` típusúak. A `TIMESTAMP` mezők technikai időpontok; a PHP dátumkezelés kötelező időzónája `Europe/Budapest`.
 
 > **DECISION REQUIRED:** A repository nem tartalmaz elfogadott adatmegőrzési és törlési időket. Az alábbi „Megőrzés” értékek ezért a jelenlegi technikai viselkedést (`nincs automatikus törlés`) és a meghozandó döntést rögzítik, nem állítanak fel jogalapot vagy végleges GDPR-szabályt.
@@ -212,8 +218,8 @@ Részletes auth- és threat-model: [admin és hitelesítés](04_ADMIN_AND_AUTHEN
 
 ### 7.2 Árazási felülírások és pillanatképek
 
-- Tervezett pricing override modell a szezonális, hétvégi, dátumspecifikus, fix díj-, kedvezmény- és adminfelülírások prioritásos kezelésére.
-- Tervezett booking pricing snapshot a foglaláskor alkalmazott bemenetek, szabályverziók, tételes összegek, adók/díjak, kerekítés, végösszeg és pénznem változtathatatlan rögzítésére.
+- **IMPLEMENTED:** prioritásos pricing modell a stay-length, base, szezonális, hétvégi, fix díj-, IFA- és exemption komponensekhez. Kedvezmény és egyedi admin price override továbbra is **PLANNED**, külön tulajdonosi döntést igényel.
+- **IMPLEMENTED:** booking pricing snapshot a bemenetek, szabályazonosítók, tételes összegek, adók/díjak, kerekítés, accommodation fee, végösszeg és pénznem változtathatatlan rögzítésére.
 - **Elfogadás:** egy meglévő foglalás történeti ára későbbi árszabály-módosítástól nem változik; manuális felülírás indoka és adminja auditált; HUF kerekítés determinisztikus.
 
 A konkrét táblahatárok és üzleti értékek **DECISION REQUIRED** státuszúak; lásd [árképzés](05_PRICING.md).
@@ -254,7 +260,7 @@ Minden fenti PLANNED elemhez teljesülnie kell:
 - Nincs adatbázis-szintű védelem két átfedő `confirmed` foglalás ellen; az alkalmazási tranzakció és konkurenciakezelés még hiányzik.
 - Az összetett booking index mezősorrendjének hatékonyságát valós adatmennyiségen `EXPLAIN`-nel kell ellenőrizni.
 - Az `admins.email` egyedisége az aktuális kollációtól függ; normalizálási szabály nincs dokumentálva.
-- A `pricing_rules` átfedhet, negatív ár is bekerülhet, a prioritási döntés nincs implementálva.
+- **HISTORICAL / pre-Sprint 6:** a korábbi séma megengedte a nem determinisztikus átfedéseket. Sprint 6-ban a numerikus validáció és azonos prioritású konfliktusészlelés implementált.
 - A `settings` típus nélküli, validálatlan tároló; secret-tárolásra nem alkalmas.
 - A migrációknak nincs checksumja, rollbackje vagy teljes DDL-atomicitása.
 - A `TIMESTAMP` session timezone és cPanel/MySQL környezet konzisztenciája üzemeltetési ellenőrzést igényel; a foglalási napok ettől függetlenül `DATE` értékek.

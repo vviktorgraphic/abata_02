@@ -45,6 +45,8 @@ final readonly class PdoBookingStatusNotificationOutbox implements BookingStatus
             (string) $payload['arrival_date'], (string) $payload['departure_date'],
             (int) $payload['adults'], (int) $payload['children'],
             (string) $payload['total'], (string) $payload['currency'],
+            isset($payload['cancellation_penalty_amount']) ? (string) $payload['cancellation_penalty_amount'] : null,
+            isset($payload['cancellation_accommodation_fee']) ? (string) $payload['cancellation_accommodation_fee'] : null,
         )];
     }
 

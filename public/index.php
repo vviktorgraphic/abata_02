@@ -6,6 +6,7 @@ use App\Http\Controller\HomeController;
 use App\Http\Router;
 use App\Application\Availability\GetAvailabilityHandler;
 use App\Application\Booking\BookingOutboxDispatcher;
+use App\Application\Booking\BudapestBookingClock;
 use App\Application\Booking\DefaultBookingCreateWorkflow;
 use App\Application\Mail\BookingRequestMailRenderer;
 use App\Application\Mail\BookingRequestOutboxDispatcher;
@@ -22,7 +23,7 @@ use App\Infrastructure\Persistence\Auth\PdoRateLimitRepository;
 use App\Infrastructure\Persistence\Auth\PdoAuditLog;
 use App\Infrastructure\Persistence\Booking\PdoBookingRequestOutbox;
 use App\Infrastructure\Persistence\Booking\TransactionalBookingRepository;
-use App\Infrastructure\Persistence\Pricing\PdoBookingPricingProvider;
+use App\Infrastructure\Persistence\Pricing\PdoPricingEngineAdapter;
 use App\Security\RateLimit\RateLimitClock;
 use App\Security\RateLimit\RateLimiter;
 use App\Security\RateLimit\RateLimitPolicy;
@@ -32,7 +33,8 @@ require dirname(__DIR__) . '/vendor/autoload.php';
 date_default_timezone_set($_ENV['APP_TIMEZONE'] ?? getenv('APP_TIMEZONE') ?: 'Europe/Budapest');
 
 $router = new Router();
-$controller = new HomeController(dirname(__DIR__) . '/templates');
+$bookingPolicy = require dirname(__DIR__) . '/config/booking-policy.php';
+$controller = new HomeController(dirname(__DIR__) . '/templates', $bookingPolicy['url']);
 
 $router->get('/', [$controller, 'index']);
 $router->get('/health', [$controller, 'health']);
@@ -62,6 +64,29 @@ $router->post('/admin/blocked-periods', static fn () => $admin()['blocked_period
     isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
 )->send());
 $router->post('/admin/blocked-periods/{id}/remove', static fn (array $_query, array $params) => $admin()['blocked_periods']->remove(
+    $params['id'], $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
+    isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
+)->send());
+$router->get('/admin/pricing', static fn () => $admin()['pricing']->index()->send());
+$router->get('/admin/pricing/create', static fn () => $admin()['pricing']->createForm()->send());
+$router->post('/admin/pricing', static fn () => $admin()['pricing']->create(
+    $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
+    isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
+)->send());
+$router->post('/admin/pricing/preview', static fn () => $admin()['pricing']->preview(
+    $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
+    isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
+)->send());
+$router->get('/admin/pricing/{id}/edit', static fn (array $_query, array $params) => $admin()['pricing']->editForm($params['id'])->send());
+$router->post('/admin/pricing/{id}', static fn (array $_query, array $params) => $admin()['pricing']->update(
+    $params['id'], $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
+    isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
+)->send());
+$router->post('/admin/pricing/{id}/activate', static fn (array $_query, array $params) => $admin()['pricing']->activate(
+    $params['id'], $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
+    isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
+)->send());
+$router->post('/admin/pricing/{id}/deactivate', static fn (array $_query, array $params) => $admin()['pricing']->deactivate(
     $params['id'], $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
     isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
 )->send());
@@ -107,7 +132,7 @@ $router->post('/api/booking/validate', static function (): void {
         App\Http\JsonResponse::send(['valid' => false, 'error' => 'Az ellenőrzés átmenetileg nem érhető el.'], 500);
     }
 });
-$router->post('/api/bookings', static function (): void {
+$router->post('/api/bookings', static function () use ($bookingPolicy): void {
     try {
         $root = dirname(__DIR__);
         $pdo = ConnectionFactory::create(require $root . '/config/database.php');
@@ -147,8 +172,11 @@ $router->post('/api/bookings', static function (): void {
         ));
         $workflow = new DefaultBookingCreateWorkflow(
             new TransactionalBookingRepository($pdo),
-            new PdoBookingPricingProvider(),
+            new PdoPricingEngineAdapter($pdo),
             $outbox,
+            clock: new BudapestBookingClock(),
+            bookingPolicyUrl: $bookingPolicy['url'],
+            bookingPolicyVersion: $bookingPolicy['version'],
         );
         $controller = new BookingCreateController(
             App\Domain\Booking\BookingCreateRequestValidator::forBudapestToday(

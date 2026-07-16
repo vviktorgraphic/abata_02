@@ -14,14 +14,20 @@ use App\Application\Booking\IdempotencyConflict;
 use App\Domain\Booking\AdminNote;
 use App\Domain\Booking\BookingStateMachine;
 use App\Domain\Booking\BookingTransitionNotAllowed;
+use App\Domain\Booking\CancellationPolicy;
+use App\Domain\Booking\CancellationResult;
 use PDO;
 use Throwable;
 
 final class TransactionalBookingRepository
 {
     /** @param null|\Closure(string): void $transactionProbe Test-only failure probe. */
-    public function __construct(private readonly PDO $pdo, private readonly ?\Closure $transactionProbe = null)
-    {
+    public function __construct(
+        private readonly PDO $pdo,
+        private readonly ?\Closure $transactionProbe = null,
+        private readonly ?CancellationPolicy $cancellationPolicy = null,
+        private readonly ?\Closure $clock = null,
+    ) {
     }
 
     public function transition(
@@ -48,6 +54,7 @@ final class TransactionalBookingRepository
             $bookingId = (int) $booking['id'];
             $oldStatus = (string) $booking['status'];
             $stateMachine->assertCanTransition($oldStatus, $targetStatus);
+            $cancellation = $targetStatus === 'cancelled' ? $this->calculateCancellation((int) $booking['id'], $booking) : null;
 
             if ($targetStatus === 'confirmed') {
                 $this->assertAvailableForConfirmation(
@@ -57,10 +64,23 @@ final class TransactionalBookingRepository
                 );
             }
 
-            $update = $this->pdo->prepare(
-                'UPDATE bookings SET status = :status WHERE id = :id AND status = :old_status'
-            );
-            $update->execute(['status' => $targetStatus, 'id' => $booking['id'], 'old_status' => $oldStatus]);
+            $update = $this->pdo->prepare($cancellation === null
+                ? 'UPDATE bookings SET status = :status WHERE id = :id AND status = :old_status'
+                : 'UPDATE bookings SET status = :status, cancelled_at = :cancelled_at,
+                    cancellation_penalty_rate = :penalty_rate, cancellation_penalty_amount = :penalty_amount,
+                    cancellation_currency = :cancellation_currency, cancellation_rule_version = :rule_version,
+                    cancellation_calculation_snapshot = :cancellation_snapshot
+                   WHERE id = :id AND status = :old_status AND cancelled_at IS NULL');
+            $updateParameters = ['status' => $targetStatus, 'id' => $booking['id'], 'old_status' => $oldStatus];
+            if ($cancellation !== null) {
+                $updateParameters += [
+                    'cancelled_at' => $cancellation->cancelledAt, 'penalty_rate' => $cancellation->penaltyRate,
+                    'penalty_amount' => $cancellation->penaltyAmount, 'cancellation_currency' => $cancellation->currency,
+                    'rule_version' => $cancellation->ruleVersion,
+                    'cancellation_snapshot' => json_encode($cancellation->snapshot, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
+                ];
+            }
+            $update->execute($updateParameters);
             if ($update->rowCount() !== 1) {
                 throw new \RuntimeException('The booking changed concurrently.');
             }
@@ -82,20 +102,28 @@ final class TransactionalBookingRepository
                  VALUES (:event_type, :admin_id, \'booking\', :target_id, \'success\', :metadata)'
             );
             $audit->execute([
-                'event_type' => 'booking.' . $targetStatus,
+                'event_type' => $cancellation === null
+                    ? 'booking.' . $targetStatus
+                    : ($cancellation->hasPenalty() ? 'booking.cancelled_with_penalty' : 'booking.cancelled_without_penalty'),
                 'admin_id' => $adminId,
                 'target_id' => (string) $booking['id'],
                 'metadata' => json_encode([
                     'booking_reference' => $reference,
                     'old_status' => $oldStatus,
                     'new_status' => $targetStatus,
+                    ...($cancellation === null ? [] : [
+                        'cancellation_rule_version' => $cancellation->ruleVersion,
+                        'penalty_rate' => $cancellation->penaltyRate,
+                        'penalty_amount' => $cancellation->penaltyAmount,
+                        'currency' => $cancellation->currency,
+                    ]),
                 ], JSON_THROW_ON_ERROR),
             ]);
             ($this->transactionProbe ?? static fn (string $stage): null => null)('transition_audit_inserted');
 
             $notificationQueued = in_array($targetStatus, ['confirmed', 'rejected', 'cancelled'], true);
             if ($notificationQueued) {
-                $this->insertStatusOutbox($booking, $targetStatus);
+                $this->insertStatusOutbox($booking, $targetStatus, $cancellation);
             }
 
             $this->pdo->commit();
@@ -185,7 +213,43 @@ final class TransactionalBookingRepository
     }
 
     /** @param array<string, mixed> $booking */
-    private function insertStatusOutbox(array $booking, string $status): void
+    private function calculateCancellation(int $bookingId, array $booking): CancellationResult
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT snapshot FROM booking_pricing_snapshots WHERE booking_id = :booking_id FOR UPDATE'
+        );
+        $statement->execute(['booking_id' => $bookingId]);
+        $json = $statement->fetchColumn();
+        if (!is_string($json)) {
+            throw new \RuntimeException('Immutable pricing snapshot is required for cancellation.');
+        }
+        $snapshot = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+        $fee = $snapshot['accommodation_fee'] ?? null;
+        if ($fee === null && (int) ($snapshot['version'] ?? 0) === 1 && is_array($snapshot['line_items'] ?? null)) {
+            foreach ($snapshot['line_items'] as $item) {
+                if (is_array($item) && ($item['type'] ?? null) === 'accommodation') {
+                    $fee = $item['total'] ?? null;
+                    break;
+                }
+            }
+        }
+        if (!is_int($fee) && !is_float($fee) && !is_string($fee)) {
+            throw new \RuntimeException('Immutable pricing snapshot has no accommodation fee.');
+        }
+        $now = $this->clock === null
+            ? new \DateTimeImmutable('now', new \DateTimeZone('Europe/Budapest'))
+            : ($this->clock)();
+        if (!$now instanceof \DateTimeImmutable) {
+            throw new \LogicException('Cancellation clock must return DateTimeImmutable.');
+        }
+
+        return ($this->cancellationPolicy ?? new CancellationPolicy())->calculate(
+            (string) $booking['arrival_date'], (string) $fee, $now, (string) $booking['currency']
+        );
+    }
+
+    /** @param array<string, mixed> $booking */
+    private function insertStatusOutbox(array $booking, string $status, ?CancellationResult $cancellation = null): void
     {
         $payload = json_encode([
             'booking_reference' => (string) $booking['reference'],
@@ -195,6 +259,13 @@ final class TransactionalBookingRepository
             'children' => (int) $booking['children'],
             'total' => number_format((float) $booking['total_amount'], 2, '.', ''),
             'currency' => (string) $booking['currency'],
+            ...($cancellation === null ? [] : [
+                'cancellation_accommodation_fee' => $cancellation->snapshot['accommodation_fee'],
+                'cancellation_penalty_rate' => $cancellation->penaltyRate,
+                'cancellation_penalty_amount' => $cancellation->penaltyAmount,
+                'cancellation_currency' => $cancellation->currency,
+                'cancellation_rule_version' => $cancellation->ruleVersion,
+            ]),
         ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
         $subjects = [
             'confirmed' => 'A Bata foglalás megerősítve',
@@ -251,10 +322,12 @@ final class TransactionalBookingRepository
             $booking = $this->pdo->prepare(
                 'INSERT INTO bookings
                     (reference, status, arrival_date, departure_date, guest_name, guest_email,
-                     guest_phone, adults, children, total_amount, currency, notes)
+                     guest_phone, adults, children, total_amount, currency, notes,
+                     booking_policy_accepted_at, booking_policy_version, booking_policy_url)
                  VALUES
                     (:reference, \'pending\', :arrival, :departure, :name, :email,
-                     :phone, :adults, :children, :total, :currency, :notes)'
+                     :phone, :adults, :children, :total, :currency, :notes,
+                     :policy_accepted_at, :policy_version, :policy_url)'
             );
             $booking->execute([
                 'reference' => $command->reference,
@@ -268,9 +341,27 @@ final class TransactionalBookingRepository
                 'total' => $pricing->totalAmount,
                 'currency' => $pricing->currency,
                 'notes' => $command->notes,
+                'policy_accepted_at' => $command->bookingPolicyAcceptedAt,
+                'policy_version' => $command->bookingPolicyVersion,
+                'policy_url' => $command->bookingPolicyUrl,
             ]);
             $bookingId = (int) $this->pdo->lastInsertId();
             ($this->transactionProbe ?? static fn (string $stage): null => null)('booking_inserted');
+
+            $policyAudit = $this->pdo->prepare(
+                'INSERT INTO audit_logs
+                    (event_type, admin_id, target_type, target_id, outcome, metadata_json)
+                 VALUES (\'booking_policy.accepted\', NULL, \'booking\', :target_id, \'success\', :metadata)'
+            );
+            $policyAudit->execute([
+                'target_id' => (string) $bookingId,
+                'metadata' => json_encode([
+                    'booking_reference' => $command->reference,
+                    'policy_version' => $command->bookingPolicyVersion,
+                    'policy_url' => $command->bookingPolicyUrl,
+                ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
+            ]);
+            ($this->transactionProbe ?? static fn (string $stage): null => null)('policy_audit_inserted');
 
             $child = $this->pdo->prepare(
                 'INSERT INTO booking_child_ages (booking_id, position, age)

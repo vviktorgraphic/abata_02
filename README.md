@@ -1,6 +1,6 @@
 # Foglalási rendszer
 
-Frameworkfüggetlen, PHP 8.2+ és MySQL 8 alapú foglalási rendszer egyetlen szálláshelyhez. A jelenlegi állapot a technikai alapok, a publikus naptár és az admin-hitelesítés mellett tartalmazza a tranzakciós publikus foglalásmentést, a minimális szerveroldali árkalkulációt és snapshotot, valamint a foglalási igény Mailpit/SMTP e-mailjét.
+Frameworkfüggetlen, PHP 8.2+ és MySQL 8 alapú foglalási rendszer egyetlen szálláshelyhez. A rendszer tartalmazza a publikus naptárt, admin-hitelesítést és foglaláskezelést, tranzakciós publikus foglalásmentést, közös szerveroldali pricing engine-t és admin pricing CRUD/preview felületet, policy-elfogadási snapshotot, valamint a 7 napos/50%-os lemondási szabályt és kapcsolódó outbox e-maileket.
 
 ## Rendszerspecifikáció
 
@@ -107,6 +107,11 @@ Docker nélkül, telepített függőségekkel: `composer test`.
 - `POST /admin/2fa/resend` – új kód kérése resend limittel
 - `GET /admin` – minimális, teljes 2FA-val védett dashboard
 - `POST /admin/logout` – CSRF-védett kijelentkezés
+- `GET /admin/pricing` – védett árszabálylista és előnézeti űrlap
+- `GET /admin/pricing/create` – árszabály létrehozása
+- `POST /admin/pricing` – validált, auditált árszabálymentés
+- `GET /admin/pricing/{id}/edit` és `POST /admin/pricing/{id}` – árszabály szerkesztése
+- `POST /admin/pricing/{id}/activate` és `/deactivate` – aktiválás/inaktiválás
 
 ## Sprint 2 indítása PowerShellből
 
@@ -214,7 +219,7 @@ A forrásfájl legyen a repositoryn kívül, a konténerbeli másolat pedig csak
 
 **IMPLEMENTED:** két hónapos publikus naptár, availability, admin-auth alapok és `POST /api/bookings`. Az új publikus igény `pending`; más pending igényt nem blokkol és nem jár le automatikusan, a `confirmed` booking és a blocked period viszont blokkol. A mentés idempotens, tranzakciós, HUF ár-pillanatképet és e-mail outbox rekordot hoz létre; SMTP-hiba nem törli a bookingot.
 
-**PLANNED:** teljes admin booking felület és jóváhagyási workflow, pricing admin CRUD, e-mail retry/admin resend, iCal és online fizetés. A pontos határt a [rendszerspecifikáció](docs/README.md) tartja nyilván.
+**IMPLEMENTED:** teljes admin booking workflow, pricing admin CRUD/preview, kötelező és verziózott booking-policy elfogadás, immutable pricing/cancellation snapshot, valamint a 7 naptári napos kötbérmentes határ és későbbi 50%-os kötbér. **PLANNED:** általános e-mail retry, iCal és online fizetés. A pontos határt a [rendszerspecifikáció](docs/README.md) tartja nyilván.
 
 ## Sprint 4 API smoke PowerShellből
 
@@ -244,3 +249,24 @@ A demo seed szemléltető fejlesztési árat tartalmaz, production árként nem 
 **IMPLEMENTED:** védett `/admin/bookings` lista/részlet kereséssel, szűréssel és lapozással; confirm/reject/cancel/invalidate; audit/history/outbox; konkurens confirm elleni inventory lock; blocked-period soft delete; státuszlevél és CSRF/no-store/rate-limit. A sikertelen státuszlevél a részletoldalról biztonságosan újraküldhető.
 
 **PLANNED:** általános cron retry, maximális attempts és stale `processing` reclaim tulajdonosi döntés után.
+
+## Sprint 6 – pricing, policy és lemondás
+
+**IMPLEMENTED:** egyetlen szerveroldali pricing engine kezeli a tartózkodáshossz-sávot, mindhárom alapegységet, szezonális és konfigurált hétvégi adjustmentet, fix díjat, IFA-t és admin által megadott exemption kulcsokat. Azonos nyertes prioritás konfigurációs hiba; a publikus booking és az admin preview ugyanazt az engine-t használja. A konkrét production értékek nincsenek előre feltételezve.
+
+A publikus űrlapon az adatkezelési jelölőtől külön, előre ki nem jelölt booking-policy checkbox kötelező. A booking tranzakciója a Budapest-idő szerinti elfogadási időt, a `BOOKING_POLICY_VERSION` értéket és a validált `BOOKING_POLICY_URL` címet snapshotolja. A confirmed booking legalább 7 naptári nappal érkezés előtt kötbérmentesen mondható le; később az immutable snapshot `accommodation_fee` értékének 50%-a a rögzített kötbér. Automatikus terhelés nincs.
+
+PowerShell release-ellenőrzés:
+
+```powershell
+docker compose up -d --build
+docker compose ps
+docker compose exec app composer validate --no-check-publish
+docker compose exec app composer db:check
+docker compose exec app composer migrate
+docker compose exec app composer migrate
+docker compose exec app composer seed:demo
+docker compose exec app vendor/bin/phpunit
+git diff --check
+git status
+```

@@ -20,10 +20,17 @@ final readonly class BookingStatusMailData
         public int $children,
         public string $totalAmount,
         public string $currency,
+        public ?string $cancellationPenaltyAmount = null,
+        public ?string $cancellationAccommodationFee = null,
     ) {
         if (!in_array($status, [self::CONFIRMED, self::REJECTED, self::CANCELLED], true)) {
             throw new \InvalidArgumentException('Unsupported booking notification status.');
         }
+    }
+
+    public function cancellationHasPenalty(): bool
+    {
+        return $this->cancellationPenaltyAmount !== null && $this->cancellationPenaltyAmount !== '0.00';
     }
 
     public function nights(): int

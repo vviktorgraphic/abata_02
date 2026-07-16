@@ -33,6 +33,8 @@ services:
       BOOKING_RATE_WINDOW_SECONDS: ${BOOKING_RATE_WINDOW_SECONDS:-60}
       BOOKING_RATE_LOCKOUT_SECONDS: ${BOOKING_RATE_LOCKOUT_SECONDS:-60}
       BOOKING_TRUSTED_ORIGINS: ${BOOKING_TRUSTED_ORIGINS:-http://localhost:8080}
+      BOOKING_POLICY_URL: ${BOOKING_POLICY_URL:-/booking-policy}
+      BOOKING_POLICY_VERSION: ${BOOKING_POLICY_VERSION:-development-v1}
     depends_on:
       db:
         condition: service_healthy

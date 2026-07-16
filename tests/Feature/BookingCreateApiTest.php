@@ -23,7 +23,7 @@ use App\Http\Controller\BookingCreateController;
 use App\Infrastructure\Database\ConnectionFactory;
 use App\Infrastructure\Persistence\Booking\PdoBookingRequestOutbox;
 use App\Infrastructure\Persistence\Booking\TransactionalBookingRepository;
-use App\Infrastructure\Persistence\Pricing\PdoBookingPricingProvider;
+use App\Infrastructure\Persistence\Pricing\PdoPricingEngineAdapter;
 use DateTimeImmutable;
 use DateTimeZone;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -65,18 +65,21 @@ final class BookingCreateApiTest extends TestCase
         if (getenv('DB_HOST') === false) self::markTestSkipped('Database environment is not configured.');
         $pdo = ConnectionFactory::create(require dirname(__DIR__, 2) . '/config/database.php');
         $priceName = 'API integration ' . bin2hex(random_bytes(6));
-        $rule = $pdo->prepare('INSERT INTO pricing_rules (name, valid_from, valid_until, nightly_price, base_unit, currency, minimum_nights, priority, is_active) VALUES (:name, :from, :until, :price, \'person_night\', \'HUF\', 1, 9999, 1)');
-        $rule->execute(['name' => $priceName, 'from' => '2039-01-01', 'until' => '2041-01-01', 'price' => '1000.00']);
+        $rule = $pdo->prepare('INSERT INTO pricing_rules (name, rule_type, valid_from, valid_until, nightly_price, amount, adjustment_mode, base_unit, currency, minimum_nights, priority, is_active) VALUES (:name, \'base\', :from, :until, :price, :amount, \'fixed\', \'per_person_per_night\', \'HUF\', 1, 9999, 1)');
+        $rule->execute(['name' => $priceName, 'from' => '2039-01-01', 'until' => '2041-01-01', 'price' => '1000.00', 'amount' => '1000.00']);
         $ruleId = (int) $pdo->lastInsertId();
         $mailer = new InMemoryMailer();
         $workflow = new DefaultBookingCreateWorkflow(
             new TransactionalBookingRepository($pdo),
-            new PdoBookingPricingProvider(),
+            new PdoPricingEngineAdapter($pdo),
             new BookingOutboxDispatcher(new BookingRequestOutboxDispatcher(
                 new PdoBookingRequestOutbox($pdo),
                 new BookingRequestMailRenderer(dirname(__DIR__, 2) . '/templates/email', 'no-reply@example.test'),
                 $mailer,
             )),
+            new \App\Application\Booking\BudapestBookingClock(),
+            '/booking-policy',
+            'test-v1',
         );
         $controller = new BookingCreateController(
             new BookingCreateRequestValidator(new DateTimeImmutable('2040-01-01', new DateTimeZone('Europe/Budapest'))),
@@ -266,6 +269,7 @@ final class BookingCreateApiTest extends TestCase
             'contact_name' => 'Teszt Elek', 'email' => 'guest@example.test',
             'phone' => '+3612345678', 'adults' => 2, 'children' => 1,
             'child_ages' => [6], 'notes' => '', 'privacy_accepted' => true,
+            'booking_policy_accepted' => true,
             'idempotency_key' => 'client-generated-value-123', 'website' => '',
         ];
     }

@@ -150,3 +150,8 @@ Az űrlap JSON-ként hívja a `POST /api/bookings` végpontot, kliens által gen
 Minden új igény `pending`. Több átfedő pending elfogadható és automatikus lejárat nincs. Mentéskor a szerver tranzakciós készletzár mellett újraellenőrzi a `confirmed` bookingokat és blocked periodokat. A kapcsolattartó adatai a bookingon maradnak; további vendégnevek nem szükségesek, külön csak a gyermekéletkorok tárolódnak.
 
 Commit után a rendszer megkísérli az e-mail kézbesítését. SMTP-hibánál a booking megmarad, a válasz `email_status=failed`. Ugyanazzal a kulccsal és payload-dal az ismétlés ugyanazt a referenciát adja, nem hoz létre új bookingot.
+## Sprint 6 policy acceptance — IMPLEMENTED
+
+A publikus foglalás létrehozásához az adatkezelési elfogadástól külön `booking_policy_accepted=true` szükséges. A checkbox nincs előre kijelölve, a „Foglalási szabályzat” linkje konfigurációból érkezik. A szerver a boolean értéket önállóan validálja; hiány vagy hamis érték esetén `422`, booking, idempotencia-, snapshot- és outbox rekord nélkül.
+
+A sikeres booking tranzakcióban rögzül a Budapest-idő szerinti `booking_policy_accepted_at`, továbbá a változatlan `BOOKING_POLICY_VERSION` és `BOOKING_POLICY_URL`. A URL relatív vagy HTTPS lehet; HTTP csak development/local/testing környezetben. Ezek a mezők az elfogadott szabályzat verziósnapshotjai, későbbi konfigurációváltozás nem írja át őket.

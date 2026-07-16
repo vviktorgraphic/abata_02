@@ -6,13 +6,14 @@ namespace App\Http\Controller;
 
 final readonly class HomeController
 {
-    public function __construct(private string $templateDirectory)
+    public function __construct(private string $templateDirectory, private string $bookingPolicyUrl = '/booking-policy')
     {
     }
 
     /** @param array<string, mixed> $query */
     public function index(array $query = []): void
     {
+        $bookingPolicyUrl = $this->bookingPolicyUrl;
         require $this->templateDirectory . '/booking/index.php';
     }
 

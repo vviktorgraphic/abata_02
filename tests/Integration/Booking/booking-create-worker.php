@@ -23,6 +23,7 @@ try {
     $result = (new TransactionalBookingRepository($pdo))->create(new BookingPersistenceCommand(
         $key, $requestHash, $reference, $arrival, $departure, 'Concurrency Test Guest',
         'concurrency@example.invalid', '+3612345678', 1, [], null,
+        '2040-01-01 12:00:00', 'test-v1', '/booking-policy',
     ), $pricing);
     $payload = ['ok' => true, 'booking_id' => $result->bookingId, 'replayed' => $result->replayed];
 } catch (Throwable $error) {

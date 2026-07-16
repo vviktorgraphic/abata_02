@@ -82,6 +82,11 @@
                 <input name="privacy_accepted" type="checkbox" required>
                 <span>Elolvastam és elfogadom az adatkezelési tájékoztatót.</span>
             </label>
+            <label class="consent full">
+                <input name="booking_policy_accepted" type="checkbox" required aria-describedby="booking-policy-error">
+                <span>Elolvastam és elfogadom a <a href="<?= htmlspecialchars($bookingPolicyUrl ?? '/booking-policy', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" target="_blank" rel="noopener noreferrer">Foglalási szabályzatot</a>.</span>
+            </label>
+            <span id="booking-policy-error" class="field-error full" data-error-for="booking_policy_accepted"></span>
             <input id="arrival-input" name="arrival_date" type="hidden">
             <input id="departure-input" name="departure_date" type="hidden">
             <div class="honeypot" aria-hidden="true"><label for="website">Weboldal</label><input id="website" name="website" tabindex="-1" autocomplete="off"></div>

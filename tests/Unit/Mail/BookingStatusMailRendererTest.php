@@ -54,6 +54,8 @@ final class BookingStatusMailRendererTest extends TestCase
 
         self::assertStringContainsString('2026-08-10', $message->textBody);
         self::assertStringContainsString('2026-08-13', $message->textBody);
+        self::assertStringContainsString('Lemondási kötbér: 45000.00 HUF', $message->textBody);
+        self::assertStringContainsString('automatikus terhelés nem történt', $message->textBody);
     }
 
     public function testRejectsInvalidatedNotificationConstruction(): void
@@ -72,6 +74,8 @@ final class BookingStatusMailRendererTest extends TestCase
         return new BookingStatusMailData(
             'guest@example.test', $status, 'AB-2026-001', '2026-08-10', '2026-08-13',
             2, 1, '90000.00', 'HUF',
+            $status === 'cancelled' ? '45000.00' : null,
+            $status === 'cancelled' ? '90000.00' : null,
         );
     }
 }

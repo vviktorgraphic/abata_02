@@ -51,9 +51,9 @@ A jelölések jelentése:
 
 ## Sprint 4 dokumentációs állapot
 
-**IMPLEMENTED:** tranzakciós `POST /api/bookings`, confirmed/blocked mentéskori újraellenőrzés, egymást nem blokkoló `pending` igények, bookinghoz kötött idempotencia, gyermekéletkor-tárolás, konfigurált `person_night` HUF ár, immutable JSON snapshot, valamint ugyanabban a tranzakcióban létrejövő booking-request outbox. A commit után indított SMTP-kísérlet hibája a bookingot nem törli.
+**IMPLEMENTED:** tranzakciós `POST /api/bookings`, confirmed/blocked mentéskori újraellenőrzés, egymást nem blokkoló `pending` igények, bookinghoz kötött idempotencia, gyermekéletkor-tárolás, közös összetett HUF pricing engine, immutable JSON snapshot, valamint ugyanabban a tranzakcióban létrejövő booking-request outbox. A commit után indított SMTP-kísérlet hibája a bookingot nem törli.
 
-**PLANNED:** admin jóváhagyás és booking CRUD, pricing admin CRUD, automatikus outbox retry és stale `processing` helyreállítás, további pricing komponensek, iCal és online fizetés.
+**IMPLEMENTED:** admin jóváhagyás és booking CRUD, pricing admin CRUD/preview és összetett pricing komponensek. **PLANNED:** automatikus outbox retry és stale `processing` helyreállítás, iCal és online fizetés.
 
 ## Frissítési szabály
 

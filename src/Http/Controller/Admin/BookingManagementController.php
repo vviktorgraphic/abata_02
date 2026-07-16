@@ -9,6 +9,7 @@ use App\Application\Booking\AdminBookingListQuery;
 use App\Application\Booking\BookingConflict;
 use App\Application\Booking\BookingNotFound;
 use App\Domain\Booking\BookingTransitionNotAllowed;
+use App\Domain\Booking\CancellationPolicy;
 use App\Infrastructure\Persistence\Booking\PdoAdminBookingQueryRepository;
 use App\Infrastructure\Persistence\Booking\TransactionalBookingRepository;
 use DateTimeImmutable;
@@ -49,8 +50,18 @@ final readonly class BookingManagementController
         if ($this->auth->currentAdmin() === null) return new RedirectResponse('/admin/login');
         $booking = $this->queries->fetchBookingDetail(new AdminBookingDetailQuery($identifier));
         if ($booking === null) return $this->error(404, 'A foglalás nem található.');
+        $snapshot = $booking['pricing_snapshot'] ?? [];
+        $accommodationFee = is_array($snapshot) ? ($snapshot['accommodation_fee'] ?? $snapshot['total'] ?? null) : null;
+        $cancellationPreview = is_string($accommodationFee)
+            ? (new CancellationPolicy())->calculate(
+                (string) $booking['arrival_date'],
+                $accommodationFee,
+                new DateTimeImmutable('now', new DateTimeZone('Europe/Budapest')),
+                (string) $booking['currency'],
+            )
+            : null;
         return new HtmlResponse($this->view->render('booking-detail', [
-            'booking' => $booking, 'csrfToken' => $this->csrf->token(),
+            'booking' => $booking, 'csrfToken' => $this->csrf->token(), 'cancellationPreview' => $cancellationPreview,
         ]));
     }
 

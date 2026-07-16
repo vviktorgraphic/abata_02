@@ -230,7 +230,7 @@ Publikus, same-origin JSON foglalási igény létrehozása. `Content-Type: appli
 
 Első siker: `201 Created`. Azonos kulcs és azonos kanonikus payload ismétlése: `200 OK`, ugyanazzal a referenciával. A válasz mezői: `reference`, `status` (`pending`), `total_amount`, `currency` (`HUF`), `email_status` és `next_step`; PII és belső adatbázis-ID nincs benne.
 
-Hibák: malformed JSON `400`; idegen Origin `403`; túl nagy body `413`; hibás Content-Type `415`; mezővalidáció `422`; confirmed/blocked ütközés vagy azonos kulcs eltérő payloadja `409`; rate limit `429` és `Retry-After`; hiányzó pricing vagy átmeneti infrastruktúrahiba `503`. Minden válasz `Cache-Control: no-store`.
+Hibák: malformed JSON `400`; idegen Origin `403`; túl nagy body `413`; hibás Content-Type `415`; mezővalidáció, köztük hiányzó `privacy_accepted` vagy `booking_policy_accepted`, `422`; confirmed/blocked ütközés vagy azonos kulcs eltérő payloadja `409`; rate limit `429` és `Retry-After`; hiányzó/ellentmondásos pricing vagy átmeneti infrastruktúrahiba `503`. Minden válasz `Cache-Control: no-store`.
 
 PowerShell smoke:
 
@@ -264,6 +264,10 @@ A pending igény nem blokkol másik pendinget és nem jár le; confirmed és blo
 - admin `GET/POST/PATCH /api/admin/pricing-rules...`: verziózott árszabály-kezelés.
 
 **Elfogadási feltételek:** HUF és kerekítés determinisztikus; minden tétel visszakövethető; bookinghoz változtathatatlan snapshot készül; szabályütközés determinisztikusan kezelt; példatesztek lefedik a [pricing specifikációt](05_PRICING.md).
+
+### Admin pricing HTML routes — IMPLEMENTED
+
+`GET /admin/pricing`, `GET /admin/pricing/create`, `POST /admin/pricing`, `GET /admin/pricing/{id}/edit`, `POST /admin/pricing/{id}`, valamint az `activate` és `deactivate` POST útvonalak teljes 2FA admin sessiont igényelnek. Minden módosítás CSRF-, rate-limit-, Content-Type-, body-size-, whitelist- és numerikus/dátumvalidációt használ, auditált és PRG választ ad. A listaoldali preview ugyanazt a pricing engine-t futtatja, mint a booking create, és line itemeket, IFA-t, alkalmazott szabályokat vagy explicit konfigurációs konfliktust mutat.
 
 ### Blocked periods API – PLANNED
 

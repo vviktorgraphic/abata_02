@@ -9,7 +9,7 @@ Ez a dokumentum elválasztja a repositoryban igazolható jelenlegi működést a
 
 ## Üzleti cél
 
-**IMPLEMENTED a publikus igényig:** A vendég a nyilvános naptárban időszakot választ és `pending` foglalási igényt küld. Az admin üzleti kezelőfelülete továbbra is **PLANNED**.
+**IMPLEMENTED:** A vendég a nyilvános naptárban időszakot választ és `pending` foglalási igényt küld; az admin booking- és pricing-kezelőfelület elkészült.
 
 **IMPLEMENTED:** A vendég megtekintheti a naptárt, majd a `POST /api/bookings` végponton tranzakciósan és idempotensen `pending` igényt hozhat létre szerveroldali árral, snapshot-tal és e-mail outbox rekorddal.
 
@@ -18,7 +18,7 @@ Ez a dokumentum elválasztja a repositoryban igazolható jelenlegi működést a
 | Szerepkör | Cél | Állapot |
 |---|---|---|
 | Publikus látogató / vendég | Foglaltság megtekintése, időszak és vendégadatok megadása | **IMPLEMENTED**, mentés nélkül |
-| Adminisztrátor | Belépés jelszóval és e-mailes 2FA-val; később foglalások, árak és integrációk kezelése | Auth foundation **IMPLEMENTED**; üzleti adminmodulok **PLANNED** |
+| Adminisztrátor | Belépés jelszóval és e-mailes 2FA-val; foglalások és árak kezelése | Auth, booking és pricing admin **IMPLEMENTED**; külső integrációk **PLANNED** |
 | Üzemeltető | Telepítés, migráció, mentés, cron, SMTP és megfigyelés | **PLANNED** productionre; Docker fejlesztői parancsok **IMPLEMENTED** |
 | Külső naptárszolgáltató | iCal események átadása és fogadása | **DEFERRED** későbbi sprintre |
 
@@ -49,8 +49,8 @@ Ez a dokumentum elválasztja a repositoryban igazolható jelenlegi működést a
 
 - **IMPLEMENTED:** foglalási igény tranzakciós, ismételt availability ellenőrzéssel történő mentése és egyedi referencia képzése;
 - **IMPLEMENTED:** admin belépési alap jelszóval, e-mailes 2FA-val és biztonságos sessionnel;
-- **PLANNED:** admin dashboard, lista, részletező, státuszkezelés, kézi foglalás és blokkolás;
-- **IMPLEMENTED alap:** konfigurált `person_night` árkalkuláció és rögzített ár-pillanatkép; **PLANNED:** admin CRUD, összetett árelemek és felülírás;
+- **IMPLEMENTED:** admin dashboard, lista, részletező, státuszkezelés és blokkolás; kézi admin booking create **PLANNED**;
+- **IMPLEMENTED:** közös összetett pricing engine, admin CRUD/preview és immutable snapshot; production értékek **PLANNED**;
 - **PLANNED:** SMTP-alapú, naplózott és idempotens e-mail folyamatok;
 - **PLANNED:** tokennel védett iCal export, cron alapú import, konfliktuskezelés és auditálás;
 - **PLANNED:** cPanel staging/production telepítés, mentés-visszaállítás és monitorozás;
@@ -98,26 +98,26 @@ Minden tervezett modul elfogadási feltétele legalább: dokumentált üzleti sz
 1. **IMPLEMENTED:** megnyitja a `/` oldalt;
 2. **IMPLEMENTED:** a böngésző lekéri két hónap napi availability adatait;
 3. **IMPLEMENTED:** kiválasztja az érkezést és a távozást;
-4. **IMPLEMENTED:** megadja a kapcsolati és létszámadatokat, és bepipálja a jelenlegi kötelező `privacy` mezőt; **PLANNED:** tényleges tájékoztató és végleges jogalapi megfogalmazás;
+4. **IMPLEMENTED:** megadja a kapcsolati és létszámadatokat, és külön bepipálja a kötelező adatkezelési és verziózott foglalási szabályzat checkboxot;
 5. **IMPLEMENTED:** a szerver újra validálja az adatokat és az időszakot;
-6. **IMPLEMENTED:** tájékoztatást kap, hogy foglalás nem történt; maga a tartós foglalásmentés **PLANNED**.
+6. **IMPLEMENTED:** idempotens `pending` igény, policy- és pricing snapshot készül, majd commit után e-mail-kísérlet indul.
 
 Példa: a `2026-08-01` érkezés és `2026-08-05` távozás négy éjszakát jelent; egy `2026-08-05` napon kezdődő másik foglalás határnapja miatt nincs átfedés.
 
 ### Vendég – tervezett 1.0
 
 1. **IMPLEMENTED:** a szerver mentés előtt tranzakcióban ismét ellenőrzi a confirmed/blocked foglalhatóságot;
-2. **PLANNED:** idempotenciakulccsal létrehozza a `pending` igényt és az ár-pillanatképet;
-3. **PLANNED:** commit után naplózott visszaigazolást küld a vendégnek és értesítést az adminnak;
-4. **PLANNED:** az admin elfogadja, árajánlatot ad vagy elutasítja az igényt;
-5. **PLANNED:** minden státuszváltás előzménybe és audit logba kerül.
+2. **IMPLEMENTED:** idempotenciakulccsal létrehozza a `pending` igényt és az immutable ár-/policy-pillanatképet;
+3. **IMPLEMENTED:** commit után naplózott visszaigazolást küld a vendégnek;
+4. **IMPLEMENTED:** az admin megerősíti, elutasítja, lemondja vagy érvényteleníti az igényt;
+5. **IMPLEMENTED:** minden státuszváltás előzménybe és audit logba kerül.
 
 ### Admin – tervezett 1.0
 
-1. **PLANNED:** e-mail + jelszó után egyszer használatos e-mailes kóddal hitelesít;
-2. **PLANNED:** biztonságos sessionből megnyitja a dashboardot;
-3. **PLANNED:** megtekinti és kezeli a foglalásokat, blokkolásokat, árakat és integrációkat;
-4. **PLANNED:** kijelentkezéskor a session visszavonódik.
+1. **IMPLEMENTED:** e-mail + jelszó után egyszer használatos e-mailes kóddal hitelesít;
+2. **IMPLEMENTED:** biztonságos sessionből megnyitja a dashboardot;
+3. **IMPLEMENTED:** megtekinti és kezeli a foglalásokat, blokkolásokat és árakat; külső integrációk **PLANNED**;
+4. **IMPLEMENTED:** kijelentkezéskor a session visszavonódik.
 
 ## Nem tervezett vagy későbbre halasztott elemek
 
@@ -137,8 +137,8 @@ Példa: a `2026-08-01` érkezés és `2026-08-05` távozás négy éjszakát jel
 | Publikus naptár | availability API, két hónapos UI, mentés nélküli validáció | **IMPLEMENTED** |
 | Rendszerspecifikáció | jelenlegi és 1.0 állapot verziózott dokumentációja | **PLANNED** ebben a dokumentációs sprintben |
 | Admin biztonsági alap | jelszó + e-mailes 2FA, session, CSRF, rate limit, audit | **IMPLEMENTED**, release smoke szükséges |
-| Foglalási mag | mentés, konkurenciavédelem, státuszok, admin kezelés | **PLANNED** |
-| Kereskedelmi folyamat | minimális pricing snapshot, booking-request outbox és SMTP-kísérlet | **IMPLEMENTED alap**; összetett pricing és retry **PLANNED** |
+| Foglalási mag | mentés, konkurenciavédelem, státuszok, admin kezelés | **IMPLEMENTED** |
+| Kereskedelmi folyamat | összetett pricing/policy/cancellation snapshot, outbox és SMTP-kísérlet | **IMPLEMENTED**; automatikus retry **PLANNED** |
 | Integráció és release | iCal, staging hardening, backup/restore, production smoke | **PLANNED** |
 
 Az 1.0 kiadás csak akkor fogadható el, ha a kritikus üzleti utak automatizált tesztjei sikeresek, a security kontrollok ellenőrzöttek, a staging telepítés és egy restore próba dokumentáltan lefutott, és nem maradt kiemelt `DECISION REQUIRED` kérdés, amely az adatok vagy az árképzés helyességét befolyásolja.
@@ -161,6 +161,6 @@ Az 1.0 kiadás csak akkor fogadható el, ha a kritikus üzleti utak automatizál
 
 **IMPLEMENTED komponensek:** az admin credential ellenőrzés, e-mailes 2FA, csúszó idle session, CSRF, rate limit, audit persistence, SMTP absztrakció és minimális admin UI kódja elkészült. A `008_create_admin_authentication_tables.sql` létrehozza a szükséges auth-táblákat.
 
-**PLANNED:** a teljes admin üzleti felület, jóváhagyás, pricing CRUD, iCal és az általános e-mail retry/admin resend nem része ennek a sprintnek. A publikus booking create, minimális pricing snapshot és booking-request outbox **IMPLEMENTED**; release előtt HTTP/Mailpit smoke szükséges.
+**IMPLEMENTED:** admin üzleti felület, jóváhagyás, pricing CRUD/preview, publikus booking create és snapshot/outbox. **PLANNED:** iCal, online fizetés és általános automatikus e-mail retry; release előtt HTTP/Mailpit smoke szükséges.
 
 **DECISION REQUIRED:** abszolút session maximum; production SMTP port/titkosítás/auth/feladó; végleges rate-limit küszöbök.
