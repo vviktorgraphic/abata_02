@@ -1,0 +1,14 @@
+CREATE TABLE pricing_rules (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(190) NOT NULL,
+    valid_from DATE NOT NULL,
+    valid_until DATE NOT NULL COMMENT 'Exclusive end date',
+    nightly_price DECIMAL(12,2) NOT NULL,
+    minimum_nights SMALLINT UNSIGNED NOT NULL DEFAULT 1,
+    priority INT NOT NULL DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT chk_pricing_rule_dates CHECK (valid_until > valid_from)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
