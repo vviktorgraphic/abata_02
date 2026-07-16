@@ -17,6 +17,17 @@ use App\Http\Controller\Admin\DefaultAdminAuthWorkflow;
 use App\Http\Controller\Admin\LoginController;
 use App\Http\Controller\Admin\LogoutController;
 use App\Http\Controller\Admin\TwoFactorController;
+use App\Http\Controller\Admin\BookingManagementController;
+use App\Http\Controller\Admin\BlockedPeriodController;
+use App\Http\Controller\Admin\AdminActionGuard;
+use App\Http\Controller\Admin\SecurityAdminActionRateLimiter;
+use App\Infrastructure\Persistence\Booking\PdoAdminBookingQueryRepository;
+use App\Infrastructure\Persistence\Booking\PdoBlockedPeriodRepository;
+use App\Infrastructure\Persistence\Booking\TransactionalBookingRepository;
+use App\Application\Booking\BlockedPeriodService;
+use App\Application\Mail\BookingStatusNotificationDispatcher;
+use App\Application\Mail\BookingStatusMailRenderer;
+use App\Infrastructure\Persistence\Booking\PdoBookingStatusNotificationOutbox;
 use App\Infrastructure\Database\ConnectionFactory;
 use App\Infrastructure\Mail\SmtpConfiguration;
 use App\Infrastructure\Mail\SmtpMailer;
@@ -81,10 +92,23 @@ $workflow = new DefaultAdminAuthWorkflow(
     $authConfig['session_idle_timeout_seconds'],
 );
 $view = new AdminView($root . '/templates');
+$audit = new PdoAuditLog($pdo);
+$queries = new PdoAdminBookingQueryRepository($pdo);
+$actionGuard = new AdminActionGuard($workflow, $csrf, new SecurityAdminActionRateLimiter($rateLimiter, new RateLimitPolicy('admin_action', 20, 60, 60)));
+$transitions = new TransactionalBookingRepository($pdo);
+$blockedRepository = new PdoBlockedPeriodRepository($pdo, $audit);
+$statusNotifications = new BookingStatusNotificationDispatcher(
+    new PdoBookingStatusNotificationOutbox($pdo),
+    new BookingStatusMailRenderer($root . '/templates/email', $mailConfig['from_email']),
+    new SmtpMailer(new SmtpConfiguration($mailConfig['host'], $mailConfig['port'], $mailConfig['encryption'], $username, $password)),
+    $audit,
+);
 
 return [
     'login' => new LoginController($workflow, $view, $csrf),
     'two_factor' => new TwoFactorController($workflow, $view, $csrf),
-    'dashboard' => new DashboardController($workflow, $view, $csrf),
+    'dashboard' => new DashboardController($workflow, $view, $csrf, $queries),
+    'bookings' => new BookingManagementController($workflow, $view, $csrf, $actionGuard, $queries, $transitions, $statusNotifications),
+    'blocked_periods' => new BlockedPeriodController($workflow, $view, $csrf, $actionGuard, new BlockedPeriodService($blockedRepository), $blockedRepository),
     'logout' => new LogoutController($workflow, $csrf, $view),
 ];

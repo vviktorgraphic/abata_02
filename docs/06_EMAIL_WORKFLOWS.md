@@ -163,3 +163,7 @@ A booking tranzakció az SMTP művelet előtt létrehozza az egyedi outbox rekor
 A levél az A Bata nevet, publikus referenciát, dátumokat, éjszakák és vendégek számát, gyermekkorokat, végösszeget és HUF pénznemet tartalmazza, továbbá jelzi, hogy ez csak igény, amely admin jóváhagyás után válik véglegessé.
 
 **TECHNICAL DEBT / PLANNED:** nincs automatikus retry worker, admin resend vagy stale `processing` recovery. Ha a folyamat a claim után a végállapot frissítése előtt megszakad, a rekord `processing` állapotban maradhat; ezt időkorlátos reclaimmel és cron-kompatibilis retryval kell kezelni.
+
+## Státuszértesítések – IMPLEMENTED Sprint 5
+
+Confirmed/rejected/cancelled outbox ugyanabban a tranzakcióban készül, SMTP commit után fut, és sent/failed auditot ír. Hiba nem rollbackeli a bookingot; failed levél adminból újraküldhető. Invalidated és belső admin note nem kerül vendéglevélbe. Az automatikus retry/max-attempt/stale reclaim továbbra is **PLANNED / OWNER DECISION REQUIRED**.

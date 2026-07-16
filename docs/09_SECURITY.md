@@ -159,3 +159,7 @@ Secret incidensnél nem elég a fájl törlése: credential azonnali visszavoná
 - SMTP kizárólag commit után; credential és nyers provider válasz nem kerül publikus hibába.
 
 **PLANNED:** production küszöbök és originlista jóváhagyása, jogi privacy-link, központi strukturált booking audit, automatikus secret scan, teljes böngésző/WCAG és staging abuse teszt.
+
+## Sprint 5 kontrollok – IMPLEMENTED
+
+Admin auth, CSRF, no-store/security headerek, prepared queryk, output escaping, body/note limit, mass-assignment whitelist, action rate limit és szerveroldali reference lookup működik. Audit metadata nem tartalmaz note-ot, vendég PII-t, session- vagy CSRF-tokent.

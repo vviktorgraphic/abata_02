@@ -295,3 +295,7 @@ A pending igény nem blokkol másik pendinget és nem jár le; confirmed és blo
 - minden PII-választ `Cache-Control: no-store` védi, availability cache-politikája külön döntés;
 - verziózási stratégia és breaking-change szabály kiadás előtt rögzített;
 - minden dátum `YYYY-MM-DD`, `Europe/Budapest`, fél-nyitott intervallum szerint értelmezett.
+
+## Admin booking route-ok – IMPLEMENTED Sprint 5
+
+`GET /admin/bookings`, `GET /admin/bookings/{reference-or-id}`, `POST /admin/bookings/{reference}/confirm|reject|cancel|invalidate`, `POST /admin/bookings/{reference}/retry-email`, `GET|POST /admin/blocked-periods`, `POST /admin/blocked-periods/{id}/remove`. Mind hitelesített és no-store; POST esetén CSRF kötelező, konfliktus `409`, hiányzó erőforrás `404`.

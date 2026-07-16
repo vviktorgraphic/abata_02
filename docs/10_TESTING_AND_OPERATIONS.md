@@ -266,3 +266,20 @@ git status --short
 Ezután a [booking API](08_API_REFERENCE.md#post-apibookings--implemented) PowerShell smoke-ja és a `http://localhost:8025` Mailpit felület ellenőrzendő. A seedelt ár szemléltető, productionben tilos változtatás nélkül használni.
 
 **PLANNED / TECHNICAL DEBT:** valódi párhuzamos production-terhelési próba; stale `processing` outbox reclaim és retry cron; production SMTP/TLS kézbesíthetőség; teljes böngésző- és accessibility audit; admin jóváhagyáskor confirmed race teszt.
+
+## Sprint 5 PowerShell release ellenőrzés
+
+```powershell
+docker compose up -d --build
+docker compose ps
+docker compose exec app composer validate --no-check-publish
+docker compose exec app composer db:check
+docker compose exec app composer migrate
+docker compose exec app composer migrate
+docker compose exec app composer seed:demo
+docker compose exec app vendor/bin/phpunit
+git diff --check
+git status
+```
+
+Az automatikus concurrency teszt két PHP processzel ellenőrzi az átfedő pending confirmot. Mailpitben request/confirmed/rejected/cancelled levél, címzett, tárgy, referencia, státusz, összeg és az admin note hiánya ellenőrzendő.

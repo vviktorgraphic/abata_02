@@ -22,6 +22,23 @@ final class Router
     public function dispatch(string $method, string $path): void
     {
         $handler = $this->routes[strtoupper($method)][$path] ?? null;
+        $parameters = [];
+        if ($handler === null) {
+            foreach ($this->routes[strtoupper($method)] ?? [] as $route => $candidate) {
+                $pattern = preg_replace_callback('/\\{([A-Za-z_][A-Za-z0-9_]*)\\}/', static function (array $match): string {
+                    return '(?P<' . $match[1] . '>[^/]+)';
+                }, $route);
+                if ($pattern !== null && preg_match('#^' . $pattern . '$#D', $path, $matches) === 1) {
+                    $handler = $candidate;
+                    foreach ($matches as $name => $value) {
+                        if (is_string($name)) {
+                            $parameters[$name] = rawurldecode($value);
+                        }
+                    }
+                    break;
+                }
+            }
+        }
 
         if ($handler === null) {
             http_response_code(404);
@@ -30,6 +47,6 @@ final class Router
             return;
         }
 
-        $handler($_GET);
+        $handler($_GET, $parameters);
     }
 }

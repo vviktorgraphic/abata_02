@@ -38,3 +38,11 @@ A lezárt döntések forrása a [tulajdonosi döntési napló](99_OWNER_DECISION
 - Outbox retry ütemezés, maximális próbálkozás, stale `processing` reclaim, admin resend és e-mail retention.
 - Publikus booking rate-limit production küszöbök, trusted originlista és adatkezelési tájékoztató URL-je.
 - Booking, gyermekéletkor, idempotencia és e-mail rekordok retention/törlési szabálya; az idempotencia automatikus időalapú cleanupja a jelenlegi döntés szerint nincs.
+
+## Sprint 5 után nyitott
+
+- Automatikus státusz-email retry ütemezés, maximális attempts és stale `processing` reclaim.
+- Production SMTP/TLS és e-mail retention.
+- Pricing Administration konkrét értékei és kombinációs szabályai.
+
+**RESOLVED Sprint 5:** `pending -> confirmed|rejected|invalidated`, `confirmed -> cancelled|invalidated`.
