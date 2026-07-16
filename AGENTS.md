@@ -10,4 +10,12 @@
 - Node.js must not be a production runtime dependency.
 - Keep `public/` as the only web-accessible document root.
 - Use PDO prepared statements for all queries containing values.
-
+- Treat `docs/` as the primary specification for the 1.0 system and read the affected documents before each sprint.
+- Report any difference between the specification and the code; never silently choose one interpretation.
+- Every new business rule requires both automated tests and documentation in the same pull request.
+- Keep IMPLEMENTED and PLANNED behavior explicitly separated in documentation.
+- Document local development commands in PowerShell-compatible form.
+- A public booking request starts as `pending`; pending requests neither block each other nor expire automatically. Only `confirmed` bookings and blocked periods block public creation.
+- Keep booking idempotency records with their booking; do not add time-based cleanup without a new owner decision.
+- Persist a server-calculated immutable pricing snapshot and an e-mail outbox record in the same booking transaction. Never perform SMTP I/O inside that transaction.
+- The only implemented pricing base is configured `person_night`, with every person priced equally. Do not invent child discounts, IFA, weekend/season combinations, or other pricing rules.

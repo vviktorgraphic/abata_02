@@ -4,19 +4,26 @@ declare(strict_types=1);
 
 namespace App\Http\Controller;
 
-final class HomeController
+final readonly class HomeController
 {
-    public function index(): void
+    public function __construct(private string $templateDirectory)
     {
-        $this->json(['name' => 'Foglalási rendszer', 'status' => 'ready']);
     }
 
-    public function health(): void
+    /** @param array<string, mixed> $query */
+    public function index(array $query = []): void
+    {
+        require $this->templateDirectory . '/booking/index.php';
+    }
+
+    /** @param array<string, mixed> $query */
+    public function health(array $query = []): void
     {
         $this->json(['status' => 'ok', 'time' => (new \DateTimeImmutable())->format(DATE_ATOM)]);
     }
 
-    public function adminLogin(): void
+    /** @param array<string, mixed> $query */
+    public function adminLogin(array $query = []): void
     {
         $this->json(['message' => 'Admin login endpoint placeholder']);
     }
