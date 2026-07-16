@@ -7,30 +7,44 @@ services:
       - "8080:80"
     volumes:
       - ./:/var/www/html
-    env_file:
-      - .env
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      APP_TIMEZONE: ${APP_TIMEZONE:-Europe/Budapest}
+      DB_HOST: ${DB_HOST:?DB_HOST must be set in .env}
+      DB_PORT: ${DB_PORT:?DB_PORT must be set in .env}
+      DB_DATABASE: ${DB_DATABASE:?DB_DATABASE must be set in .env}
+      DB_USERNAME: ${DB_USERNAME:?DB_USERNAME must be set in .env}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env}
+      MAIL_HOST: ${MAIL_HOST:-mailpit}
+      MAIL_PORT: ${MAIL_PORT:-1025}
     depends_on:
       db:
         condition: service_healthy
 
   db:
     image: mysql:8.0
-    command: --default-authentication-plugin=mysql_native_password
     ports:
       - "3306:3306"
     environment:
-      MYSQL_DATABASE: ${DB_DATABASE}
-      MYSQL_USER: ${DB_USERNAME}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE:?DB_DATABASE must be set in .env}
+      MYSQL_USER: ${DB_USERNAME:?DB_USERNAME must be set in .env}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD must be set in .env}
       TZ: Europe/Budapest
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "--password=${DB_ROOT_PASSWORD}"]
+      test:
+        - CMD-SHELL
+        - >-
+          mysql --protocol=tcp -h 127.0.0.1
+          -u "$${MYSQL_USER}" -p"$${MYSQL_PASSWORD}"
+          --database "$${MYSQL_DATABASE}" --execute "SELECT 1" >/dev/null 2>&1
       interval: 5s
       timeout: 5s
       retries: 20
+      start_period: 20s
 
   mailpit:
     image: axllent/mailpit:latest
@@ -51,4 +65,3 @@ services:
 
 volumes:
   mysql_data:
-

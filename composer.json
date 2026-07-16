@@ -21,6 +21,7 @@
         }
     },
     "scripts": {
+        "db:check": "php bin/db-check.php",
         "test": "phpunit",
         "migrate": "php bin/migrate.php"
     },

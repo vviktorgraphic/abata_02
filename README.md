@@ -36,6 +36,52 @@ docker compose exec app composer migrate
 
 A `bin/migrate.php` név szerint rendezi a `database/migrations/*.sql` fájlokat, és a `migrations` táblában rögzíti a már lefutott verziókat. Sémamódosítást mindig új SQL migrációban kell elkészíteni.
 
+A kapcsolat biztonságosan, jelszó kiírása nélkül ellenőrizhető:
+
+```bash
+docker compose exec app composer db:check
+```
+
+## Adatbázis-hitelesítési hiba
+
+A MySQL Docker image a `MYSQL_DATABASE`, `MYSQL_USER` és `MYSQL_PASSWORD` változókat csak egy üres adatkönyvtár első inicializálásakor alkalmazza. Egy már létező volume felhasználóit és jelszavait a `.env` későbbi módosítása nem írja át. Ez tipikusan `SQLSTATE[HY000] [1045] Access denied` hibát okoz.
+
+### Friss, eldobható fejlesztői adatbázis
+
+> **FIGYELEM:** A `docker compose down -v` végleg törli a Docker volume-ban tárolt helyi adatbázis minden adatát. Éles, megőrzendő vagy nem mentett adatokon tilos használni.
+
+Ha a helyi adatbázis biztosan eldobható:
+
+```bash
+docker compose down -v
+docker compose up -d --build
+docker compose exec app composer migrate
+```
+
+### Meglévő, megőrzendő adatbázis
+
+Először készíts ellenőrzött biztonsági mentést. Ezután lépj be interaktívan rootként; a kliens kérje be a jelszót, ne add meg a parancssorban:
+
+```bash
+docker compose exec db mysql -u root -p
+```
+
+Az alábbi SQL-ben az adatbázis- és felhasználónevet igazítsd a helyi `.env` értékeihez. Az új jelszót kizárólag az interaktív munkamenetben helyettesítsd be, és ne mentsd repositoryba vagy shell historyba:
+
+```sql
+CREATE USER IF NOT EXISTS 'booking_user'@'%' IDENTIFIED BY '<new-application-password>';
+ALTER USER 'booking_user'@'%' IDENTIFIED BY '<new-application-password>';
+GRANT ALL PRIVILEGES ON booking_system.* TO 'booking_user'@'%';
+```
+
+A `CREATE USER`, `ALTER USER` és `GRANT` azonnal frissíti a jogosultsági táblákat, ezért modern MySQL 8 alatt `FLUSH PRIVILEGES` általában nem szükséges. Kézi jogosultságtábla-módosítás után futtasd csak:
+
+```sql
+FLUSH PRIVILEGES;
+```
+
+Végül ellenőrizd a kapcsolatot a `composer db:check`, majd futtasd a migrációt. Az alkalmazásfelhasználó csak a saját adatbázisára kapjon jogosultságot; globális `*.*` jogosultságot ne adj neki.
+
 ## Tesztek
 
 ```bash

@@ -2,11 +2,28 @@
 
 declare(strict_types=1);
 
-return [
-    'host' => $_ENV['DB_HOST'] ?? getenv('DB_HOST') ?: '127.0.0.1',
-    'port' => (int) ($_ENV['DB_PORT'] ?? getenv('DB_PORT') ?: 3306),
-    'database' => $_ENV['DB_DATABASE'] ?? getenv('DB_DATABASE') ?: 'booking_system',
-    'username' => $_ENV['DB_USERNAME'] ?? getenv('DB_USERNAME') ?: 'root',
-    'password' => $_ENV['DB_PASSWORD'] ?? getenv('DB_PASSWORD') ?: '',
-];
+$required = static function (string $name): string {
+    $value = $_ENV[$name] ?? getenv($name);
 
+    if (!is_string($value) || trim($value) === '') {
+        throw new RuntimeException(sprintf('Required environment variable %s is missing or empty.', $name));
+    }
+
+    return $value;
+};
+
+$port = filter_var($required('DB_PORT'), FILTER_VALIDATE_INT, [
+    'options' => ['min_range' => 1, 'max_range' => 65535],
+]);
+
+if ($port === false) {
+    throw new RuntimeException('DB_PORT must be an integer between 1 and 65535.');
+}
+
+return [
+    'host' => $required('DB_HOST'),
+    'port' => $port,
+    'database' => $required('DB_DATABASE'),
+    'username' => $required('DB_USERNAME'),
+    'password' => $required('DB_PASSWORD'),
+];
