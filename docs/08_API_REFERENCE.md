@@ -187,6 +187,22 @@ A router a path és HTTP-metódus pontos párosára illeszt. Eltérésnél `404`
 {"error":"Not found"}
 ```
 
+## Sprint 3 admin HTTP szerződés
+
+Az alábbi HTML végpontok controllerei, sablonjai és `public/index.php` route-bekötése **IMPLEMENTED** állapotú; release-elfogadásukhoz HTTP smoke is szükséges:
+
+| Metódus | Útvonal | Auth/CSRF | Eredmény |
+|---|---|---|---|
+| GET | `/admin/login` | anonymous | login HTML és sessionhöz kötött CSRF-token |
+| POST | `/admin/login` | anonymous + CSRF + rate limit | általános hiba vagy átirányítás a 2FA lépésre |
+| GET | `/admin/2fa` | pending session | hatjegyű kód űrlap |
+| POST | `/admin/2fa/verify` | pending + CSRF + rate limit | sikeres 2FA után rotált authenticated session |
+| POST | `/admin/2fa/resend` | pending + CSRF + resend limit | új kód, leghamarabb 60 másodperc után |
+| GET | `/admin` | authenticated session | minimális védett dashboard |
+| POST | `/admin/logout` | authenticated + CSRF | session visszavonása, cookie törlése |
+
+Minden auth POST hibás vagy hiányzó CSRF esetén `403` és állapotváltozás nélkül tér vissza. A login válasza nem különböztetheti meg az ismeretlen, inaktív és hibás jelszavú fiókot. A dashboard és logout teljes 2FA nélkül nem használható. JSON admin API, teljes dashboard és admin CRUD továbbra is **PLANNED**.
+
 ## PLANNED – 1.0 API
 
 Az alábbi szerződések céltervek; route-jaik nincsenek implementálva. Minden JSON API egységes `error: {code, message, fields?, request_id?}` formátumot, tartalomtípus-ellenőrzést, biztonságos `Cache-Control` értéket és a [biztonsági specifikáció](09_SECURITY.md) kontrolljait használja. A pontos admin jogosultsági modell az [admin és hitelesítés](04_ADMIN_AND_AUTHENTICATION.md) dokumentumban szerepel.

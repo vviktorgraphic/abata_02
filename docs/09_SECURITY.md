@@ -9,7 +9,7 @@ Ez a dokumentum a publikus foglalási felületet és API-t, a tervezett adminfel
 
 **IMPLEMENTED:** környezeti változó alapú adatbázis-konfiguráció; hiányzó DB-változók fail-fast hibája; PDO exception mód, `utf8mb4`, natív prepared statement (`PDO::ATTR_EMULATE_PREPARES=false`); `public/` document root; `.env` kizárása a repositoryból; foglalási lekérdezésekben prepared statementek; publikus API általános 500-as hibája stack trace és credential nélkül.
 
-**PLANNED:** HTTPS-kényszerítés, egységes security headerek, admin auth/2FA/session/CSRF, rate limit, audit, központi output escaping és input séma, GDPR-retenció, backup titkosítás/restore próba, iCal- és SMTP-hardening. Egy tervezett kontroll nem csökkenti a jelenlegi kockázatot addig, amíg automatizált vagy üzemeltetési ellenőrzése nincs.
+**IMPLEMENTED Sprint 3 alap:** admin auth/2FA/session/CSRF, rate limit, audit metadata/persistence és SMTP adapter. **PLANNED vagy környezetfüggő:** HTTPS-kényszerítés, teljes security-header smoke, központi output escaping és input séma, GDPR-retenció, backup titkosítás/restore próba, iCal- és production SMTP-hardening.
 
 ## Védendő értékek és bizalmi határok
 
@@ -29,14 +29,14 @@ Skála: valószínűség és hatás `Alacsony`, `Közepes` vagy `Magas`. Az áll
 |---:|---|---|---|---|---|---|---|
 | 1 | SQL injection | API, admin, MySQL | Közepes | Magas | PDO prepared statement; dinamikus oszlop/rendezés allowlist | Unit/integration teszt támadó inputtal; kódreview | IMPLEMENTED a jelenlegi értékes lekérdezéseknél; PLANNED minden új queryre |
 | 2 | Tárolt/reflektált/DOM XSS | publikus UI, admin UI | Közepes | Magas | Kontextushelyes HTML/attribútum/JS escaping; `textContent`; CSP | Automata payload teszt és manuális böngészőteszt | PLANNED; nincs teljes admin/booking write felület |
-| 3 | CSRF | tervezett admin módosítások, logout | Magas | Magas | Sessionhöz kötött CSRF-token minden state-change kérésen; SameSite cookie | Feature teszt hiányzó/hibás/idegen tokennel | PLANNED |
-| 4 | Jelszó brute-force | admin login | Magas | Magas | IP- és fiókalapú rate limit, progresszív lockout, monitoring | Küszöb- és időablak teszt, staging terhelési próba | PLANNED |
-| 5 | 2FA-kód találgatása | 2FA verify | Közepes | Magas | 6 számjegy, 10 perc, max. 5 próbálkozás, atomi számláló, rate limit | Határérték-, lejárat- és concurrency teszt | PLANNED |
-| 6 | Session fixation | admin session | Közepes | Magas | Session ID rotation a jelszó- és 2FA-határon | Feature teszt régi ID érvénytelenségével | PLANNED |
-| 7 | Session theft | admin cookie, kliens | Közepes | Magas | HTTPS, Secure/HttpOnly/SameSite, rövid idle és abszolút timeout, revoke | Cookie-header és visszavonási teszt stagingen | PLANNED |
-| 8 | Credential stuffing / fiók-enumeráció | admin login | Magas | Magas | Általános hiba, konzisztens időzítés, rate limit, breached-password folyamat döntés szerint | Ismeretlen/inaktív/hibás fiók válasz-összehasonlítása | PLANNED |
+| 3 | CSRF | admin auth POST-ok, logout | Magas | Magas | Sessionhöz kötött CSRF-token minden auth state-change kérésen; SameSite cookie | Feature teszt hiányzó/hibás tokennel | IMPLEMENTED auth route-okon |
+| 4 | Jelszó brute-force | admin login | Magas | Magas | IP- és fiókalapú rate limit és lockout | Küszöb- és időablak teszt; staging terhelési próba | IMPLEMENTED konfigurálható alapértékekkel; production küszöb OPEN |
+| 5 | 2FA-kód találgatása | 2FA verify | Közepes | Magas | 6 számjegy, 10 perc, max. 5 próbálkozás, atomi számláló, rate limit | Határérték-, lejárat- és persistence teszt | IMPLEMENTED |
+| 6 | Session fixation | admin session | Közepes | Magas | Session ID rotation a pending és authenticated határon | Feature teszt régi ID érvénytelenségével | IMPLEMENTED komponensszinten |
+| 7 | Session theft | admin cookie, kliens | Közepes | Magas | HTTPS, Secure/HttpOnly/SameSite, 15 perc idle és revoke | Cookie-header és visszavonási teszt stagingen | Idle/revoke IMPLEMENTED; HTTPS staging és abszolút maximum OPEN |
+| 8 | Credential stuffing / fiók-enumeráció | admin login | Magas | Magas | Általános hiba, dummy-hash időzítés, rate limit | Ismeretlen/inaktív/hibás fiók teszt | IMPLEMENTED alap |
 | 9 | Spam vagy automatizált booking | booking validate és tervezett create | Magas | Közepes | Rate limit, idempotency key, opcionális botvédelem, szervervalidáció | API abuse teszt és metrika/riasztás | PLANNED; create még nincs |
-| 10 | E-mail header injection | SMTP feladó/címzett/tárgy | Közepes | Magas | Könyvtári SMTP API, címvalidáció, CR/LF tiltás, sablon allowlist; `mail()` tilos | Unit teszt CR/LF payloadokkal | PLANNED; e-mail-küldés nincs |
+| 10 | E-mail header injection | SMTP feladó/címzett/tárgy | Közepes | Magas | SMTP adapter, címvalidáció, CR/LF tiltás, sablon allowlist; `mail()` tilos | Unit teszt CR/LF payloadokkal | IMPLEMENTED 2FA mailerben |
 | 11 | iCal feed token kiszivárgása | export URL, log, analytics | Közepes | Magas | Nagy entrópiájú rotálható token, URL/log redaction, PII-mentes feed, cache szabály | Logscan, tokenrotációs és jogosulatlan hozzáférési teszt | PLANNED; iCal nincs |
 | 12 | SSRF külső iCal URL-lel | iCal importer, belső hálózat | Magas | Magas | Csak HTTPS, DNS/IP validáció minden redirectnél, privát/link-local/metadata cím tiltása, port allowlist | SSRF tesztek loopback, RFC1918, IPv6 és redirect célokra | PLANNED |
 | 13 | Rosszindulatú vagy túlméretes ICS | parser, memória/CPU, DB | Közepes | Magas | Méret-, esemény-, sor- és időkorlát, biztonságos parser, sémaellenőrzés, tranzakció | Fuzz, zip/size jellegű és hibás encoding tesztek | PLANNED |
@@ -135,3 +135,15 @@ Secret incidensnél nem elég a fájl törlése: credential azonnali visszavoná
 - [API-referencia](08_API_REFERENCE.md)
 - [Tesztelés és üzemeltetés](10_TESTING_AND_OPERATIONS.md)
 - [Roadmap és döntések](11_ROADMAP_AND_DECISIONS.md)
+
+## Sprint 3 biztonsági kontrollok – IMPLEMENTED alap
+
+- A jelszó PHP password API-val ellenőrzött; az ismeretlen és hibás credential általános eredményt és dummy-hash ellenőrzést kap.
+- A 2FA-kód hat számjegyű, hash-elve tárolt, 10 percig és legfeljebb öt próbáig érvényes; plaintext kód nem auditálható.
+- A sessionazonosító pending és authenticated határon rotálható; a szerveroldali token hash-elve tárolt; 15 perc inaktivitás után lejár.
+- Minden admin POST sessionhöz kötött, timing-safe CSRF-ellenőrzést kap.
+- A rate-limit kulcsok secret pepperrel HMAC-pszeudonimizáltak; a login és 2FA policy külön konfigurálható.
+- Az audit metadata allowlistelt; jelszó, 2FA/CSRF/session token, nyers e-mail és nyers IP nem engedett.
+- Az SMTP adapter nem használ `mail()` fallbacket és nem teszi kivételbe a provider nyers válaszát.
+
+**DECISION REQUIRED:** az abszolút session-élettartam hiánya tudatos nyitott döntés; a 15 perces idle timeout nem helyettesíti. A production SMTP port/TLS/auth és a végleges rate-limit küszöbök release előtt lezárandók.

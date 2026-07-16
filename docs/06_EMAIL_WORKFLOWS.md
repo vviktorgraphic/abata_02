@@ -1,15 +1,21 @@
 # E-mail folyamatok
 
-**Állapot:** PLANNED; e-mail-küldés jelenleg nincs implementálva
-**Utolsó ellenőrzött commit:** `9adc564`
+**Állapot:** 2FA mailer és SMTP transport IMPLEMENTED; általános tranzakciós e-mail/outbox PLANNED
+**Utolsó ellenőrzés:** 2026-07-16, Sprint 3 munkafa (commit előtt)
 
 Ez a dokumentum az 1.0 tranzakciós e-mail folyamatait tervezi. Kapcsolódó dokumentumok: [admin és hitelesítés](04_ADMIN_AND_AUTHENTICATION.md), [adatbázis- és domainmodell](02_DATABASE_AND_DOMAIN_MODEL.md), [árképzés](05_PRICING.md), [iCal](07_ICAL_SYNC.md), [biztonság](09_SECURITY.md), [tesztelés és üzemeltetés](10_TESTING_AND_OPERATIONS.md).
 
 ## 1. Jelenlegi állapot — IMPLEMENTED / hiányzó
 
+**IMPLEMENTED Sprint 3:** `Mailer` port, strukturált `Message`, HTML/plain-text 2FA sablonrenderer, tesztelhető in-memory mailer és socket-alapú SMTP adapter. Az adapter Mailpithez plain SMTP-t, production konfigurációhoz titkosítást és opcionális authentikációt támogat; a PHP `mail()` függvényét nem használja. Transporthiba nem adja vissza a provider nyers válaszát, így credential vagy PII nem kerül kivételszövegbe.
+
+**PLANNED:** outbox, retry worker, általános foglalási e-mail események, provider-idempotencia, bounce/complaint és admin újraküldés.
+
+**DECISION REQUIRED:** a production host tulajdonosi értéke `s54.tarhely.com`, de a port, TLS mód, authentikáció, felhasználónév, feladó cím és reply-to továbbra is nyitott. Ezek hiányában production SMTP smoke nem tekinthető teljesítettnek.
+
 **IMPLEMENTED:** Docker fejlesztésben Mailpit szolgáltatás elérhető, és a repository szabálya tiltja a PHP `mail()` közvetlen használatát.
 
-**PLANNED:** nincs mailer absztrakció, SMTP klienskonfiguráció, sablon, outbox, e-mail napló, retry worker/cron vagy admin újraküldés. A publikus foglalásmentés sincs implementálva, ezért foglalási eseményből jelenleg nem indul levél.
+**IMPLEMENTED részhalmaz:** van mailer absztrakció, SMTP klienskonfiguráció és HTML/plain-text 2FA sablon. **PLANNED:** outbox, e-mail napló, retry worker/cron, admin újraküldés és foglalási eseményekből induló levél.
 
 ## 2. Transport és komponensek — PLANNED
 

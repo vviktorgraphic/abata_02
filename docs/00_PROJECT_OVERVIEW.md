@@ -18,7 +18,7 @@ Ez a dokumentum elválasztja a repositoryban igazolható jelenlegi működést a
 | Szerepkör | Cél | Állapot |
 |---|---|---|
 | Publikus látogató / vendég | Foglaltság megtekintése, időszak és vendégadatok megadása | **IMPLEMENTED**, mentés nélkül |
-| Adminisztrátor | Foglalások, blokkolások, árak, beállítások és integrációk kezelése | **PLANNED**; csak `/admin/login` helyőrző létezik |
+| Adminisztrátor | Belépés jelszóval és e-mailes 2FA-val; később foglalások, árak és integrációk kezelése | Auth foundation **IMPLEMENTED**; üzleti adminmodulok **PLANNED** |
 | Üzemeltető | Telepítés, migráció, mentés, cron, SMTP és megfigyelés | **PLANNED** productionre; Docker fejlesztői parancsok **IMPLEMENTED** |
 | Külső naptárszolgáltató | iCal események átadása és fogadása | **DEFERRED** későbbi sprintre |
 
@@ -48,7 +48,7 @@ Ez a dokumentum elválasztja a repositoryban igazolható jelenlegi működést a
 ### Tervezett 1.0
 
 - **PLANNED:** foglalási igény tranzakciós, ismételt availability ellenőrzéssel történő mentése és egyedi referencia képzése;
-- **PLANNED:** admin belépés jelszóval és e-mailes 2FA-val, biztonságos sessionnel;
+- **IMPLEMENTED:** admin belépési alap jelszóval, e-mailes 2FA-val és biztonságos sessionnel;
 - **PLANNED:** admin dashboard, lista, részletező, státuszkezelés, kézi foglalás és blokkolás;
 - **PLANNED:** implementálható árkalkuláció, rögzített ár-pillanatkép és admin felülírás;
 - **PLANNED:** SMTP-alapú, naplózott és idempotens e-mail folyamatok;
@@ -69,7 +69,7 @@ Minden tervezett modul elfogadási feltétele legalább: dokumentált üzleti sz
 | Tesztelés | PHPUnit 10.5 | **IMPLEMENTED** |
 | Fejlesztői környezet | Docker Compose, Mailpit, opcionális phpMyAdmin | **IMPLEMENTED** |
 | Production | hagyományos cPanel PHP/MySQL tárhely | **PLANNED** |
-| E-mail | hitelesített SMTP absztrakción keresztül | **PLANNED** |
+| E-mail | cserélhető SMTP absztrakció; 2FA sablon és transport | **IMPLEMENTED** 2FA-ra; outbox és üzleti levelek **PLANNED** |
 | Naptárintegráció | RFC 5545 alapú iCal | **DEFERRED** |
 
 ## cPanel-kompatibilitás
@@ -136,7 +136,7 @@ Példa: a `2026-08-01` érkezés és `2026-08-05` távozás négy éjszakát jel
 | Technikai alap | MVC/domain-service alap, Docker, migráció, séma, interval tesztek | **IMPLEMENTED** |
 | Publikus naptár | availability API, két hónapos UI, mentés nélküli validáció | **IMPLEMENTED** |
 | Rendszerspecifikáció | jelenlegi és 1.0 állapot verziózott dokumentációja | **PLANNED** ebben a dokumentációs sprintben |
-| Admin biztonsági alap | jelszó + e-mailes 2FA, session, CSRF, rate limit, audit | **PLANNED** |
+| Admin biztonsági alap | jelszó + e-mailes 2FA, session, CSRF, rate limit, audit | **IMPLEMENTED**, release smoke szükséges |
 | Foglalási mag | mentés, konkurenciavédelem, státuszok, admin kezelés | **PLANNED** |
 | Kereskedelmi folyamat | pricing snapshot, SMTP események | **PLANNED** |
 | Integráció és release | iCal, staging hardening, backup/restore, production smoke | **PLANNED** |
@@ -156,3 +156,11 @@ Az 1.0 kiadás csak akkor fogadható el, ha a kritikus üzleti utak automatizál
 - [Biztonság](09_SECURITY.md)
 - [Tesztelés és üzemeltetés](10_TESTING_AND_OPERATIONS.md)
 - [Roadmap és döntési napló](11_ROADMAP_AND_DECISIONS.md)
+
+## Sprint 3 állapot – admin authentication foundation
+
+**IMPLEMENTED komponensek:** az admin credential ellenőrzés, e-mailes 2FA, csúszó idle session, CSRF, rate limit, audit persistence, SMTP absztrakció és minimális admin UI kódja elkészült. A `008_create_admin_authentication_tables.sql` létrehozza a szükséges auth-táblákat.
+
+**PLANNED:** a teljes admin üzleti felület, foglaláskezelés, pricing, iCal és általános e-mail outbox nem része ennek a sprintnek. A front controller bekötése elkészült; a release elfogadásához HTTP smoke szükséges.
+
+**DECISION REQUIRED:** abszolút session maximum; production SMTP port/titkosítás/auth/feladó; végleges rate-limit küszöbök.

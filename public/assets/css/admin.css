@@ -1,0 +1,23 @@
+:root { --brand-navy: #19194B; --brand-gold: #F0A236; --white: #FFFFFF; --neutral-50: #F7F7F9; --neutral-300: #C9C9D2; --neutral-700: #3C3C46; }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; color: var(--brand-navy); background: var(--neutral-50); font-family: system-ui, sans-serif; line-height: 1.5; }
+.brand-header { padding: 1rem clamp(1rem, 4vw, 3rem); background: var(--brand-navy); }
+.brand { color: var(--white); font-size: 1.5rem; font-weight: 800; letter-spacing: .04em; text-decoration: none; }
+.admin-main { display: grid; place-items: center; padding: clamp(1.5rem, 5vw, 4rem) 1rem; }
+.auth-card, .dashboard { width: min(100%, 34rem); padding: clamp(1.5rem, 5vw, 2.5rem); border-top: .4rem solid var(--brand-gold); border-radius: .35rem; background: var(--white); box-shadow: 0 .5rem 2rem #19194B1F; }
+.dashboard { width: min(100%, 64rem); }
+.eyebrow { margin: 0; color: var(--neutral-700); font-size: .8rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+h1 { margin: .25rem 0; font-size: clamp(1.8rem, 5vw, 2.5rem); }
+.intro { margin: 0 0 1.5rem; color: var(--neutral-700); }
+label { display: block; margin: 1rem 0 .35rem; font-weight: 700; }
+input { width: 100%; min-height: 3rem; padding: .65rem .75rem; border: 2px solid var(--neutral-300); border-radius: .25rem; color: var(--brand-navy); background: var(--white); font: inherit; }
+.code-input { font-size: 1.5rem; letter-spacing: .35em; text-align: center; }
+button { width: 100%; min-height: 3rem; margin-top: 1.5rem; padding: .65rem 1rem; border: 2px solid var(--brand-gold); border-radius: .25rem; color: var(--brand-navy); background: var(--brand-gold); font: inherit; font-weight: 800; cursor: pointer; }
+.button-secondary { border-color: var(--brand-navy); background: var(--white); }
+input:focus-visible, button:focus-visible, a:focus-visible { outline: 3px solid var(--brand-gold); outline-offset: 3px; }
+.alert, .notice { margin: 1rem 0; padding: .75rem; border-left: .3rem solid var(--brand-gold); background: var(--neutral-50); color: var(--brand-navy); }
+.notice { border-color: var(--brand-navy); color: var(--brand-navy); }
+.secondary-action { margin-top: .75rem; }
+.secondary-action button { margin-top: 0; }
+.placeholder-panel { grid-column: 1 / -1; margin-top: 2rem; padding: 1.5rem; border: 1px solid var(--neutral-300); border-radius: .25rem; }
+@media (min-width: 42rem) { .dashboard { display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: start; } .dashboard form button { width: auto; margin-top: 0; } }

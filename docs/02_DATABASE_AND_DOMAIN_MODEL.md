@@ -258,3 +258,11 @@ Minden fenti PLANNED elemhez teljesülnie kell:
 - A `settings` típus nélküli, validálatlan tároló; secret-tárolásra nem alkalmas.
 - A migrációknak nincs checksumja, rollbackje vagy teljes DDL-atomicitása.
 - A `TIMESTAMP` session timezone és cPanel/MySQL környezet konzisztenciája üzemeltetési ellenőrzést igényel; a foglalási napok ettől függetlenül `DATE` értékek.
+
+## 10. Sprint 3 auth séma – IMPLEMENTED
+
+A `008_create_admin_authentication_tables.sql` verziózott migráció létrehozza az `admin_login_codes`, `admin_sessions`, `audit_logs` és `login_attempts` táblákat. A 2FA rekord csak kódhash-t tárol; a szerveroldali session csak SHA-256 tokenhash-t tárol; a login-attempt kulcs pszeudonimizált. A dinamikus értékeket a PDO adapterek prepared statementtel írják és olvassák.
+
+Az `admin_sessions.expires_at` a 15 perces csúszó idle lejárat aktuális határa, nem abszolút maximum. Aktivitáskor a repository a `last_activity_at` és `expires_at` mezőt frissítheti. **DECISION REQUIRED:** abszolút session-élettartam nincs elfogadva és nincs a sémában feltételezett szabályként megvalósítva.
+
+**DECISION REQUIRED:** az auth-, audit- és rate-limit rekordok retentionje. Automatikus takarító jelenleg nincs.

@@ -1,0 +1,7 @@
+A Bata admin belépés
+
+Az egyszer használatos ellenőrző kódod:
+
+{{code}}
+
+A kód 10 percig érvényes. Ha nem te kezdeményezted a belépést, hagyd figyelmen kívül ezt a levelet.

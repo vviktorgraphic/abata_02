@@ -142,7 +142,7 @@ stateDiagram-v2
     Hitelesitett --> Kijelentkezve: logout / session lejárat / visszavonás
 ```
 
-Szövegesen: ez teljes egészében **PLANNED**; a jelenlegi `/admin/login` csak publikus JSON-helyőrző, jelszót és sessiont nem kezel. A célfolyamat az első faktor után rövid életű, hashelt e-mailes kódot ad ki, korlátozza a próbálkozást és újraküldést, siker után session ID-t rotál, védett cookie-t használ, állapotmódosításnál CSRF-et ellenőriz, logoutkor visszavon. Elfogadás: sikeres és minden hibás állapot automatizált tesztje, rate limit, auditnyom és jelszó/kód nélküli logok. Részletek: [admin és hitelesítés](04_ADMIN_AND_AUTHENTICATION.md), [biztonság](09_SECURITY.md).
+Szövegesen: a Sprint 3 auth folyamat **IMPLEMENTED**. Az első faktor után rövid életű, hashelt e-mailes kód készül, a rendszer korlátozza a próbálkozást és újraküldést, siker után session ID-t rotál, védett cookie-t használ, minden auth POST-on CSRF-et ellenőriz, logoutkor visszavon. A teljes admin üzleti felület **PLANNED**. Részletek: [admin és hitelesítés](04_ADMIN_AND_AUTHENTICATION.md), [biztonság](09_SECURITY.md).
 
 ## iCal import
 
@@ -248,11 +248,11 @@ Infrastructure --+  (Application portok implementációja)
 | Modul | Application/Domain | Infrastructure | HTTP/CLI | Állapot |
 |---|---|---|---|---|
 | Booking write | `Application/Booking`, booking state machine | PDO write repository, transaction/lock | publikus create és admin action controller | **PLANNED** |
-| Admin auth | `Application/AdminAuth`, token/session szabályok | PDO session/code repo, password hasher | login/2FA/logout controller | **PLANNED** |
+| Admin auth | `Application/Authentication`, `Application/TwoFactor`, session szabályok | PDO session/code repo, password verifier | login/2FA/logout controller | **IMPLEMENTED** |
 | Pricing | `Application/Pricing`, tiszta kalkulátor | rule/snapshot repo | publikus quote, admin CRUD | **PLANNED** |
 | E-mail | esemény és template portok | authenticated SMTP adapter, log/outbox | retry CLI/cron, admin resend | **PLANNED** |
 | iCal | import/export use case és ICS modell | HTTP kliens, parser, PDO adapter | tokenes feed, cron import | **DEFERRED** |
-| Audit | közös audit esemény port | append-only PDO adapter | admin read-only lista | **PLANNED** |
+| Audit | közös audit esemény port | append-only PDO adapter | admin read-only lista | Port/írás **IMPLEMENTED**; lista **PLANNED** |
 
 ## Architekturális kockázatok és technikai adósság
 
@@ -299,3 +299,11 @@ Infrastructure --+  (Application portok implementációja)
 - [Biztonság](09_SECURITY.md)
 - [Tesztelés és üzemeltetés](10_TESTING_AND_OPERATIONS.md)
 - [Roadmap és döntési napló](11_ROADMAP_AND_DECISIONS.md)
+
+## Sprint 3 architektúra-leltár
+
+**IMPLEMENTED:** a hitelesítés rétegenként különül el: `Domain/Authentication` és `Domain/TwoFactor` tartalmazza a tiszta szabályokat; `Application/Authentication`, `Application/TwoFactor`, `Application/Audit` és `Application/Mail` a use case-eket és portokat; `Infrastructure/Persistence/Auth` PDO adaptereket; `Infrastructure/Mail` cserélhető SMTP transportot; `Security` session-, CSRF- és rate-limit komponenseket; `Http/Controller/Admin` vékony controllereket. Közvetlen `mail()` nincs.
+
+**IMPLEMENTED biztonsági alap:** natív prepared statementek, hash-elt 2FA-kód és session-token, session-ID rotáció, timing-safe CSRF összehasonlítás, HMAC-pszeudonimizált rate-limit kulcsok és allowlistelt audit metadata.
+
+**TECHNICAL DEBT:** a minimális router nem nyújt általános middleware pipeline-t; a composition root összetett. A teljes HTTP-integrációt és hibakezelést release előtt együttesen kell ellenőrizni.

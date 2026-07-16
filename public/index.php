@@ -20,7 +20,18 @@ $controller = new HomeController(dirname(__DIR__) . '/templates');
 
 $router->get('/', [$controller, 'index']);
 $router->get('/health', [$controller, 'health']);
-$router->get('/admin/login', [$controller, 'adminLogin']);
+$admin = static function (): array {
+    static $controllers;
+    return $controllers ??= require dirname(__DIR__) . '/config/admin-http.php';
+};
+$context = static fn (): array => ['ip' => (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown')];
+$router->get('/admin/login', static fn () => $admin()['login']->show()->send());
+$router->post('/admin/login', static fn () => $admin()['login']->submit($_POST, $context())->send());
+$router->get('/admin/2fa', static fn () => $admin()['two_factor']->show()->send());
+$router->post('/admin/2fa/verify', static fn () => $admin()['two_factor']->verify($_POST, $context())->send());
+$router->post('/admin/2fa/resend', static fn () => $admin()['two_factor']->resend($_POST, $context())->send());
+$router->get('/admin', static fn () => $admin()['dashboard']->show()->send());
+$router->post('/admin/logout', static fn () => $admin()['logout']->submit($_POST, $context())->send());
 $router->get('/api/availability', static function (array $query): void {
     try {
         $root = dirname(__DIR__);

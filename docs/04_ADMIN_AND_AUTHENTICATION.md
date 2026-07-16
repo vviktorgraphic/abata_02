@@ -1,15 +1,29 @@
 # Adminfelület és hitelesítés
 
-**Állapot:** az admin login JSON placeholder IMPLEMENTED; minden tényleges admin- és hitelesítési funkció PLANNED
-**Utolsó ellenőrzött commit:** `9adc564`
+**Állapot:** Sprint 3 auth komponensek IMPLEMENTED; teljes admin üzleti felület PLANNED
+**Utolsó ellenőrzés:** 2026-07-16, Sprint 3 munkafa (commit előtt)
 
 ## Jelenlegi állapot
 
-**IMPLEMENTED:** a `GET /admin/login` útvonal autentikáció nélkül, `200 OK` válasszal kizárólag ezt a JSON objektumot adja: `{"message":"Admin login endpoint placeholder"}`. A route-ot a front controller regisztrálja, a választ a `HomeController::adminLogin()` állítja elő. Ez nem bejelentkezési felület és nem hitelesítési API.
+### Sprint 3 implementációs leltár
+
+**IMPLEMENTED:** általános kimenetű jelszóellenőrzés aktív adminra, dummy-hash időzítéskiegyenlítéssel; `password_verify()` és szükség esetén rehash. Az e-mail normalizált.
+
+**IMPLEMENTED:** kriptográfiailag generált hatjegyű e-mailes 2FA, hash-elt tárolás, 10 perces TTL, maximum öt hibás próbálkozás, egyszer használhatóság és 60 másodperces resend-várakozás. A kódot a mailer kapja meg, adatbázisba és audit metadata-ba nem kerül plaintextként.
+
+**IMPLEMENTED:** pending és authenticated sessionállapot, rotáció a biztonsági határokon, 15 perces csúszó idle timeout, logout és szerveroldali visszavonás; sessionhöz kötött CSRF minden admin POST controllerben; konfigurálható login/2FA rate limit és szigorúan szűrt audit események.
+
+**IMPLEMENTED UI-alap:** login-, 2FA-, dashboard- és logout-controller, szerveroldali sablonok, A Bata design (`#19194B`, `#F0A236`, `#FFFFFF`). A teljes foglaláskezelő adminfelület nincs kész.
+
+**IMPLEMENTED HTTP-integráció:** a front controller beköti a login, 2FA verify/resend, dashboard és logout route-okat. A release-kapuhoz Docker/Mailpit smoke továbbra is szükséges.
+
+**DECISION REQUIRED:** abszolút session maximum nincs megadva; a rendszer ebben a sprintben csak a 15 perces idle lejáratot érvényesíti. A rate-limit küszöbök konfigurálható fejlesztési alapértékek, véglegesítésük nyitott.
+
+**IMPLEMENTED:** a korábbi JSON placeholdert a Sprint 3 HTML login controller és sablon váltotta fel.
 
 **IMPLEMENTED:** az `admins` tábla tárolja az `email`, `password_hash`, `name`, `is_active` és időbélyeg mezőket. A séma önmagában nem jelent működő autentikációt; részletei az [adatbázis- és domainmodellben](02_DATABASE_AND_DOMAIN_MODEL.md) találhatók.
 
-**PLANNED:** jelenleg nincs jelszóellenőrzés, 2FA-kód, admin session, logout, CSRF-védelem, rate limit, lockout, audit log, jogosultságkezelés vagy admin UI. A kapcsolódó tervezett API-kat az [API-referencia](08_API_REFERENCE.md), a kontrollokat a [biztonsági specifikáció](09_SECURITY.md) írja le.
+**IMPLEMENTED alapok:** jelszóellenőrzés, 2FA-kód, admin session, logout, CSRF-védelem, rate limit/lockout persistence, audit log port/adapter és minimális admin UI komponensek rendelkezésre állnak. **PLANNED:** teljes admin üzleti UI és részletes jogosultsági modell.
 
 ## Szerepkör és jogosultsági modell
 
@@ -21,8 +35,8 @@
 
 | Modul | Állapot | Követelmény | Elfogadási feltétel |
 |---|---|---|---|
-| Login | PLANNED | E-mail + jelszó, majd kötelező e-mailes 2FA | Helyes jelszó önmagában nem nyit adminoldalt; hibák nem fedik fel a fiók létét. |
-| Dashboard | PLANNED | Közelgő érkezések/távozások, nyitott feladatok, rendszerállapot | Csak teljes sessionnel érhető el; összesítések egyeznek az adatbázissal. |
+| Login | IMPLEMENTED | E-mail + jelszó, majd kötelező e-mailes 2FA | Helyes jelszó önmagában nem nyit adminoldalt; hibák nem fedik fel a fiók létét. |
+| Dashboard | IMPLEMENTED alap | Minimális védett céloldal; üzleti összesítések még nincsenek | Csak teljes sessionnel érhető el. |
 | Foglaláslista | PLANNED | Lapozás, szűrés, rendezés | Minden paraméter validált; PII csak hitelesített adminnak jelenik meg. |
 | Foglalás részlete | PLANNED | Vendégek, státusztörténet, ár- és kommunikációs adatok | Nem létező és nem engedélyezett rekord biztonságos választ ad; megtekintés auditálható. |
 | Státuszkezelés | PLANNED | Csak engedélyezett átmenetek | Tiltott átmenet nem módosít adatot; siker esetén status history és audit rekord készül. |
@@ -57,7 +71,7 @@ Szövegesen: anonim állapotban nincs adminjog. Helyes e-mail és jelszó után 
 
 ### 1. Jelszófázis
 
-**PLANNED:** az e-mail normalizálása dokumentált, konzisztens módon történik; az input hosszkorlátos. A szerver az aktív admin `password_hash` értékét `password_verify()` segítségével ellenőrzi, és sikeres újrahash-igényt `password_needs_rehash()` alapján kezel. Ismeretlen, inaktív és hibás jelszavú fiók kifelé azonos általános hibát és közel azonos feldolgozási profilt kap.
+**IMPLEMENTED:** az e-mail normalizálása konzisztens módon történik. A szerver az aktív admin `password_hash` értékét `password_verify()` segítségével ellenőrzi, és sikeres újrahash-igényt `password_needs_rehash()` alapján kezel. Ismeretlen, inaktív és hibás jelszavú fiók kifelé azonos általános hibát és dummy-hash ellenőrzést kap.
 
 Sikerkor a rendszer:
 
@@ -77,13 +91,13 @@ Sikerkor a rendszer:
 
 ### 3. Session és cookie
 
-**PLANNED:** sikeres 2FA után a session ID kötelezően rotálódik; a jelszó előtti anonim és a 2FA köztes session nem emelhető változatlan azonosítóval. A cookie `Secure`, `HttpOnly` és megfelelő `SameSite` attribútumot kap, domain/path hatóköre minimális. Session ID nem kerül URL-be. A szerveroldali session tartalmazza az admin azonosítóját, auth szintjét, létrehozási, utolsó aktivitási, abszolút lejárati és visszavonási adatát.
+**IMPLEMENTED:** a session ID a pending és authenticated biztonsági határon rotálódik. A cookie konfigurálható `Secure`, mindig `HttpOnly`, `SameSite=Lax`, minimális path hatókörű; session ID nem kerül URL-be. A szerveroldali session tartalmazza az admin azonosítóját, auth szintjét, létrehozási és utolsó aktivitási idejét, a csúszó idle lejáratot és a visszavonást. Abszolút lejárat nincs feltételezve.
 
 > **DECISION REQUIRED:** az idle és abszolút session-élettartam. Érzékeny műveleteknél rövid idejű friss hitelesítés megkövetelése külön döntendő el.
 
 ### 4. Logout és visszavonás
 
-**PLANNED:** a logout állapotváltoztató POST kérés CSRF-tokennel. A szerver visszavonja a sessiont, törli a cookie-t ugyanazzal a path/domain beállítással, és audit eseményt ír. Jelszóváltozás, admin letiltása és biztonsági incidens minden aktív session visszavonását támogatja.
+**IMPLEMENTED:** a logout állapotváltoztató POST kérés CSRF-tokennel működik. A szerver visszavonja a sessiont, törli a cookie-t ugyanazzal a path beállítással, és audit eseményt ír. **PLANNED:** minden aktív session tömeges visszavonása jelszóváltozáskor, admin letiltásakor vagy incidenskor.
 
 ## Hibafolyamatok
 

@@ -1,7 +1,7 @@
 # Abáta foglalási rendszer – rendszerspecifikáció
 
 **Állapot:** IMPLEMENTED dokumentációs index; az 1.0 célállapot PLANNED
-**Utolsó ellenőrzött commit:** `9adc564`
+**Utolsó ellenőrzés:** 2026-07-16, Sprint 3 munkafa (commit előtt)
 
 ## Cél és igazságforrás
 
@@ -31,6 +31,8 @@ A jelölések jelentése:
 | [09 – Biztonság](09_SECURITY.md) | Threat model és kötelező kontrollok |
 | [10 – Tesztelés és üzemeltetés](10_TESTING_AND_OPERATIONS.md) | Tesztpiramis, cPanel telepítés, backup és monitoring |
 | [11 – Roadmap és döntések](11_ROADMAP_AND_DECISIONS.md) | Sprintterv, ADR-ek és nyitott kérdések |
+| [98 – Nyitott döntések](98_OPEN_DECISIONS.md) | Prioritásos, még tulajdonosi vagy architekturális döntést igénylő kérdések |
+| [99 – Tulajdonosi döntések](99_OWNER_DECISIONS.md) | Dátummal rögzített, lezárt tulajdonosi döntések |
 
 ## Gyorshivatkozások
 
@@ -39,6 +41,13 @@ A jelölések jelentése:
 - Foglalási napállapotok: [publikus foglalási folyamat](03_PUBLIC_BOOKING_FLOW.md#napállapotok-és-fél-napos-modell).
 - Biztonsági minimum: [threat model és kontrollok](09_SECURITY.md).
 - Nyitott tulajdonosi kérdések: [priorizált döntési lista](11_ROADMAP_AND_DECISIONS.md#nyitott-üzleti-kérdések).
+- Sprint 3 admin-auth állapot: [admin és hitelesítés](04_ADMIN_AND_AUTHENTICATION.md#sprint-3-implementációs-leltár).
+
+## Sprint 3 dokumentációs állapot
+
+**IMPLEMENTED komponensek:** admin credential ellenőrzés, e-mailes 2FA domain/application logika, csúszó idle session, CSRF, rate limiting, audit port és PDO adapterek, SMTP mailer absztrakció, admin HTTP controllerek és sablonok, valamint a `008_create_admin_authentication_tables.sql` migráció.
+
+**IMPLEMENTED integráció:** a front controller regisztrálja a login, 2FA verify/resend, dashboard és logout route-okat. A release elfogadásához az automatizált tesztek mellett Docker/Mailpit HTTP smoke is szükséges.
 
 ## Frissítési szabály
 

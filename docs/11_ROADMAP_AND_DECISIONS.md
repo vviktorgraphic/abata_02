@@ -6,7 +6,7 @@
 ## Kiindulási helyzet
 
 **IMPLEMENTED:** technikai alap, MySQL séma, migrációfuttató, publikus két hónapos naptár, read-only availability API, mentés nélküli booking-validáció és demo seeder.
-**PLANNED:** admin, tartós foglalásmentés, árazás, SMTP, iCal és production hardening. Részletek: [projektáttekintés](00_PROJECT_OVERVIEW.md) és [architektúra](01_ARCHITECTURE.md).
+**IMPLEMENTED:** admin authentication foundation és 2FA SMTP adapter. **PLANNED:** teljes admin üzleti felület, tartós foglalásmentés, árazás, általános e-mail outbox, iCal és production hardening. Részletek: [projektáttekintés](00_PROJECT_OVERVIEW.md) és [architektúra](01_ARCHITECTURE.md).
 
 ## Tervezett sprintek
 
@@ -57,8 +57,8 @@
 3. **DECISION REQUIRED:** kedvezménytípusok és admin felülírás korlátai.
 4. **DECISION REQUIRED:** elsődleges iCal források és szolgáltatóspecifikus kompatibilitási célok.
 5. **DECISION REQUIRED:** exportáljuk-e a `pending` foglalásokat; alapjavaslat: nem.
-6. **DECISION REQUIRED:** admin session idle és abszolút lejárata.
-7. **DECISION REQUIRED:** a specifikált 10 perces 2FA kódérvényesség végleges üzleti elfogadása.
+6. **DECISION REQUIRED:** admin session abszolút lejárata. A 15 perces idle lejárat RESOLVED és implementált.
+7. **RESOLVED:** a 2FA kódérvényesség 10 perc.
 8. **DECISION REQUIRED:** SMTP szolgáltató, feladó domainek és bounce-kezelés.
 
 ### P2 – 1.0 előtt pontosítandó
@@ -75,3 +75,11 @@
 ## Döntésrögzítési folyamat
 
 Tulajdonosi döntés után ebben a fájlban dátummal, indoklással és érintett dokumentumlinkekkel új ADR vagy döntési bejegyzés készül. Ugyanabban a PR-ban frissítendő a kapcsolódó specifikáció és – ha már implementált – a teszt. További kontrollok: [biztonság](09_SECURITY.md) és [tesztelés/üzemeltetés](10_TESTING_AND_OPERATIONS.md).
+
+## Sprint 3 teljesítési állapot
+
+Az admin authentication foundation komponensei **IMPLEMENTED** állapotúak: credential check, e-mailes 2FA, session/CSRF, rate limiting, audit persistence, mailer/SMTP, migráció és minimális auth UI. A végleges elfogadás feltétele a composition root bekötése, friss adatbázisos migráció, teljes teszt és Mailpit/browser smoke.
+
+A következő funkcionális sprintbe nem tartozik bele automatikusan a teljes admin dashboard, booking CRUD, pricing, iCal vagy általános e-mail outbox. Ezek továbbra is **PLANNED**.
+
+Nyitott kapuk: abszolút session maximum; production SMTP port/TLS/auth/feladó; végleges rate-limit küszöbök és retention.
