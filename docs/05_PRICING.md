@@ -1,6 +1,6 @@
 # Árképzés
 
-**Állapot:** IMPLEMENTED séma-előkészítés + PLANNED 1.0 kalkuláció
+**Állapot:** minimális Sprint 4 kalkuláció és snapshot IMPLEMENTED + bővített 1.0 modell PLANNED
 **Utolsó ellenőrzött commit:** `9adc564`
 
 Ez a dokumentum az 1.0 árkalkuláció implementálható keretét rögzíti. Nem határoz meg végleges üzleti árakat. Kapcsolódó specifikációk: [adatbázis- és domainmodell](02_DATABASE_AND_DOMAIN_MODEL.md), [publikus foglalási folyamat](03_PUBLIC_BOOKING_FLOW.md), [API referencia](08_API_REFERENCE.md), [biztonság](09_SECURITY.md), [roadmap és döntések](11_ROADMAP_AND_DECISIONS.md).
@@ -157,3 +157,11 @@ A publikus API mezőszintű, PII-mentes validációs hibát adjon; belső konfig
 4. Korábbi foglalás ára szabálymódosítás után változatlan; explicit újraszámítás új verziót hoz létre.
 5. Manuális override jogosultság- és CSRF-védett, indokolt és auditált.
 6. Nincs sémamódosítás új migráció nélkül, és minden új üzleti szabály ugyanabban a PR-ban tesztet és dokumentációt kap.
+
+## 8. Sprint 4 minimális ármodell — IMPLEMENTED
+
+Az egyetlen implementált alapegység a `pricing_rules` táblában konfigurált `person_night`. A nyertes aktív szabályt az időszak, a minimum éjszaka és a prioritás választja ki. A képlet: `éjszakák × (felnőttek + gyermekek) × konfigurált személy/éj ár`; minden személy azonos egységárral számít. Az eredmény egész fillérben készül, majd két tizedes HUF stringként kerül a bookingba.
+
+Hiányzó szabály vagy azonos nyertes prioritás konfigurációs hiba; booking nem jön létre hamis `0.00` árral. Az immutable snapshot tartalmazza a számítás időpontját, intervallumot, éjszakaszámot, vendégadatokat, szabályazonosítót, `person_night` alapot, line itemet, subtotal/total értéket és `HUF` pénznemet.
+
+**PLANNED, döntés szükséges:** gyermekár/kedvezmény, IFA és mentességek, hétvégi és szezonális szabályok együttalkalmazása, fix díj, kedvezmény és admin felülírás. Ezekből a kód nem talál ki üzleti értéket. A demo seed kizárólag szemléltető fejlesztési adat, nem production ár.

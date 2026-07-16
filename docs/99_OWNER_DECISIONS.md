@@ -42,6 +42,16 @@ Az implementáció a 15 perces idle határt csúszó lejáratként kezeli. Ez ne
 - **RESOLVED cél:** RTO 5 perc.
 - **Korlát:** az 5 perces RTO cPanelen csak automatizált, előre tesztelt restore-folyamattal reális; stagingben méréssel kell igazolni, enélkül nem tekinthető teljesített SLA-nak.
 
+## Sprint 4 booking persistence, pricing és e-mail
+
+- **RESOLVED:** minden publikus igény `pending`; pending nem blokkol másik igényt és admin beavatkozásig marad, automatikus lejárat vagy cleanup cron nélkül.
+- **RESOLVED:** a `confirmed` booking és a blocked period blokkol; mentéskor tranzakcióban újraellenőrzendő. A későbbi admin megerősítéskor ugyanez az invariáns kötelező.
+- **RESOLVED:** további vendégnevek nem szükségesek. A kapcsolattartó a bookingon, a gyermekek életkora külön rekordokban tárolódik; mesterséges név és életkorból születési dátum nem készül.
+- **RESOLVED:** az idempotenciakulcs és request hash hash-elve, a bookinghoz kötve, időalapú automatikus törlés nélkül marad meg.
+- **RESOLVED:** bookingonként immutable ár-pillanatkép készül, és sikeres commit után foglalásiigény-e-mail küldése indul. SMTP-hiba nem törli a bookingot.
+- **IMPLEMENTED szűk ármodell:** konfigurált `person_night`, minden felnőtt és gyermek azonos egységáron, HUF. Gyermekkedvezmény, IFA, hétvégi/szezonális együttalkalmazás és más komponens nincs feltételezve.
+- **RESOLVED branding:** felhasználói név **A Bata**, fő design tokenek `#19194B`, `#F0A236`, `#FFFFFF`.
+
 ## Kapcsolódó dokumentumok
 
 - [Nyitott döntések](98_OPEN_DECISIONS.md)

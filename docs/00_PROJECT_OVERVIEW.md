@@ -9,9 +9,9 @@ Ez a dokumentum elválasztja a repositoryban igazolható jelenlegi működést a
 
 ## Üzleti cél
 
-**PLANNED:** A rendszer egyetlen szálláshely közvetlen foglalási igényeit kezeli. A vendég a nyilvános naptárban időszakot választ, megadja az utazók és a kapcsolattartó adatait, majd foglalási igényt küld. Az admin a védett felületen kezeli az igényt, a foglaltságot, az árakat, az értesítéseket és a külső naptárkapcsolatokat.
+**IMPLEMENTED a publikus igényig:** A vendég a nyilvános naptárban időszakot választ és `pending` foglalási igényt küld. Az admin üzleti kezelőfelülete továbbra is **PLANNED**.
 
-**IMPLEMENTED:** A vendég jelenleg megtekintheti a két hónapos foglaltsági naptárt, kiválaszthat egy időszakot, kitöltheti az űrlapot, és szerveroldali elővalidációt kérhet. A kérés nem hoz létre foglalást; a sikeres válasz is `submission_enabled: false` értéket ad.
+**IMPLEMENTED:** A vendég megtekintheti a naptárt, majd a `POST /api/bookings` végponton tranzakciósan és idempotensen `pending` igényt hozhat létre szerveroldali árral, snapshot-tal és e-mail outbox rekorddal.
 
 ## Szerepkörök
 
@@ -47,10 +47,10 @@ Ez a dokumentum elválasztja a repositoryban igazolható jelenlegi működést a
 
 ### Tervezett 1.0
 
-- **PLANNED:** foglalási igény tranzakciós, ismételt availability ellenőrzéssel történő mentése és egyedi referencia képzése;
+- **IMPLEMENTED:** foglalási igény tranzakciós, ismételt availability ellenőrzéssel történő mentése és egyedi referencia képzése;
 - **IMPLEMENTED:** admin belépési alap jelszóval, e-mailes 2FA-val és biztonságos sessionnel;
 - **PLANNED:** admin dashboard, lista, részletező, státuszkezelés, kézi foglalás és blokkolás;
-- **PLANNED:** implementálható árkalkuláció, rögzített ár-pillanatkép és admin felülírás;
+- **IMPLEMENTED alap:** konfigurált `person_night` árkalkuláció és rögzített ár-pillanatkép; **PLANNED:** admin CRUD, összetett árelemek és felülírás;
 - **PLANNED:** SMTP-alapú, naplózott és idempotens e-mail folyamatok;
 - **PLANNED:** tokennel védett iCal export, cron alapú import, konfliktuskezelés és auditálás;
 - **PLANNED:** cPanel staging/production telepítés, mentés-visszaállítás és monitorozás;
@@ -69,7 +69,7 @@ Minden tervezett modul elfogadási feltétele legalább: dokumentált üzleti sz
 | Tesztelés | PHPUnit 10.5 | **IMPLEMENTED** |
 | Fejlesztői környezet | Docker Compose, Mailpit, opcionális phpMyAdmin | **IMPLEMENTED** |
 | Production | hagyományos cPanel PHP/MySQL tárhely | **PLANNED** |
-| E-mail | cserélhető SMTP absztrakció; 2FA sablon és transport | **IMPLEMENTED** 2FA-ra; outbox és üzleti levelek **PLANNED** |
+| E-mail | cserélhető SMTP absztrakció; 2FA és booking-request sablon/transport | **IMPLEMENTED:** booking outbox + egyszeri commit utáni küldés; retry/admin resend **PLANNED** |
 | Naptárintegráció | RFC 5545 alapú iCal | **DEFERRED** |
 
 ## cPanel-kompatibilitás
@@ -86,7 +86,7 @@ Minden tervezett modul elfogadási feltétele legalább: dokumentált üzleti sz
 - **IMPLEMENTED:** értéket tartalmazó jelenlegi SQL lekérdezések prepared statementet használnak.
 - **PLANNED:** HTTPS, CSRF, biztonságos session-cookie, rate limiting, audit log, strukturált hibalog és személyesadat-megőrzési rend.
 - **PLANNED:** mobil és billentyűzetes használhatóság regressziós ellenőrzése, WCAG-célérték véglegesítése.
-- **PLANNED:** dupla foglalást kizáró konkurenciakezelés és idempotens írási végpontok.
+- **IMPLEMENTED:** confirmed/blocked ütközést kizáró készletzár és idempotens publikus írás; az átfedő pending igények megengedettek.
 - **PLANNED:** visszaállítással rendszeresen ellenőrzött adatbázis-mentés.
 
 > **DECISION REQUIRED:** Rögzíteni kell a rendelkezésre állási célértéket, az RPO/RTO értékeket, a támogatott böngészőket és a kötelező WCAG megfelelési szintet.
@@ -106,7 +106,7 @@ Példa: a `2026-08-01` érkezés és `2026-08-05` távozás négy éjszakát jel
 
 ### Vendég – tervezett 1.0
 
-1. **PLANNED:** a szerver mentés előtt tranzakcióban ismét ellenőrzi a foglalhatóságot;
+1. **IMPLEMENTED:** a szerver mentés előtt tranzakcióban ismét ellenőrzi a confirmed/blocked foglalhatóságot;
 2. **PLANNED:** idempotenciakulccsal létrehozza a `pending` igényt és az ár-pillanatképet;
 3. **PLANNED:** commit után naplózott visszaigazolást küld a vendégnek és értesítést az adminnak;
 4. **PLANNED:** az admin elfogadja, árajánlatot ad vagy elutasítja az igényt;
@@ -138,7 +138,7 @@ Példa: a `2026-08-01` érkezés és `2026-08-05` távozás négy éjszakát jel
 | Rendszerspecifikáció | jelenlegi és 1.0 állapot verziózott dokumentációja | **PLANNED** ebben a dokumentációs sprintben |
 | Admin biztonsági alap | jelszó + e-mailes 2FA, session, CSRF, rate limit, audit | **IMPLEMENTED**, release smoke szükséges |
 | Foglalási mag | mentés, konkurenciavédelem, státuszok, admin kezelés | **PLANNED** |
-| Kereskedelmi folyamat | pricing snapshot, SMTP események | **PLANNED** |
+| Kereskedelmi folyamat | minimális pricing snapshot, booking-request outbox és SMTP-kísérlet | **IMPLEMENTED alap**; összetett pricing és retry **PLANNED** |
 | Integráció és release | iCal, staging hardening, backup/restore, production smoke | **PLANNED** |
 
 Az 1.0 kiadás csak akkor fogadható el, ha a kritikus üzleti utak automatizált tesztjei sikeresek, a security kontrollok ellenőrzöttek, a staging telepítés és egy restore próba dokumentáltan lefutott, és nem maradt kiemelt `DECISION REQUIRED` kérdés, amely az adatok vagy az árképzés helyességét befolyásolja.
@@ -161,6 +161,6 @@ Az 1.0 kiadás csak akkor fogadható el, ha a kritikus üzleti utak automatizál
 
 **IMPLEMENTED komponensek:** az admin credential ellenőrzés, e-mailes 2FA, csúszó idle session, CSRF, rate limit, audit persistence, SMTP absztrakció és minimális admin UI kódja elkészült. A `008_create_admin_authentication_tables.sql` létrehozza a szükséges auth-táblákat.
 
-**PLANNED:** a teljes admin üzleti felület, foglaláskezelés, pricing, iCal és általános e-mail outbox nem része ennek a sprintnek. A front controller bekötése elkészült; a release elfogadásához HTTP smoke szükséges.
+**PLANNED:** a teljes admin üzleti felület, jóváhagyás, pricing CRUD, iCal és az általános e-mail retry/admin resend nem része ennek a sprintnek. A publikus booking create, minimális pricing snapshot és booking-request outbox **IMPLEMENTED**; release előtt HTTP/Mailpit smoke szükséges.
 
 **DECISION REQUIRED:** abszolút session maximum; production SMTP port/titkosítás/auth/feladó; végleges rate-limit küszöbök.

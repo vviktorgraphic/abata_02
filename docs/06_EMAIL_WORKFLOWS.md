@@ -1,6 +1,6 @@
 # E-mail folyamatok
 
-**Állapot:** 2FA mailer és SMTP transport IMPLEMENTED; általános tranzakciós e-mail/outbox PLANNED
+**Állapot:** 2FA mailer, booking-request e-mail és szűk outbox IMPLEMENTED; általános retry/admin workflow PLANNED
 **Utolsó ellenőrzés:** 2026-07-16, Sprint 3 munkafa (commit előtt)
 
 Ez a dokumentum az 1.0 tranzakciós e-mail folyamatait tervezi. Kapcsolódó dokumentumok: [admin és hitelesítés](04_ADMIN_AND_AUTHENTICATION.md), [adatbázis- és domainmodell](02_DATABASE_AND_DOMAIN_MODEL.md), [árképzés](05_PRICING.md), [iCal](07_ICAL_SYNC.md), [biztonság](09_SECURITY.md), [tesztelés és üzemeltetés](10_TESTING_AND_OPERATIONS.md).
@@ -155,3 +155,11 @@ A template input minimális, strukturált whitelist alapján készüljön. A tar
 - Bounce és complaint feldolgozás szolgáltatófüggő, döntésig hiányzik.
 - **DEFERRED:** érkezés előtti emlékeztető végleges aktiválása.
 - **OUT OF SCOPE:** marketingkampány, hírlevél és PHP `mail()` alapú küldés.
+
+## 12. Sprint 4 booking-request e-mail — IMPLEMENTED
+
+A booking tranzakció az SMTP művelet előtt létrehozza az egyedi outbox rekordot. Commit után az adapter atomi `pending` → `processing` claimet végez, majd a meglévő `Mailer` porton HTML és plain-text levelet küld. Siker esetén `sent`, biztonságosan kezelt transporthiba esetén `failed` állapot készül. A booking mindkét esetben `pending` marad.
+
+A levél az A Bata nevet, publikus referenciát, dátumokat, éjszakák és vendégek számát, gyermekkorokat, végösszeget és HUF pénznemet tartalmazza, továbbá jelzi, hogy ez csak igény, amely admin jóváhagyás után válik véglegessé.
+
+**TECHNICAL DEBT / PLANNED:** nincs automatikus retry worker, admin resend vagy stale `processing` recovery. Ha a folyamat a claim után a végállapot frissítése előtt megszakad, a rekord `processing` állapotban maradhat; ezt időkorlátos reclaimmel és cron-kompatibilis retryval kell kezelni.

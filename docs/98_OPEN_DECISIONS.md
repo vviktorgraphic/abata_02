@@ -16,12 +16,12 @@ A lezárt döntések forrása a [tulajdonosi döntési napló](99_OWNER_DECISION
 
 ## P1 – kapcsolódó modul előtt
 
-1. Konkrét ársávok, alapegység-értékek és árszabály-prioritás; a szerkeszthetőség RESOLVED.
+1. Production ársávértékek és prioritások; a Sprint 4 egyetlen implementált alapegysége a konfigurált `person_night`.
 2. Gyermekkor-kategóriák és szorzók.
 3. Maximális vendégszám és csecsemőszabály.
 4. IFA konkrét értékek, mentességek és kerekítés; a szerkeszthetőség RESOLVED.
 5. Előleg és lemondási szabály.
-6. `pending` foglalás tartási ideje és iCal exportja.
+6. A `pending` iCal exportja. A blokkolás és élettartam RESOLVED: nem blokkol és nem jár le automatikusan.
 7. Szallas.hu és Google Calendar interoperabilitási tesztfixture-ek és szinkrongyakoriság; a két szolgáltató támogatása RESOLVED.
 
 ## RESOLVED hivatkozások
@@ -30,3 +30,11 @@ A lezárt döntések forrása a [tulajdonosi döntési napló](99_OWNER_DECISION
 - 15 perces idle session és 10 perces 2FA: [99 – Admin hitelesítés](99_OWNER_DECISIONS.md#admin-hitelesítés).
 - SMTP host: [99 – SMTP](99_OWNER_DECISIONS.md#smtp).
 - RPO/RTO célok: [99 – Backup](99_OWNER_DECISIONS.md#backup).
+- Pending/confirmed, vendégadat, idempotencia, snapshot és request e-mail: [99 – Sprint 4 booking](99_OWNER_DECISIONS.md#sprint-4-booking-persistence-pricing-és-e-mail).
+
+## Sprint 4 után nyitott
+
+- Production árak; gyermekár/kedvezmény; IFA és mentességek; hétvégi/szezonális kombináció; fix díjak és kerekítési üzleti szabályok.
+- Outbox retry ütemezés, maximális próbálkozás, stale `processing` reclaim, admin resend és e-mail retention.
+- Publikus booking rate-limit production küszöbök, trusted originlista és adatkezelési tájékoztató URL-je.
+- Booking, gyermekéletkor, idempotencia és e-mail rekordok retention/törlési szabálya; az idempotencia automatikus időalapú cleanupja a jelenlegi döntés szerint nincs.

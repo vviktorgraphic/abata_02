@@ -20,7 +20,7 @@
 ```ical
 BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//Abata//Booking Calendar 1.0//HU
+PRODID:-//A Bata//Booking Calendar 1.0//HU
 CALSCALE:GREGORIAN
 METHOD:PUBLISH
 BEGIN:VEVENT

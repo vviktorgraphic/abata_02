@@ -181,7 +181,7 @@ Kiértékelési elsőbbség: `past`, majd `blocked`, majd a foglalási jelzők (
 - Ismeretlen státusz technikailag menthető, de nem blokkol, amíg nincs a `blocking_statuses` listában.
 - A státuszváltások megengedett sorrendje, jogosultsága és atomi történetírása még nincs implementálva.
 
-> **DECISION REQUIRED:** Az 1.0 zárt státuszkészlete, átmeneti mátrixa, a `pending` ideiglenes tartási ideje és az iCal-exportba bevont státuszok tulajdonosi döntést igényelnek. A double booking elleni védelemhez a mentés pillanatában tranzakciós újraellenőrzés szükséges; a jelenlegi read-only availability ellenőrzés önmagában nem foglalási zár.
+> **RÉSZBEN RESOLVED:** A publikus igény `pending`, nem blokkol és nem jár le automatikusan; a `confirmed` blokkol. Az admin átmeneti mátrix és a pending iCal-exportja továbbra is döntést igényel. A write flow mentéskor tranzakciós újraellenőrzést végez.
 
 ## 6. Adatvédelem és megőrzés — jelenlegi helyzet
 
@@ -266,3 +266,11 @@ A `008_create_admin_authentication_tables.sql` verziózott migráció létrehozz
 Az `admin_sessions.expires_at` a 15 perces csúszó idle lejárat aktuális határa, nem abszolút maximum. Aktivitáskor a repository a `last_activity_at` és `expires_at` mezőt frissítheti. **DECISION REQUIRED:** abszolút session-élettartam nincs elfogadva és nincs a sémában feltételezett szabályként megvalósítva.
 
 **DECISION REQUIRED:** az auth-, audit- és rate-limit rekordok retentionje. Automatikus takarító jelenleg nincs.
+
+## 11. Sprint 4 booking write séma – IMPLEMENTED
+
+A `009_create_booking_persistence.sql`, `010_extend_pricing_rules_for_snapshots.sql` és `011_add_email_outbox_processing_status.sql` előrefelé futó migrációk létrehozzák a gyermekéletkor-, készletzár-, idempotencia-, pricing snapshot- és e-mail outbox struktúrát. A `booking_guests.full_name` és `date_of_birth` nullable; a rendszer nem gyárt további vendégnevet vagy életkorból születési dátumot.
+
+Az idempotenciakulcs és a kanonikus request SHA-256 hashként kötődik a bookinghoz, és azzal együtt marad; időalapú cleanup nincs. Bookingonként pontosan egy immutable JSON snapshot és üzenettípusonként egy outbox rekord lehet. Az outbox állapotai: `pending`, `processing`, `sent`, `failed`.
+
+Az egy tranzakción belüli invariáns szerint booking nem maradhat status history, snapshot, idempotencia-kapcsolat, gyermekéletkorok vagy outbox nélkül. Az új booking `pending`; más pending rekordot nem blokkol és nem jár le automatikusan. A `confirmed` és a blocked period blokkol.

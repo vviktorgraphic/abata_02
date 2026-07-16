@@ -38,6 +38,13 @@ $deleteBlock = $pdo->prepare('DELETE FROM blocked_periods WHERE reason = :reason
 $insertBlock = $pdo->prepare(
     'INSERT INTO blocked_periods (start_date, end_date, reason) VALUES (:start_date, :end_date, :reason)'
 );
+$deleteDemoPrice = $pdo->prepare('DELETE FROM pricing_rules WHERE name = :name');
+$insertDemoPrice = $pdo->prepare(
+    'INSERT INTO pricing_rules
+        (name, valid_from, valid_until, nightly_price, base_unit, currency, minimum_nights, priority, is_active)
+     VALUES
+        (:name, :valid_from, :valid_until, :nightly_price, :base_unit, :currency, 1, 0, 1)'
+);
 
 $pdo->beginTransaction();
 try {
@@ -55,11 +62,22 @@ try {
     $reason = 'DEMO-BLOCKED-PERIOD';
     $deleteBlock->execute(['reason' => $reason]);
     $insertBlock->execute(['start_date' => $date(35), 'end_date' => $date(38), 'reason' => $reason]);
+
+    $priceName = 'DEMO ONLY - illustrative person/night price';
+    $deleteDemoPrice->execute(['name' => $priceName]);
+    $insertDemoPrice->execute([
+        'name' => $priceName,
+        'valid_from' => $date(0),
+        'valid_until' => $date(730),
+        'nightly_price' => '10000.00',
+        'base_unit' => 'person_night',
+        'currency' => 'HUF',
+    ]);
     $pdo->commit();
 } catch (Throwable $exception) {
     $pdo->rollBack();
     throw $exception;
 }
 
-echo "Demo availability data seeded. Existing demo records were updated.\n";
+echo "Demo availability and illustrative non-production pricing data seeded. Existing demo records were updated.\n";
 

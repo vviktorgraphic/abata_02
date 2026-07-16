@@ -1,7 +1,7 @@
 (() => {
     'use strict';
 
-    const state = { month: startOfMonth(new Date()), days: new Map(), arrival: null, departure: null, rules: null };
+    const state = { month: startOfMonth(new Date()), days: new Map(), arrival: null, departure: null, rules: null, idempotencyKey: null, bookingSaved: false, submitting: false };
     const calendars = document.querySelector('#calendars');
     const errorBox = document.querySelector('#calendar-error');
     const periodLabel = document.querySelector('#calendar-period');
@@ -23,6 +23,11 @@
     }
     function parseIso(value) { const [year, month, day] = value.split('-').map(Number); return new Date(year, month - 1, day); }
     function differenceInDays(from, to) { return Math.round((parseIso(to) - parseIso(from)) / 86400000); }
+    function newIdempotencyKey() {
+        if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+        const bytes = new Uint8Array(16); crypto.getRandomValues(bytes);
+        return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+    }
 
     async function load() {
         calendars.setAttribute('aria-busy', 'true');
@@ -93,6 +98,7 @@
     }
 
     function selectDate(date) {
+        if (state.bookingSaved) return;
         if (!state.arrival || state.departure) { state.arrival = date; state.departure = null; }
         else {
             const nights = differenceInDays(state.arrival, date);
@@ -102,6 +108,7 @@
             }
             state.departure = date; errorBox.hidden = true;
         }
+        state.idempotencyKey = null;
         render();
     }
 
@@ -125,7 +132,7 @@
         const horizon = addMonths(startOfMonth(new Date()), 12);
         if (addMonths(state.month, 1) <= horizon) { state.month = addMonths(state.month, 1); load(); }
     });
-    clearButton.addEventListener('click', () => { state.arrival = null; state.departure = null; errorBox.hidden = true; render(); });
+    clearButton.addEventListener('click', () => { state.arrival = null; state.departure = null; state.idempotencyKey = null; errorBox.hidden = true; render(); });
 
     document.querySelector('#child-count').addEventListener('change', event => {
         const container = document.querySelector('#child-ages');
@@ -138,26 +145,92 @@
         }
     });
 
-    document.querySelector('#booking-form').addEventListener('submit', async event => {
+    const bookingForm = document.querySelector('#booking-form');
+    const submitButton = document.querySelector('#booking-submit');
+    const submitLabel = submitButton.querySelector('.submit-label');
+    const message = document.querySelector('#form-message');
+
+    bookingForm.addEventListener('input', () => {
+        if (!state.bookingSaved && !state.submitting) state.idempotencyKey = null;
+    });
+
+    function clearFieldErrors(form) {
+        form.querySelectorAll('[aria-invalid="true"]').forEach(field => field.removeAttribute('aria-invalid'));
+        form.querySelectorAll('[data-error-for]').forEach(error => { error.textContent = ''; });
+    }
+
+    function showValidationErrors(form, errors) {
+        Object.entries(errors || {}).forEach(([name, detail]) => {
+            const field = form.elements.namedItem(name) || form.elements.namedItem(`${name}[]`);
+            const error = form.querySelector(`[data-error-for="${CSS.escape(name)}"]`);
+            const text = Array.isArray(detail) ? detail[0] : String(detail);
+            if (field instanceof HTMLElement) field.setAttribute('aria-invalid', 'true');
+            if (error) error.textContent = text;
+        });
+    }
+
+    function setMessage(text, kind = '') {
+        message.className = `notice full${kind ? ` notice-${kind}` : ''}`;
+        message.textContent = text;
+        message.hidden = false;
+        message.focus();
+    }
+
+    bookingForm.addEventListener('submit', async event => {
         event.preventDefault();
-        const message = document.querySelector('#form-message');
-        if (!state.arrival || !state.departure) { message.textContent = 'Előbb válassz érkezési és távozási dátumot.'; message.hidden = false; return; }
+        if (state.submitting || state.bookingSaved) return;
+        if (!state.arrival || !state.departure) { setMessage('Előbb válassz érkezési és távozási dátumot.', 'error'); return; }
         if (!event.currentTarget.checkValidity()) { event.currentTarget.reportValidity(); return; }
         const form = event.currentTarget;
+        clearFieldErrors(form);
         const formData = new FormData(form);
         const payload = Object.fromEntries(formData.entries());
-        payload.privacy = formData.has('privacy');
-        payload.child_ages = formData.getAll('child_ages[]');
+        payload.adults = Number(payload.adults);
+        payload.children = Number(payload.children);
+        payload.privacy_accepted = formData.has('privacy_accepted');
+        payload.child_ages = formData.getAll('child_ages[]').map(Number);
+        state.idempotencyKey ||= newIdempotencyKey();
+        payload.idempotency_key = state.idempotencyKey;
+        state.submitting = true;
+        submitButton.disabled = true;
+        submitButton.setAttribute('aria-busy', 'true');
+        submitLabel.textContent = 'Küldés folyamatban…';
+        setMessage('A foglalási igény mentése folyamatban van. Kérjük, várj.', 'warning');
         try {
-            const response = await fetch('/api/booking/validate', {
+            const response = await fetch('/api/bookings', {
                 method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(payload)
             });
-            const result = await response.json();
-            message.textContent = result.message || result.error || Object.values(result.errors || {})[0] || 'Az adatok nem érvényesek.';
+            const result = await response.json().catch(() => ({}));
+            if ((response.status === 200 || response.status === 201) && result.status === 'pending') {
+                state.bookingSaved = true;
+                const reference = result.reference ? ` Hivatkozás: ${result.reference}.` : '';
+                const total = result.total_amount != null ? ` Végösszeg: ${result.total_amount} ${result.currency || 'HUF'}.` : '';
+                if (result.email_status === 'failed') {
+                    setMessage(`A foglalási igényt rögzítettük.${reference}${total} A visszaigazoló e-mailt most nem sikerült elküldeni; az igény ettől még megmaradt, ne küldd el újra.`, 'warning');
+                } else {
+                    setMessage(`Köszönjük, a foglalási igényt rögzítettük.${reference}${total} Ez még nem végleges foglalás; adminisztrátori jóváhagyás szükséges.`, 'success');
+                }
+                form.querySelectorAll('input, select, textarea, button').forEach(control => { control.disabled = true; });
+            } else if (response.status === 409) {
+                setMessage(result.message || 'A kiválasztott időszak időközben foglalttá vált, vagy ez a kérés eltér egy korábbi, azonos azonosítójú kéréstől. Kérjük, ellenőrizd az adatokat.', 'error');
+            } else if (response.status === 422 || response.status === 400) {
+                showValidationErrors(form, result.errors);
+                setMessage(result.message || 'Kérjük, javítsd a megjelölt adatokat.', 'error');
+            } else if (response.status === 429) {
+                setMessage('Túl sok kérés érkezett. Kérjük, várj egy kicsit, majd ugyanerről az oldalról próbáld újra.', 'warning');
+            } else {
+                setMessage('A foglalási igényt most nem tudtuk feldolgozni. Kérjük, próbáld újra; az oldal ugyanazzal a kérésazonosítóval védi a dupla mentést.', 'error');
+            }
         } catch (error) {
-            message.textContent = 'Az ellenőrzés most nem érhető el. Foglalás nem történt.';
+            setMessage('A hálózati kapcsolat megszakadt. Nem biztos, hogy a mentés befejeződött; próbáld újra ezen az oldalon, így nem jön létre dupla foglalás.', 'warning');
+        } finally {
+            state.submitting = false;
+            if (!state.bookingSaved) {
+                submitButton.disabled = false;
+                submitButton.removeAttribute('aria-busy');
+                submitLabel.textContent = 'Foglalási igény küldése';
+            }
         }
-        message.hidden = false;
     });
 
     load();

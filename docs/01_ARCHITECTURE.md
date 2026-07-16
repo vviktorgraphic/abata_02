@@ -35,7 +35,7 @@ templates/booking/           publikus szerveroldali HTML template
 tests/                       unit, feature és integration tesztek
 ```
 
-**PLANNED:** Az új modulok ugyanezt a réteghatárt kövessék, például `Application/Booking`, `Application/AdminAuth`, `Application/Pricing`, `Application/Ical`; a tiszta üzleti modellek a megfelelő `Domain/*`, az SMTP/PDO/HTTP/ICS adapterek az `Infrastructure/*`, a webes belépési pontok a `Http/Controller` alatt kapjanak helyet. Részletes moduligények: [admin](04_ADMIN_AND_AUTHENTICATION.md), [pricing](05_PRICING.md), [e-mail](06_EMAIL_WORKFLOWS.md), [iCal](07_ICAL_SYNC.md).
+**IMPLEMENTED részben:** A booking, pricing, admin-auth és SMTP modulok követik ezt a réteghatárt. Az iCal és a teljes admin üzleti modul továbbra is **PLANNED**.
 
 ## Webes request flow
 
@@ -62,7 +62,7 @@ A router egzakt útvonalillesztést, `GET` és `POST` regisztrációt tud. A han
 | Infrastructure | PDO kapcsolat, SQL read adapter, migráció | UI és üzleti döntés |
 | Template / JS | megjelenítés, kliensinterakció, elővalidáció | végső availability döntés és adatbázisírás |
 
-**IMPLEMENTED kivétel:** A `BookingValidationController` több üzleti jellegű szabályt (blokkoló napi státuszok, éjszakaszám, horizont) közvetlenül koordinál. **PLANNED:** mentés előtt ezt külön Application use case-be kell áthelyezni, hogy HTTP nélkül is tesztelhető, újrahasznosítható és tranzakcióba foglalható legyen.
+**IMPLEMENTED:** A régi mentés nélküli `BookingValidationController` mellett a tényleges create út külön domain validátort, application workflow-t és tranzakciós repositoryt használ; az üzleti create szabályok HTTP nélkül tesztelhetők.
 
 ## Repository absztrakció és adatfolyam
 
@@ -117,7 +117,7 @@ flowchart TD
     D --> E[POST /api/booking/validate]
     E --> F{Érvényes és foglalható?}
     F -- Nem --> G[422 mező- vagy dátumhiba]
-    F -- Igen, jelenleg --> H[200, submission_enabled=false]
+    F -- Elővalidáció --> H[200, validációs eredmény]
     F -. PLANNED .-> I[Tranzakció + ismételt availability ellenőrzés]
     I --> J{Még szabad?}
     J -- Nem --> K[409 konfliktus, új választás]
@@ -125,7 +125,7 @@ flowchart TD
     L --> M[Commit utáni naplózott e-mailek]
 ```
 
-Szövegesen: **IMPLEMENTED** a naptár betöltése, kliensoldali kijelölés és a mentés nélküli szervervalidáció. **PLANNED** az írási ág: a szerver nem bízhat a kliens naptárában, ezért tranzakción belül újraellenőriz, ütközéskor nem ír, siker esetén idempotensen ment, majd csak commit után indít e-mail folyamatot. A részletes user journey a [publikus foglalási folyamatban](03_PUBLIC_BOOKING_FLOW.md) található.
+Szövegesen: **IMPLEMENTED** a naptár, a szervervalidáció és az írási ág. A szerver tranzakción belül újraellenőrzi a confirmed/blocked ütközést, idempotensen ment, ugyanott snapshotot és outboxot ír, majd csak commit után kísérli meg az SMTP-küldést.
 
 ## Admin authentikáció
 
@@ -247,10 +247,10 @@ Infrastructure --+  (Application portok implementációja)
 
 | Modul | Application/Domain | Infrastructure | HTTP/CLI | Állapot |
 |---|---|---|---|---|
-| Booking write | `Application/Booking`, booking state machine | PDO write repository, transaction/lock | publikus create és admin action controller | **PLANNED** |
+| Booking write | `Application/Booking`, `Domain/Booking` | PDO write repository, transaction/inventory lock | publikus create controller | **IMPLEMENTED** publikus create; admin action **PLANNED** |
 | Admin auth | `Application/Authentication`, `Application/TwoFactor`, session szabályok | PDO session/code repo, password verifier | login/2FA/logout controller | **IMPLEMENTED** |
 | Pricing | `Application/Pricing`, tiszta kalkulátor | rule/snapshot repo | publikus quote, admin CRUD | **PLANNED** |
-| E-mail | esemény és template portok | authenticated SMTP adapter, log/outbox | retry CLI/cron, admin resend | **PLANNED** |
+| E-mail | booking-request renderer és mail port | SMTP adapter, atomi outbox claim | commit utáni egyszeri küldés **IMPLEMENTED**; retry/admin resend **PLANNED** |
 | iCal | import/export use case és ICS modell | HTTP kliens, parser, PDO adapter | tokenes feed, cron import | **DEFERRED** |
 | Audit | közös audit esemény port | append-only PDO adapter | admin read-only lista | Port/írás **IMPLEMENTED**; lista **PLANNED** |
 

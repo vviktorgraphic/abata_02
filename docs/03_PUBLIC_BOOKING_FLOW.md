@@ -54,7 +54,7 @@ Az űrlap mezői:
 - kötelező `privacy` checkbox;
 - rejtett `arrival_date` és `departure_date`.
 
-> **IMPLEMENTED korlát:** a böngésző HTML-validációt végez az űrlapmezőkön, de a szerver jelenleg nem validálja az `adults`, `children`, `child_ages` és `notes` tartalmát vagy egymáshoz való konzisztenciáját. A privacy szövegben még nincs tényleges tájékoztató-link.
+> **IMPLEMENTED:** a booking create szerveroldalon validálja az `adults`, `children`, `child_ages` és `notes` mezőket és konzisztenciájukat. **PLANNED:** a privacy szöveghez még tényleges, jogilag jóváhagyott tájékoztató-link szükséges.
 
 ### Kliens- és szerveroldali validáció
 
@@ -82,9 +82,9 @@ Siker esetén is csak `valid: true`, `submission_enabled: false` érkezik: rekor
 
 > **PLANNED:** automatizált WCAG 2.2 AA audit, rács-billentyűnavigáció (nyilak/Home/End), betöltési visszajelzés és fókuszkezelés még szükséges. A `role=grid` jelenleg nem tartalmaz teljes gridcell/row szemantikát.
 
-## PLANNED – foglalásmentési folyamat
+## IMPLEMENTED – foglalásmentési folyamat
 
-### Tervezett sikeres user journey
+### Sikeres user journey
 
 1. A vendég kiválasztja az intervallumot és kitölti az adatokat.
 2. A kliens egy idempotenciakulccsal elküldi a létrehozási kérést.
@@ -96,7 +96,7 @@ Siker esetén is csak `valid: true`, `submission_enabled: false` érkezik: rekor
 **Elfogadási feltételek – foglalás létrehozása:**
 
 - ugyanazok a domain-dátumszabályok érvényesek a preview/validate és create műveletben;
-- két párhuzamos, átfedő kérésből legfeljebb egy hozhat létre blokkoló foglalást;
+- több párhuzamos, átfedő pending kérés létrejöhet; confirmed vagy blocked átfedésnél egyik új pending sem menthető;
 - hiba esetén nincs részlegesen mentett booking, guest, history vagy price snapshot;
 - a sikeres válasz nem tartalmaz belső adatbázis-azonosítót vagy más vendég PII-jét;
 - automatizált feature és valódi MySQL concurrency teszt igazolja a folyamatot;
@@ -115,7 +115,7 @@ Az availability oldal csak tájékoztató; mentéskor kötelező az újraellenő
 
 ### Duplikált beküldés
 
-A kliens a folyamat idejére letiltja a gombot, de ez önmagában nem garancia. A create API kérjen nagy entrópiájú `Idempotency-Key` fejlécet; a szerver a kulcsot, a canonical request hashét, állapotát és eredményét korlátozott ideig tárolja. Azonos kulcs és azonos payload ugyanazt az eredményt adja; azonos kulcs eltérő payloadhoz `409` jár.
+A kliens a folyamat idejére letiltja a gombot, de ez önmagában nem garancia. A create API a body nagy entrópiájú `idempotency_key` mezőjét használja; a szerver a kulcs és a canonical request hashét a bookinggal együtt, időalapú cleanup nélkül tárolja. Azonos kulcs és azonos payload ugyanazt az eredményt adja; azonos kulcs eltérő payloadhoz `409` jár.
 
 **Elfogadási feltételek – idempotencia:**
 
@@ -124,7 +124,7 @@ A kliens a folyamat idejére letiltja a gombot, de ez önmagában nem garancia. 
 - kulcs és request body nem kerül érzékeny adattal alkalmazáslogba;
 - lejárat és takarítás dokumentált és tesztelt.
 
-### Tervezett hibás user journey
+### Hibás user journey
 
 - `422`: mező- vagy üzletiszabály-hiba; mezőhöz kötött, stabil hibakódokkal;
 - `409`: a dátum az utolsó megjelenítés óta betelt, vagy idempotenciakonfliktus van; a UI frissíti a naptárt és megtartja a nem érzékeny mezőket;
@@ -142,3 +142,11 @@ A végleges beküldéshez CSRF-védelem (azonos originű böngészős flow), rat
 - nincs booking PII availability vagy más publikus read válaszban;
 - a sikeroldal újratöltése nem küld új bookingot;
 - a foglalásmentés, ár-pillanatkép és e-mail esemény integrációs teszttel igazolt.
+
+### Sprint 4 pontosítás — IMPLEMENTED
+
+Az űrlap JSON-ként hívja a `POST /api/bookings` végpontot, kliens által generált `idempotency_key` mezővel. A szerver validálja a dátumokat, vendégszámokat és gyermekéletkorokat, privacy elfogadást, body méretet, Content-Type-ot és a honeypot mezőt; same-origin böngészőkérésnél Origin/Referer allowlistet és IP-alapú rate limitet alkalmaz.
+
+Minden új igény `pending`. Több átfedő pending elfogadható és automatikus lejárat nincs. Mentéskor a szerver tranzakciós készletzár mellett újraellenőrzi a `confirmed` bookingokat és blocked periodokat. A kapcsolattartó adatai a bookingon maradnak; további vendégnevek nem szükségesek, külön csak a gyermekéletkorok tárolódnak.
+
+Commit után a rendszer megkísérli az e-mail kézbesítését. SMTP-hibánál a booking megmarad, a válasz `email_status=failed`. Ugyanazzal a kulccsal és payload-dal az ismétlés ugyanazt a referenciát adja, nem hoz létre új bookingot.

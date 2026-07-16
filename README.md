@@ -1,6 +1,6 @@
 # Foglalási rendszer
 
-Frameworkfüggetlen, PHP 8.2+ és MySQL 8 alapú foglalási rendszer egyetlen szálláshelyhez. A jelenlegi állapot tartalmazza a technikai alapokat, a sémát, a foglalási intervallum domain-szabályait, a publikus naptár és availability API első működő változatát, továbbá a Sprint 3 admin-hitelesítési komponenseit és HTTP route-jait.
+Frameworkfüggetlen, PHP 8.2+ és MySQL 8 alapú foglalási rendszer egyetlen szálláshelyhez. A jelenlegi állapot a technikai alapok, a publikus naptár és az admin-hitelesítés mellett tartalmazza a tranzakciós publikus foglalásmentést, a minimális szerveroldali árkalkulációt és snapshotot, valamint a foglalási igény Mailpit/SMTP e-mailjét.
 
 ## Rendszerspecifikáció
 
@@ -212,4 +212,29 @@ A forrásfájl legyen a repositoryn kívül, a konténerbeli másolat pedig csak
 
 ## Jelenlegi hatókör
 
-A publikus, két hónapos frontend naptár és a mentés nélküli szerveroldali validáció elkészült. A Sprint 3 admin-auth domain-, application-, persistence-, security-, mail-, UI- és HTTP-alapjai elkészültek. Foglalásmentés, árkalkuláció, általános tranzakciós e-mail/outbox, teljes adminfelület és iCal-szinkron továbbra sincs. A pontos IMPLEMENTED és PLANNED határt a [rendszerspecifikáció](docs/README.md) tartja nyilván.
+**IMPLEMENTED:** két hónapos publikus naptár, availability, admin-auth alapok és `POST /api/bookings`. Az új publikus igény `pending`; más pending igényt nem blokkol és nem jár le automatikusan, a `confirmed` booking és a blocked period viszont blokkol. A mentés idempotens, tranzakciós, HUF ár-pillanatképet és e-mail outbox rekordot hoz létre; SMTP-hiba nem törli a bookingot.
+
+**PLANNED:** teljes admin booking felület és jóváhagyási workflow, pricing admin CRUD, e-mail retry/admin resend, iCal és online fizetés. A pontos határt a [rendszerspecifikáció](docs/README.md) tartja nyilván.
+
+## Sprint 4 API smoke PowerShellből
+
+Az indulás és a demo árszabály betöltése után:
+
+```powershell
+docker compose up -d --build
+docker compose exec app composer migrate
+docker compose exec app composer seed:demo
+
+$body = @{
+    arrival_date = '2026-08-10'; departure_date = '2026-08-13'
+    contact_name = 'Teszt Elek'; email = 'guest@example.test'; phone = '+3612345678'
+    adults = 2; children = 1; child_ages = @(6); notes = ''
+    privacy_accepted = $true; idempotency_key = [guid]::NewGuid().ToString()
+    website = ''
+} | ConvertTo-Json
+
+Invoke-RestMethod -Method Post -Uri 'http://localhost:8080/api/bookings' `
+    -ContentType 'application/json' -Body $body
+```
+
+A demo seed szemléltető fejlesztési árat tartalmaz, production árként nem használható. A levél a Mailpit felületén ellenőrizhető: `http://localhost:8025`.

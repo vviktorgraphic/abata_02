@@ -207,11 +207,39 @@ Minden auth POST hibás vagy hiányzó CSRF esetén `403` és állapotváltozás
 
 Az alábbi szerződések céltervek; route-jaik nincsenek implementálva. Minden JSON API egységes `error: {code, message, fields?, request_id?}` formátumot, tartalomtípus-ellenőrzést, biztonságos `Cache-Control` értéket és a [biztonsági specifikáció](09_SECURITY.md) kontrolljait használja. A pontos admin jogosultsági modell az [admin és hitelesítés](04_ADMIN_AND_AUTHENTICATION.md) dokumentumban szerepel.
 
-### `POST /api/bookings` – PLANNED
+### `POST /api/bookings` – IMPLEMENTED
 
-Publikus foglalási igény létrehozása. Body: a validate mezői, később elfogadott price quote/snapshot azonosítóval; fejléc: kötelező `Idempotency-Key`. Siker: `201` és nem találgatható `reference`, `status: pending`, az intervallum és publikus összegzés. Hibák: `400/415`, `422`, availability/idempotenciakonfliktus `409`, rate limit `429`, átmeneti `503`. PII nem tükrözhető szükségtelenül.
+Publikus, same-origin JSON foglalási igény létrehozása. `Content-Type: application/json` kötelező. Az idempotenciakulcs a body `idempotency_key` mezője (16–128 karakteres engedélyezett karakterkészlet), nem header.
 
-**Elfogadási feltételek:** tranzakciós availability recheck megakadályozza a double bookingot; retry nem duplikál; booking, vendégek, kezdeti history és price snapshot atomikusan mentődik; nincs e-mail-hiba miatti rollback; feature és concurrency teszt készül. Részletes flow: [foglalásmentés](03_PUBLIC_BOOKING_FLOW.md#planned--foglalásmentési-folyamat).
+```json
+{
+  "arrival_date": "2026-08-10",
+  "departure_date": "2026-08-13",
+  "contact_name": "Teszt Elek",
+  "email": "guest@example.test",
+  "phone": "+3612345678",
+  "adults": 2,
+  "children": 1,
+  "child_ages": [6],
+  "notes": "",
+  "privacy_accepted": true,
+  "idempotency_key": "client-generated-value",
+  "website": ""
+}
+```
+
+Első siker: `201 Created`. Azonos kulcs és azonos kanonikus payload ismétlése: `200 OK`, ugyanazzal a referenciával. A válasz mezői: `reference`, `status` (`pending`), `total_amount`, `currency` (`HUF`), `email_status` és `next_step`; PII és belső adatbázis-ID nincs benne.
+
+Hibák: malformed JSON `400`; idegen Origin `403`; túl nagy body `413`; hibás Content-Type `415`; mezővalidáció `422`; confirmed/blocked ütközés vagy azonos kulcs eltérő payloadja `409`; rate limit `429` és `Retry-After`; hiányzó pricing vagy átmeneti infrastruktúrahiba `503`. Minden válasz `Cache-Control: no-store`.
+
+PowerShell smoke:
+
+```powershell
+$body = @{ arrival_date='2026-08-10'; departure_date='2026-08-13'; contact_name='Teszt Elek'; email='guest@example.test'; phone='+3612345678'; adults=2; children=1; child_ages=@(6); notes=''; privacy_accepted=$true; idempotency_key=[guid]::NewGuid().ToString(); website='' } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri 'http://localhost:8080/api/bookings' -ContentType 'application/json' -Body $body
+```
+
+A pending igény nem blokkol másik pendinget és nem jár le; confirmed és blocked period blokkol. A szerver tranzakcióban újraellenőriz, snapshotot és outboxot ment. SMTP-hiba nem rollbackeli a bookingot.
 
 ### Admin login és 2FA – PLANNED
 

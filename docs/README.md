@@ -1,4 +1,4 @@
-# Abáta foglalási rendszer – rendszerspecifikáció
+# A Bata foglalási rendszer – rendszerspecifikáció
 
 **Állapot:** IMPLEMENTED dokumentációs index; az 1.0 célállapot PLANNED
 **Utolsó ellenőrzés:** 2026-07-16, Sprint 3 munkafa (commit előtt)
@@ -48,6 +48,12 @@ A jelölések jelentése:
 **IMPLEMENTED komponensek:** admin credential ellenőrzés, e-mailes 2FA domain/application logika, csúszó idle session, CSRF, rate limiting, audit port és PDO adapterek, SMTP mailer absztrakció, admin HTTP controllerek és sablonok, valamint a `008_create_admin_authentication_tables.sql` migráció.
 
 **IMPLEMENTED integráció:** a front controller regisztrálja a login, 2FA verify/resend, dashboard és logout route-okat. A release elfogadásához az automatizált tesztek mellett Docker/Mailpit HTTP smoke is szükséges.
+
+## Sprint 4 dokumentációs állapot
+
+**IMPLEMENTED:** tranzakciós `POST /api/bookings`, confirmed/blocked mentéskori újraellenőrzés, egymást nem blokkoló `pending` igények, bookinghoz kötött idempotencia, gyermekéletkor-tárolás, konfigurált `person_night` HUF ár, immutable JSON snapshot, valamint ugyanabban a tranzakcióban létrejövő booking-request outbox. A commit után indított SMTP-kísérlet hibája a bookingot nem törli.
+
+**PLANNED:** admin jóváhagyás és booking CRUD, pricing admin CRUD, automatikus outbox retry és stale `processing` helyreállítás, további pricing komponensek, iCal és online fizetés.
 
 ## Frissítési szabály
 
