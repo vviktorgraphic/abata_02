@@ -1,6 +1,10 @@
 # Foglalási rendszer
 
-Frameworkfüggetlen, PHP 8.2+ és MySQL 8 alapú foglalási rendszer egyetlen szálláshelyhez. Ez az első sprint a technikai alapokat, a sémát és a foglalási intervallum domain-szabályait tartalmazza.
+Frameworkfüggetlen, PHP 8.2+ és MySQL 8 alapú foglalási rendszer egyetlen szálláshelyhez. A jelenlegi állapot tartalmazza a technikai alapokat, a sémát, a foglalási intervallum domain-szabályait, valamint a publikus naptár és availability API első működő változatát.
+
+## Rendszerspecifikáció
+
+Az aktuális implementáció és a tervezett 1.0 célrendszer elsődleges, verziókezelt specifikációja a [docs/README.md](docs/README.md) indexből érhető el. A dokumentáció az **IMPLEMENTED** és **PLANNED** állapotot elkülönítve kezeli; fejlesztés előtt az érintett fejezeteket a kóddal, migrációkkal és tesztekkel együtt kell ellenőrizni.
 
 ## Követelmények és telepítés
 
@@ -184,4 +188,4 @@ A foglalási időszak fél-nyitott: `[arrival_date, departure_date)`. Az érkez�
 
 ## Jelenlegi hatókör
 
-Az első sprint szándékosan nem tartalmaz frontend naptárt, e-mailküldést, 2FA-t, iCal-szinkront vagy teljes adminfelületet. Az admin login végpont csak helyőrző.
+A publikus, két hónapos frontend naptár és a mentés nélküli szerveroldali validáció elkészült. Foglalásmentés, árkalkuláció, e-mailküldés, valódi adminhitelesítés, 2FA és iCal-szinkron még nincs; az admin login végpont csak helyőrző. A pontos IMPLEMENTED és PLANNED határt a [rendszerspecifikáció](docs/README.md) tartja nyilván.
