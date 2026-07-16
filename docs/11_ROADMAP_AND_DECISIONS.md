@@ -92,3 +92,7 @@ Nyitott kapuk: abszolút session maximum; production SMTP port/TLS/auth/feladó;
 **IMPLEMENTED:** `POST /api/bookings`, tranzakciós készletzár és confirmed/blocked recheck, pending overlap, bookinghoz kötött idempotencia, gyermekéletkorok, configured `person_night` HUF kalkuláció és immutable snapshot, booking-request outbox és commit utáni SMTP-kísérlet.
 
 **PLANNED:** admin approval/list/detail; pricing admin CRUD; gyermekár, IFA, hétvége/szezon kombináció és más árelemek; outbox retry/admin resend/stale claim recovery; iCal és online fizetés.
+
+## Sprint 5 teljesítési állapot
+
+**IMPLEMENTED:** admin lista/részlet, explicit state machine, tranzakciós státuszváltás/history/audit/outbox, concurrency lock, blocked-period kezelés, státusz-email és security guard. **NEXT:** Pricing Administration. **PLANNED:** automatikus outbox retry/stale reclaim, iCal és payment.

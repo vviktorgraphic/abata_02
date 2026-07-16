@@ -58,3 +58,11 @@ Az implementáció a 15 perces idle határt csúszó lejáratként kezeli. Ez ne
 - [Admin és hitelesítés](04_ADMIN_AND_AUTHENTICATION.md)
 - [E-mail folyamatok](06_EMAIL_WORKFLOWS.md)
 - [Roadmap](11_ROADMAP_AND_DECISIONS.md)
+
+## Sprint 5 admin booking management
+
+- **RESOLVED:** az öt explicit státuszátmenet; minden más tiltott.
+- **RESOLVED:** confirmkor confirmed és aktív blocked overlap recheck; más pending változatlan.
+- **RESOLVED:** confirmed/rejected/cancelled levél commit után; invalidated nem küld.
+- **RESOLVED:** blocked period confirmed bookinggal nem ütközhet, pendinggel figyelmeztetéssel igen; eltávolítása soft delete.
+- **OPEN:** automatikus retry/max-attempt/stale reclaim paraméterei.

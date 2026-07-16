@@ -66,3 +66,7 @@ A jelölések jelentése:
 ## Használat későbbi Codex sprintekben
 
 A fejlesztő agent először ezt az indexet, majd az érintett modul dokumentumait és az [AGENTS.md](../AGENTS.md) szabályait olvassa el. Implementáció előtt összeveti a tervet a kóddal és migrációkkal. Eltérésnél nem választ önkényesen: rögzíti az ellentmondást, és **DECISION REQUIRED** kérdést tesz fel.
+
+## Sprint 5 – IMPLEMENTED
+
+Admin booking lista/részlet, explicit state machine, tranzakciós history/audit/outbox, kétprocesszes confirm race teszt, blocked-period kezelés, státuszlevelek és védett A Bata admin UI. A production SMTP és az automatikus retry továbbra is **PLANNED**.

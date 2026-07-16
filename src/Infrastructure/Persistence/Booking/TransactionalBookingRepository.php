@@ -8,7 +8,12 @@ use App\Application\Booking\BookingConflict;
 use App\Application\Booking\BookingPersistenceCommand;
 use App\Application\Booking\BookingPersistenceResult;
 use App\Application\Booking\BookingPricingProvider;
+use App\Application\Booking\BookingNotFound;
+use App\Application\Booking\BookingTransitionResult;
 use App\Application\Booking\IdempotencyConflict;
+use App\Domain\Booking\AdminNote;
+use App\Domain\Booking\BookingStateMachine;
+use App\Domain\Booking\BookingTransitionNotAllowed;
 use PDO;
 use Throwable;
 
@@ -17,6 +22,194 @@ final class TransactionalBookingRepository
     /** @param null|\Closure(string): void $transactionProbe Test-only failure probe. */
     public function __construct(private readonly PDO $pdo, private readonly ?\Closure $transactionProbe = null)
     {
+    }
+
+    public function transition(
+        string $reference,
+        string $targetStatus,
+        int $adminId,
+        ?string $note = null,
+    ): BookingTransitionResult {
+        if ($this->pdo->inTransaction()) {
+            throw new \LogicException('Booking transition owns its transaction boundary.');
+        }
+
+        $note = (new AdminNote($note))->value;
+        $stateMachine = new BookingStateMachine();
+        $bookingId = null;
+        $this->pdo->beginTransaction();
+
+        try {
+            // The same singleton row is used by public booking creation and blocked-period
+            // management. It therefore serializes every operation that can consume inventory.
+            $this->pdo->query('SELECT id FROM booking_inventory_locks WHERE id = 1 FOR UPDATE')->fetchColumn();
+
+            $booking = $this->lockBooking($reference);
+            $bookingId = (int) $booking['id'];
+            $oldStatus = (string) $booking['status'];
+            $stateMachine->assertCanTransition($oldStatus, $targetStatus);
+
+            if ($targetStatus === 'confirmed') {
+                $this->assertAvailableForConfirmation(
+                    (int) $booking['id'],
+                    (string) $booking['arrival_date'],
+                    (string) $booking['departure_date'],
+                );
+            }
+
+            $update = $this->pdo->prepare(
+                'UPDATE bookings SET status = :status WHERE id = :id AND status = :old_status'
+            );
+            $update->execute(['status' => $targetStatus, 'id' => $booking['id'], 'old_status' => $oldStatus]);
+            if ($update->rowCount() !== 1) {
+                throw new \RuntimeException('The booking changed concurrently.');
+            }
+
+            $history = $this->pdo->prepare(
+                'INSERT INTO booking_status_history
+                    (booking_id, old_status, new_status, changed_by_admin_id, note)
+                 VALUES (:booking_id, :old_status, :new_status, :admin_id, :note)'
+            );
+            $history->execute([
+                'booking_id' => $booking['id'], 'old_status' => $oldStatus,
+                'new_status' => $targetStatus, 'admin_id' => $adminId, 'note' => $note,
+            ]);
+            ($this->transactionProbe ?? static fn (string $stage): null => null)('transition_history_inserted');
+
+            $audit = $this->pdo->prepare(
+                'INSERT INTO audit_logs
+                    (event_type, admin_id, target_type, target_id, outcome, metadata_json)
+                 VALUES (:event_type, :admin_id, \'booking\', :target_id, \'success\', :metadata)'
+            );
+            $audit->execute([
+                'event_type' => 'booking.' . $targetStatus,
+                'admin_id' => $adminId,
+                'target_id' => (string) $booking['id'],
+                'metadata' => json_encode([
+                    'booking_reference' => $reference,
+                    'old_status' => $oldStatus,
+                    'new_status' => $targetStatus,
+                ], JSON_THROW_ON_ERROR),
+            ]);
+            ($this->transactionProbe ?? static fn (string $stage): null => null)('transition_audit_inserted');
+
+            $notificationQueued = in_array($targetStatus, ['confirmed', 'rejected', 'cancelled'], true);
+            if ($notificationQueued) {
+                $this->insertStatusOutbox($booking, $targetStatus);
+            }
+
+            $this->pdo->commit();
+
+            return new BookingTransitionResult(
+                (int) $booking['id'], $reference, $oldStatus, $targetStatus, $notificationQueued
+            );
+        } catch (Throwable $error) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            $this->auditFailedTransition($reference, $targetStatus, $adminId, $bookingId, $error);
+
+            throw $error;
+        }
+    }
+
+    private function auditFailedTransition(
+        string $reference,
+        string $targetStatus,
+        int $adminId,
+        ?int $bookingId,
+        Throwable $error,
+    ): void {
+        try {
+            $statement = $this->pdo->prepare(
+                'INSERT INTO audit_logs
+                    (event_type, admin_id, target_type, target_id, outcome, metadata_json)
+                 VALUES (\'booking.transition_failed\', :admin_id, \'booking\', :target_id, \'failure\', :metadata)'
+            );
+            $statement->execute([
+                'admin_id' => $adminId,
+                'target_id' => $bookingId === null ? $reference : (string) $bookingId,
+                'metadata' => json_encode([
+                    'booking_reference' => $reference,
+                    'target_status' => $targetStatus,
+                    'reason_code' => match (true) {
+                        $error instanceof BookingNotFound => 'booking_not_found',
+                        $error instanceof BookingConflict => 'booking_conflict',
+                        $error instanceof BookingTransitionNotAllowed => 'transition_not_allowed',
+                        default => 'persistence_error',
+                    },
+                ], JSON_THROW_ON_ERROR),
+            ]);
+        } catch (Throwable) {
+            // Audit persistence must not replace the deterministic domain/conflict error.
+        }
+    }
+
+    /** @return array<string, mixed> */
+    private function lockBooking(string $reference): array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT id, reference, status, arrival_date, departure_date, guest_email,
+                    adults, children, total_amount, currency
+             FROM bookings WHERE reference = :reference FOR UPDATE'
+        );
+        $statement->execute(['reference' => $reference]);
+        $booking = $statement->fetch(PDO::FETCH_ASSOC);
+        if ($booking === false) {
+            throw new BookingNotFound('Booking not found.');
+        }
+
+        return $booking;
+    }
+
+    private function assertAvailableForConfirmation(int $bookingId, string $arrival, string $departure): void
+    {
+        $confirmed = $this->pdo->prepare(
+            "SELECT id FROM bookings
+             WHERE id <> :booking_id AND status = 'confirmed'
+               AND arrival_date < :departure AND departure_date > :arrival LIMIT 1"
+        );
+        $confirmed->execute(['booking_id' => $bookingId, 'arrival' => $arrival, 'departure' => $departure]);
+        if ($confirmed->fetchColumn() !== false) {
+            throw new BookingConflict('The requested period overlaps a confirmed booking.');
+        }
+
+        $blocked = $this->pdo->prepare(
+            'SELECT id FROM blocked_periods
+             WHERE is_active = TRUE AND start_date < :departure AND end_date > :arrival LIMIT 1'
+        );
+        $blocked->execute(['arrival' => $arrival, 'departure' => $departure]);
+        if ($blocked->fetchColumn() !== false) {
+            throw new BookingConflict('The requested period overlaps an active blocked period.');
+        }
+    }
+
+    /** @param array<string, mixed> $booking */
+    private function insertStatusOutbox(array $booking, string $status): void
+    {
+        $payload = json_encode([
+            'booking_reference' => (string) $booking['reference'],
+            'arrival_date' => (string) $booking['arrival_date'],
+            'departure_date' => (string) $booking['departure_date'],
+            'adults' => (int) $booking['adults'],
+            'children' => (int) $booking['children'],
+            'total' => number_format((float) $booking['total_amount'], 2, '.', ''),
+            'currency' => (string) $booking['currency'],
+        ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+        $subjects = [
+            'confirmed' => 'A Bata foglalás megerősítve',
+            'rejected' => 'A Bata foglalási igény elutasítva',
+            'cancelled' => 'A Bata foglalás lemondva',
+        ];
+        $statement = $this->pdo->prepare(
+            'INSERT INTO email_outbox
+                (booking_id, message_type, recipient, subject, payload, status)
+             VALUES (:booking_id, :message_type, :recipient, :subject, :payload, \'pending\')'
+        );
+        $statement->execute([
+            'booking_id' => $booking['id'], 'message_type' => 'booking_' . $status,
+            'recipient' => $booking['guest_email'], 'subject' => $subjects[$status], 'payload' => $payload,
+        ]);
     }
 
     public function create(
@@ -200,7 +393,8 @@ final class TransactionalBookingRepository
 
         $blocked = $this->pdo->prepare(
             'SELECT id FROM blocked_periods
-             WHERE start_date < :departure
+             WHERE is_active = TRUE
+               AND start_date < :departure
                AND end_date > :arrival
              LIMIT 1'
         );

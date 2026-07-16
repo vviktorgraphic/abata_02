@@ -238,3 +238,9 @@ Invoke-RestMethod -Method Post -Uri 'http://localhost:8080/api/bookings' `
 ```
 
 A demo seed szemléltető fejlesztési árat tartalmaz, production árként nem használható. A levél a Mailpit felületén ellenőrizhető: `http://localhost:8025`.
+
+## Sprint 5 – admin foglaláskezelés
+
+**IMPLEMENTED:** védett `/admin/bookings` lista/részlet kereséssel, szűréssel és lapozással; confirm/reject/cancel/invalidate; audit/history/outbox; konkurens confirm elleni inventory lock; blocked-period soft delete; státuszlevél és CSRF/no-store/rate-limit. A sikertelen státuszlevél a részletoldalról biztonságosan újraküldhető.
+
+**PLANNED:** általános cron retry, maximális attempts és stale `processing` reclaim tulajdonosi döntés után.

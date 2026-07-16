@@ -19,3 +19,6 @@
 - Keep booking idempotency records with their booking; do not add time-based cleanup without a new owner decision.
 - Persist a server-calculated immutable pricing snapshot and an e-mail outbox record in the same booking transaction. Never perform SMTP I/O inside that transaction.
 - The only implemented pricing base is configured `person_night`, with every person priced equally. Do not invent child discounts, IFA, weekend/season combinations, or other pricing rules.
+- Admin booking transitions are limited to `pending -> confirmed|rejected|invalidated` and `confirmed -> cancelled|invalidated`; every attempt is audited.
+- Serialize public booking creation, confirmation, and blocked-period creation with the single-property inventory lock.
+- Status SMTP delivery runs only after commit; `invalidated` has no guest notification.

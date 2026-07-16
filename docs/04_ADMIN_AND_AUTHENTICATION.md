@@ -151,3 +151,7 @@ Az admin/auth sprint csak akkor fogadható el, ha:
 - [Biztonság](09_SECURITY.md)
 - [Tesztelés és üzemeltetés](10_TESTING_AND_OPERATIONS.md)
 - [Roadmap és döntések](11_ROADMAP_AND_DECISIONS.md)
+
+## Booking management – IMPLEMENTED Sprint 5
+
+A 2FA-val hitelesített admin lista-, részlet- és blocked-period oldalt kap. Minden válasz no-store; a POST-ok form Content-Type-, 8 KiB body-, CSRF-, admin/action rate-limit-, mező-whitelist- és 500 karakteres note ellenőrzést használnak, PRG redirecttel.

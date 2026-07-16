@@ -274,3 +274,7 @@ A `009_create_booking_persistence.sql`, `010_extend_pricing_rules_for_snapshots.
 Az idempotenciakulcs és a kanonikus request SHA-256 hashként kötődik a bookinghoz, és azzal együtt marad; időalapú cleanup nincs. Bookingonként pontosan egy immutable JSON snapshot és üzenettípusonként egy outbox rekord lehet. Az outbox állapotai: `pending`, `processing`, `sent`, `failed`.
 
 Az egy tranzakción belüli invariáns szerint booking nem maradhat status history, snapshot, idempotencia-kapcsolat, gyermekéletkorok vagy outbox nélkül. Az új booking `pending`; más pending rekordot nem blokkol és nem jár le automatikusan. A `confirmed` és a blocked period blokkol.
+
+## Sprint 5 admin modell – IMPLEMENTED
+
+Átmenetek: `pending -> confirmed|rejected|invalidated`, `confirmed -> cancelled|invalidated`. A booking, history, audit és státusz-outbox egy tranzakció. A single-property inventory lock szerializálja a create/confirm/blocked create készletellenőrzését. A `012_add_blocked_period_management.sql` auditálható, aktív jelzős soft delete-et vezet be.

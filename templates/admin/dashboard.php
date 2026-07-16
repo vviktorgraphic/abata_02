@@ -7,7 +7,8 @@
     </form>
     <div class="placeholder-panel">
         <h2>Üdv, <?= htmlspecialchars((string) $admin['name'], ENT_QUOTES, 'UTF-8') ?>!</h2>
-        <p>A foglalások adminisztrációs funkciói egy későbbi sprintben készülnek el.</p>
+        <p><strong><?= (int) ($pendingCount ?? 0) ?></strong> függőben lévő foglalási igény vár döntésre.</p>
+        <p><a class="button-link" href="/admin/bookings?status=pending">Függő foglalások megnyitása</a></p>
     </div>
 </section>
 <?php require __DIR__ . '/_layout_end.php'; ?>

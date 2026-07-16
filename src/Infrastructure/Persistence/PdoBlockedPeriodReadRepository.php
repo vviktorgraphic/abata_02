@@ -20,7 +20,7 @@ final readonly class PdoBlockedPeriodReadRepository implements BlockedPeriodRead
     {
         $statement = $this->pdo->prepare(
             'SELECT start_date, end_date FROM blocked_periods
-             WHERE start_date < :to_date AND end_date > :from_date
+             WHERE is_active = TRUE AND start_date < :to_date AND end_date > :from_date
              ORDER BY start_date'
         );
         $statement->execute([

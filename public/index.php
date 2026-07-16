@@ -47,6 +47,24 @@ $router->get('/admin/2fa', static fn () => $admin()['two_factor']->show()->send(
 $router->post('/admin/2fa/verify', static fn () => $admin()['two_factor']->verify($_POST, $context())->send());
 $router->post('/admin/2fa/resend', static fn () => $admin()['two_factor']->resend($_POST, $context())->send());
 $router->get('/admin', static fn () => $admin()['dashboard']->show()->send());
+$router->get('/admin/bookings', static fn (array $query) => $admin()['bookings']->index($query)->send());
+$router->get('/admin/bookings/{reference}', static fn (array $_query, array $params) => $admin()['bookings']->detail($params['reference'])->send());
+$router->post('/admin/bookings/{reference}/retry-email', static fn (array $_query, array $params) => $admin()['bookings']->retryNotification(
+    $params['reference'], $_POST, $_SERVER['CONTENT_TYPE'] ?? null, isset($_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null
+)->send());
+$router->post('/admin/bookings/{reference}/{action}', static fn (array $_query, array $params) => $admin()['bookings']->transition(
+    $params['reference'], $params['action'], $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
+    isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
+)->send());
+$router->get('/admin/blocked-periods', static fn () => $admin()['blocked_periods']->index()->send());
+$router->post('/admin/blocked-periods', static fn () => $admin()['blocked_periods']->create(
+    $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
+    isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
+)->send());
+$router->post('/admin/blocked-periods/{id}/remove', static fn (array $_query, array $params) => $admin()['blocked_periods']->remove(
+    $params['id'], $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
+    isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
+)->send());
 $router->post('/admin/logout', static fn () => $admin()['logout']->submit($_POST, $context())->send());
 $router->get('/api/availability', static function (array $query): void {
     try {
