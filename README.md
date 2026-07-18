@@ -219,7 +219,7 @@ A forrásfájl legyen a repositoryn kívül, a konténerbeli másolat pedig csak
 
 **IMPLEMENTED:** két hónapos publikus naptár, availability, admin-auth alapok és `POST /api/bookings`. Az új publikus igény `pending`; más pending igényt nem blokkol és nem jár le automatikusan, a `confirmed` booking és a blocked period viszont blokkol. A mentés idempotens, tranzakciós, HUF ár-pillanatképet és e-mail outbox rekordot hoz létre; SMTP-hiba nem törli a bookingot.
 
-**IMPLEMENTED:** teljes admin booking workflow, pricing admin CRUD/preview, kötelező és verziózott booking-policy elfogadás, immutable pricing/cancellation snapshot, valamint a 7 naptári napos kötbérmentes határ és későbbi 50%-os kötbér. **PLANNED:** általános e-mail retry, iCal és online fizetés. A pontos határt a [rendszerspecifikáció](docs/README.md) tartja nyilván.
+**IMPLEMENTED:** teljes admin booking workflow, pricing admin CRUD/preview, kötelező és verziózott booking-policy elfogadás, immutable pricing/cancellation snapshot, 7 naptári napos kötbérmentes határ és későbbi 50%-os kötbér, valamint Sprint 7 iCal import/export. **PLANNED:** általános e-mail retry, automatikus iCal cron/retry és online fizetés. A pontos határt a [rendszerspecifikáció](docs/README.md) tartja nyilván.
 
 ## Sprint 4 API smoke PowerShellből
 
@@ -266,6 +266,24 @@ docker compose exec app composer db:check
 docker compose exec app composer migrate
 docker compose exec app composer migrate
 docker compose exec app composer seed:demo
+docker compose exec app vendor/bin/phpunit
+git diff --check
+git status
+```
+
+## Sprint 7 – iCal szinkron
+
+**IMPLEMENTED:** Google Calendar és Szallas.hu iCal import kézi admin szinkronnal, forrás CRUD és szinkronnapló; külső eseményből külön blocked period készül, booking soha nem módosul. A tokenvédett `GET /calendar/export.ics?token=...` feed confirmed bookingokat és aktív blocked periodokat exportál PII nélkül. Pending/rejected/cancelled/invalidated booking nem exportálódik.
+
+**PLANNED:** cron, automatikus retry/backoff, eltűnt esemény grace és tokenrotációs átfedés. Ezekhez nincs feltételezett alapérték.
+
+PowerShell ellenőrzés:
+
+```powershell
+docker compose up -d --build
+docker compose ps
+docker compose exec app composer db:check
+docker compose exec app composer migrate
 docker compose exec app vendor/bin/phpunit
 git diff --check
 git status

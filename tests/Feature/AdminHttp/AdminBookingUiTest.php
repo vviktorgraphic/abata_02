@@ -29,6 +29,11 @@ final class AdminBookingUiTest extends TestCase
         ]);
         self::assertStringContainsString('A Bata', $html);
         self::assertStringContainsString('aria-label="Foglalások szűrése"', $html);
+        self::assertStringContainsString('<legend>Gyors szűrés</legend>', $html);
+        self::assertStringContainsString('<legend>Érkezési időszak</legend>', $html);
+        self::assertStringContainsString('<legend>Létrehozási időszak</legend>', $html);
+        self::assertStringContainsString('Szűrés alkalmazása', $html);
+        self::assertStringContainsString('href="/admin/bookings">Szűrők törlése</a>', $html);
         self::assertStringContainsString('role="region"', $html);
         self::assertStringNotContainsString('<script>', $html);
         self::assertStringNotContainsString('guest@example', $html);

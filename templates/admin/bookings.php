@@ -2,10 +2,19 @@
 <section class="admin-page" aria-labelledby="bookings-title">
  <p class="eyebrow">Adminisztráció</p><h1 id="bookings-title">Foglalások</h1>
  <form class="filters" method="get" action="/admin/bookings" aria-label="Foglalások szűrése">
-  <label for="q">Keresés</label><input id="q" name="q" maxlength="100" value="<?= $e($filters['q'] ?? '') ?>" placeholder="Referencia, név, e-mail vagy telefon">
-  <label for="status">Státusz</label><select id="status" name="status"><option value="">Mind</option><?php foreach (['pending'=>'Függő','confirmed'=>'Megerősített','rejected'=>'Elutasított','cancelled'=>'Lemondott','invalidated'=>'Érvénytelenített'] as $value=>$label): ?><option value="<?= $value ?>" <?= ($filters['status'] ?? '') === $value ? 'selected' : '' ?>><?= $label ?></option><?php endforeach ?></select>
-  <?php foreach (['arrival_from'=>'Érkezés ettől','arrival_until'=>'Érkezés eddig','created_from'=>'Létrehozva ettől','created_until'=>'Létrehozva eddig'] as $name=>$label): ?><label for="<?= $name ?>"><?= $label ?></label><input type="date" id="<?= $name ?>" name="<?= $name ?>" value="<?= $e($filters[$name] ?? '') ?>"><?php endforeach ?>
-  <button type="submit">Szűrés</button>
+  <fieldset class="filter-group filter-group-primary"><legend>Gyors szűrés</legend><div class="filter-fields">
+   <div class="filter-field filter-field-search"><label for="q">Keresés</label><input id="q" name="q" maxlength="100" value="<?= $e($filters['q'] ?? '') ?>" placeholder="Referencia, név, e-mail vagy telefon"></div>
+   <div class="filter-field"><label for="status">Státusz</label><select id="status" name="status"><option value="">Minden státusz</option><?php foreach (['pending'=>'Függő','confirmed'=>'Megerősített','rejected'=>'Elutasított','cancelled'=>'Lemondott','invalidated'=>'Érvénytelenített'] as $value=>$label): ?><option value="<?= $value ?>" <?= ($filters['status'] ?? '') === $value ? 'selected' : '' ?>><?= $label ?></option><?php endforeach ?></select></div>
+  </div></fieldset>
+  <fieldset class="filter-group"><legend>Érkezési időszak</legend><div class="filter-fields">
+   <div class="filter-field"><label for="arrival_from">Érkezés ettől</label><input type="date" id="arrival_from" name="arrival_from" value="<?= $e($filters['arrival_from'] ?? '') ?>"></div>
+   <div class="filter-field"><label for="arrival_until">Érkezés eddig</label><input type="date" id="arrival_until" name="arrival_until" value="<?= $e($filters['arrival_until'] ?? '') ?>"></div>
+  </div></fieldset>
+  <fieldset class="filter-group"><legend>Létrehozási időszak</legend><div class="filter-fields">
+   <div class="filter-field"><label for="created_from">Létrehozva ettől</label><input type="date" id="created_from" name="created_from" value="<?= $e($filters['created_from'] ?? '') ?>"></div>
+   <div class="filter-field"><label for="created_until">Létrehozva eddig</label><input type="date" id="created_until" name="created_until" value="<?= $e($filters['created_until'] ?? '') ?>"></div>
+  </div></fieldset>
+  <div class="filter-actions"><button type="submit">Szűrés alkalmazása</button><a class="button-secondary filter-reset" href="/admin/bookings">Szűrők törlése</a></div>
  </form>
  <p aria-live="polite"><?= (int) $total ?> találat</p>
  <div class="table-scroll" tabindex="0" role="region" aria-label="Foglalási találatok"><table><thead><tr><th>Referencia</th><th>Kapcsolattartó</th><th>Érkezés</th><th>Távozás</th><th>Éj</th><th>Létszám</th><th>Összeg</th><th>Státusz</th><th>Létrehozva</th><th></th></tr></thead><tbody>

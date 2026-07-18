@@ -275,12 +275,27 @@ A pending igény nem blokkol másik pendinget és nem jár le; confirmed és blo
 
 **Elfogadási feltételek:** dátuminvariánsok és átfedési viselkedés tesztelt; változás auditált; ütköző booking esetén explicit `409`; módosítás után availability azonnal konzisztens; kizárólag admin érheti el.
 
-### iCal sources és sync API – PLANNED
+### `GET /calendar/export.ics?token=...` – IMPLEMENTED
+
+**Auth:** hosszú, kriptográfiailag véletlen capability token a `token` query paraméterben. Hiányzó, tömb vagy érvénytelen tokenre üres `404` érkezik. Érvényes tokennél `200`, `Content-Type: text/calendar; charset=utf-8`, inline `calendar.ics`, `Cache-Control: private, no-store, max-age=0` és `Referrer-Policy: no-referrer` a válasz.
+
+A feed RFC 5545 `VEVENT` rekordjai egész napos, fél-nyitott időszakok. Csak confirmed booking és aktív blocked period kerül bele; pending/rejected/cancelled/invalidated booking és minden vendégadat kimarad.
+
+```powershell
+$token = Read-Host "iCal export token"
+Invoke-WebRequest -Uri ("http://localhost:8080/calendar/export.ics?token=" + [uri]::EscapeDataString($token))
+```
+
+### Admin iCal HTML route-ok – IMPLEMENTED
+
+A hitelesített admin GET route-ok: `/admin/calendar`, `/admin/calendar/sources`, `/admin/calendar/sources/create`, `/admin/calendar/sources/{id}/edit` és `/admin/calendar/log`. A CSRF- és action-guard védelemmel ellátott POST route-ok: létrehozás/módosítás, `enable`, `disable`, `delete`, `sync`, valamint `/admin/calendar/token/rotate`. Google Calendar és Szallas.hu forrás iránya `import`, `export` vagy `bidirectional`. Engedélyezett importforráson kézi sync indítható. Automatikus cron nincs implementálva. A tokenrotáció új plaintext tokenje egyszer, kizárólag a védett admin HTML-válaszban látható; listából és naplóból nem olvasható vissza.
+
+### JSON iCal admin API és haladó sync – PLANNED
 
 - `GET/POST/PATCH/DELETE /api/admin/ical/sources...`: források kezelése, secret URL visszaadása nélkül;
 - `POST /api/admin/ical/sources/{id}/sync`: kézi importindítás;
 - `GET /api/admin/ical/sources/{id}/runs`: eredmény- és hibanapló;
-- tokenes, külön publikus export feed a később véglegesített útvonalon.
+- JSON API-n keresztüli tokenkezelés; a publikus HTML-től független export feed útvonala már IMPLEMENTED: `/calendar/export.ics?token=...`.
 
 **Elfogadási feltételek:** SSRF-védelem és ICS limitek érvényesek; sync idempotens; saját feed loopja kizárt; timeout nem tart nyitva webkérést korlátlanul; napló nem szivárogtat tokent vagy PII-t. Lásd [iCal specifikáció](07_ICAL_SYNC.md).
 

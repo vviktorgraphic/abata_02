@@ -1,21 +1,27 @@
 # iCal szinkron
 
-**Állapot:** PLANNED; iCal-kód jelenleg nem található a repositoryban
-**Utolsó ellenőrzött commit:** `9adc564`
+**Állapot:** Sprint 7 alaphatókör IMPLEMENTED; az ütemezett és haladó reconciliation funkciók PLANNED
+**Utolsó felülvizsgálat:** 2026-07-16
 
 ## Hatókör és alapelv
 
-**IMPLEMENTED:** A belső foglalási modell naptári napokat és fél-nyitott `[arrival_date, departure_date)` intervallumot használ. iCal import, export, forrástábla, eseménytábla, szinkronnapló, cron vagy admin iCal felület még nincs.
+**IMPLEMENTED:** A belső foglalási modell naptári napokat és fél-nyitott `[arrival_date, departure_date)` intervallumot használ. A Sprint 7 RFC 5545 parsert és exportert, Google Calendar és Szallas.hu importforrást, külön külsőesemény/blocked-period leképezést, szinkronnaplót, admin forráskezelést és kézi szinkront, valamint tokenes publikus exportot ad. Külső esemény soha nem booking, és import nem módosít belső bookingot.
 
-**PLANNED:** Az 1.0 külső RFC 5545 naptárakból foglaltságot importál, és tokennel védett, személyes adatot nem tartalmazó export feedet ad. A szinkron időzített és késleltetett; **nem valós idejű**, ezért mentéskor a belső foglalhatóságot mindig újra kell ellenőrizni. A domainmodell részletei: [adatbázis- és domainmodell](02_DATABASE_AND_DOMAIN_MODEL.md), a kapcsolódó fenyegetések: [biztonság](09_SECURITY.md).
+Az export URL `GET /calendar/export.ics?token=...`. Csak `confirmed` booking és aktív blocked period exportálódik; `pending`, `rejected`, `cancelled` és `invalidated` booking nem. A token capability secret, csak SHA-256 hashként tárolódik, rotálható, érvénytelen tokenre megkülönböztethetetlen `404` érkezik, a válasz pedig `private, no-store`. A feed nem tartalmaz vendégadatot.
 
-> **DECISION REQUIRED:** Meg kell nevezni az elsődlegesen támogatott szolgáltatókat, a cron gyakoriságát, az eseményeltűrés türelmi idejét és azt, hogy `pending` belső foglalás exportálandó-e. Alapjavaslat: csak `confirmed` foglalás és aktív `blocked_period` kerüljön az exportba.
+Az import kézzel indítható. Azonos `(source_id, UID)` és változatlan payload idempotens; confirmed bookinggal való átfedés figyelmeztetésként naplózódik és nem hoz létre duplikált blocked periodot. A napló a kezdést/befejezést, import/export darabszámot, figyelmeztetéseket és hibákat tárolja. Minden üzleti nap `Europe/Budapest` szerint, a távozási nap exkluzívan értendő.
+
+**PLANNED:** cron/automatikus időzítés, retry/backoff, eltűnt események türelmi ideje, manuális konfliktusfeloldás és export-token rotációs grace period. Ezekhez nincs elfogadott üzleti szabály, ezért a Sprint 7 nem talál ki alapértéket.
+
+**IMPLEMENTED:** Az 1.0 alaphatókör külső RFC 5545 naptárakból kézi indítással foglaltságot importál, és tokennel védett, személyes adatot nem tartalmazó export feedet ad. A sync **nem valós idejű**, ezért mentéskor a belső foglalhatóságot mindig újra kell ellenőrizni. **PLANNED:** automatikus időzítés. A domainmodell részletei: [adatbázis- és domainmodell](02_DATABASE_AND_DOMAIN_MODEL.md), a kapcsolódó fenyegetések: [biztonság](09_SECURITY.md).
+
+> **RESOLVED:** támogatott szolgáltatók: Google Calendar és Szallas.hu; `pending` nem exportálódik. **DECISION REQUIRED:** cron gyakoriság és eseményeltűrés türelmi ideje.
 
 ## RFC 5545 eseménymodell
 
 ### Egész napos időszak
 
-**PLANNED:** Minden foglaltsági esemény egész napos `VEVENT`. Az érkezés `DTSTART;VALUE=DATE`, a távozás exkluzív `DTEND;VALUE=DATE`. A `2026-08-01`–`2026-08-05` tartózkodás négy éjszaka, és így jelenik meg:
+**IMPLEMENTED export:** Minden exportált foglaltsági esemény egész napos `VEVENT`. Az érkezés `DTSTART;VALUE=DATE`, a távozás exkluzív `DTEND;VALUE=DATE`. A `2026-08-01`–`2026-08-05` tartózkodás négy éjszaka, és így jelenik meg:
 
 ```ical
 BEGIN:VCALENDAR
@@ -45,11 +51,13 @@ END:VCALENDAR
 - `STATUS:CANCELLED`: az ismert `UID` törlésjelzése; nem aktív foglaltság, de az eseményt audit célból meg kell őrizni.
 - `SUMMARY`: exportban általános szöveg, például `Foglalt`; vendégnév, e-mail, telefonszám, ár és admin megjegyzés tilos.
 
-**PLANNED validáció:** csak teljes, szabályosan lezárt `VCALENDAR`/`VEVENT`, érvényes `DATE`, `DTSTART < DTEND` és konfigurált maximum időtartam fogadható el. `DATE-TIME` eseményt nem szabad csendben helyi nappá alakítani: a forrást hibásnak vagy külön, dokumentált kompatibilitási szabályt igénylőnek kell jelölni. A parsernek kezelnie kell a CRLF sortörést, line foldingot és escape-elést, továbbá erőforráskorlátot kell alkalmaznia.
+**IMPLEMENTED validáció:** teljes, szabályosan lezárt `VCALENDAR`/`VEVENT`, érvényes `DTSTART < DTEND`, CRLF/LF sortörés, line folding, escape-elés, feed-/esemény-/sorhosszlimit. A parser a `DATE` mellett `DATE-TIME` értéket is elfogad; UTC vagy `TZID` alapján `Europe/Budapest` időre váltja, az import pedig minden érintett helyi naptári napot blokkol.
 
-## Tervezett adatszétválasztás
+> **SPECIFICATION CONFLICT:** a korábbi terv a `DATE-TIME` csendes naposítását tiltotta, a Sprint 7 tényleges kompatibilitási szabálya viszont Budapest-napokra alakítja. A kód szerinti viselkedés itt explicit dokumentált; további szolgáltatóspecifikus kivételhez új tulajdonosi döntés szükséges.
 
-**PLANNED:** A külső esemény nem `booking`. Külön iCal-forrás és importált esemény entitás szükséges legalább a következő adatokkal:
+## Adatszétválasztás
+
+**IMPLEMENTED alaphatókör:** A külső esemény nem `booking`. Külön iCal-forrás, importált esemény, sync log és exporttoken tábla létezik. Az alábbi lista egy része haladó **PLANNED** mezőket is tartalmaz:
 
 - forrás: név, titkosított vagy web rooton kívüli URL, aktív állapot, timeout, utolsó próbálkozás, utolsó siker, következő retry, ETag/Last-Modified, hibaállapot;
 - esemény: source ID, `UID`, `SEQUENCE`, `DTSTAMP`, `DTSTART`, `DTEND`, `STATUS`, `raw_hash`, `first_seen_at`, `last_seen_at`, `missing_since`, feldolgozási állapot;
@@ -91,7 +99,9 @@ Ez a konzervatív modell csökkenti a külső késleltetésből vagy ideiglenes 
 
 ## Export feed és tokenvédelem
 
-**PLANNED:** Az export read-only, hosszú, kriptográfiailag véletlen tokennel elérhető feed. A token capability secret: nem kerül Gitbe, analyticsbe, access log query stringbe, HTML-be vagy általános adminnaplóba. Csak hash formában tárolandó, rotálható és visszavonható. Rotációkor opcionális, rövid átfedési idő dokumentálható.
+**IMPLEMENTED:** Az export read-only, hosszú, kriptográfiailag véletlen tokennel elérhető feed. A token capability secret: nem kerül Gitbe, analyticsbe vagy általános adminnaplóba; adatbázisban csak SHA-256 hash formában tárolódik és rotálható. Query-token miatt a production webszerver access logjából a query stringet ki kell zárni. Rotációkor nincs átfedési idő.
+
+Az admin-only rotációs válasz szándékos, egyszeri kivétel a „token ne kerüljön HTML-be” általános szabály alól: teljes 2FA session, CSRF és admin action guard után az új plaintext token egyetlen HTML-válaszban jelenik meg, később nem kérhető le újra. Általános oldalon, listában vagy naplóban nem jelenhet meg.
 
 - HTTPS kötelező; CORS nem szükséges általánosan.
 - Válasz `Content-Type: text/calendar; charset=utf-8` és `Content-Disposition: inline`.
@@ -100,7 +110,7 @@ Ez a konzervatív modell csökkenti a külső késleltetésből vagy ideiglenes 
 - Cache-elés csak tokenvédelmet és visszavonást figyelembe vevő rövid szabállyal engedhető; proxyban nyilvános cache tilos.
 - Token gyanított kiszivárgásakor azonnali rotáció és audit szükséges.
 
-> **DECISION REQUIRED:** Az export URL tokenjének elhelyezése (útvonalszegmens vagy query) és a rotációs türelmi idő még nincs véglegesítve.
+> **RESOLVED:** az exporttoken query paraméterben van. **DECISION REQUIRED:** rotációs türelmi idő; jelenleg nincs átfedési idő implementálva.
 
 ## Loop prevention
 
@@ -112,11 +122,13 @@ Ez a konzervatív modell csökkenti a külső késleltetésből vagy ideiglenes 
 4. importált külső esemény alapértelmezetten nem kerül vissza az exportba;
 5. ugyanazon külső esemény több feedből érkező másolata nem egyesíthető automatikusan pusztán dátum alapján.
 
+> **SPECIFICATION CONFLICT:** a jelenlegi export repository minden aktív blocked periodot exportál, így az importból létrejött blocked periodot is. Ez ellentmond a fenti PLANNED loop-prevention 4. pontnak. A Sprint 7 nem tartalmaz eredet szerinti exportszűrést; ezt nem tekintjük implementáltnak, és külön specifikáció/megoldás szükséges.
+
 Példa: ha egy partner a rendszer exportját visszaadja saját feedjében, a saját UID felismerése miatt nem jön létre újabb blokkolás és nincs végtelen tükröződés.
 
 ## Konfliktuskezelés
 
-**PLANNED:** Import előtt a fél-nyitott overlap formula alkalmazandó: `incoming_start < existing_end AND incoming_end > existing_start`. A külső esemény és a belső foglalás külön rekord marad.
+**IMPLEMENTED alap:** Import előtt a fél-nyitott overlap formula alkalmazandó: `incoming_start < existing_end AND incoming_end > existing_start`. A külső esemény és a belső foglalás külön rekord marad. Confirmed bookinggal ütközés figyelmeztetés és nem módosít bookingot; manuális konfliktusfeloldás **PLANNED**.
 
 - külső esemény ütközik `confirmed` bookinggal: egyik sem törlődik; magas prioritású konfliktus készül és az admin értesítést kap;
 - külső esemény ütközik `blocked_period` rekorddal: konfliktus naplózandó, a nap továbbra is blokkolt;
@@ -128,7 +140,7 @@ Az admin manuálisan „elfogadott duplikátum”, „külső esemény téves”
 
 ## Adminfelület és megfigyelhetőség
 
-**PLANNED:** Az admin iCal modul megmutatja:
+**IMPLEMENTED alaphatókör:** Az admin iCal modul forráslistát, maszkolt URL-t, engedélyezést, CRUD-ot, kézi syncet, sync logot és exporttoken-rotációt ad. **PLANNED:** retry-késleltetés, riasztás, konfliktusfeloldás és automatizált frissességi monitoring. A teljes célállapot:
 
 - forrás nevét és engedélyezett állapotát, maszkolt URL-jét;
 - utolsó próbálkozást, utolsó sikeres szinkront, következő retryt és késleltetést;

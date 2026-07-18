@@ -63,7 +63,7 @@ final readonly class DefaultAdminAuthWorkflow implements AdminAuthWorkflow
 
         try {
             $generated = $this->issueCode->issue($result->adminId);
-            $this->mailer->send($this->mailRenderer->render($result->normalizedEmail, $generated->plaintext));
+            $this->mailer->send($this->mailRenderer->render($result->normalizedEmail, $generated->plainCode));
         } catch (Throwable) {
             $this->audit('admin.2fa.delivery', 'failed', $result->adminId, $ip, ['reason_code' => 'mail_transport', 'auth_stage' => 'two_factor']);
             return false;
@@ -125,7 +125,7 @@ final readonly class DefaultAdminAuthWorkflow implements AdminAuthWorkflow
         if ($admin === null) return false;
         try {
             $generated = $this->issueCode->issue($adminId);
-            $this->mailer->send($this->mailRenderer->render($admin['email'], $generated->plaintext));
+            $this->mailer->send($this->mailRenderer->render($admin['email'], $generated->plainCode));
             return true;
         } catch (DomainException) {
             $this->rateLimiter->recordFailure($this->policies->twoFactorResend, (string) $adminId);

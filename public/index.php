@@ -24,6 +24,11 @@ use App\Infrastructure\Persistence\Auth\PdoAuditLog;
 use App\Infrastructure\Persistence\Booking\PdoBookingRequestOutbox;
 use App\Infrastructure\Persistence\Booking\TransactionalBookingRepository;
 use App\Infrastructure\Persistence\Pricing\PdoPricingEngineAdapter;
+use App\Application\Calendar\CalendarExportFeed;
+use App\Application\Calendar\IcalExporter;
+use App\Http\Controller\CalendarExportController;
+use App\Infrastructure\Persistence\Calendar\PdoCalendarExportFeedRepository;
+use App\Infrastructure\Persistence\Calendar\PdoCalendarExportTokenRepository;
 use App\Security\RateLimit\RateLimitClock;
 use App\Security\RateLimit\RateLimiter;
 use App\Security\RateLimit\RateLimitPolicy;
@@ -38,6 +43,21 @@ $controller = new HomeController(dirname(__DIR__) . '/templates', $bookingPolicy
 
 $router->get('/', [$controller, 'index']);
 $router->get('/health', [$controller, 'health']);
+$router->get('/calendar/export.ics', static function (array $query): void {
+    try {
+        $pdo = ConnectionFactory::create(require dirname(__DIR__) . '/config/database.php');
+        (new CalendarExportController(
+            new PdoCalendarExportTokenRepository($pdo),
+            new CalendarExportFeed(new PdoCalendarExportFeedRepository($pdo), new IcalExporter()),
+        ))->export($query)->send();
+    } catch (Throwable) {
+        (new App\Http\CalendarResponse('', 503, [
+            'Content-Type' => 'text/plain; charset=utf-8',
+            'Cache-Control' => 'private, no-store, max-age=0',
+            'X-Content-Type-Options' => 'nosniff',
+        ]))->send();
+    }
+});
 $admin = static function (): array {
     static $controllers;
     return $controllers ??= require dirname(__DIR__) . '/config/admin-http.php';
@@ -90,6 +110,20 @@ $router->post('/admin/pricing/{id}/deactivate', static fn (array $_query, array 
     $params['id'], $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
     isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
 )->send());
+$router->get('/admin/calendar', static fn () => $admin()['calendar']->dashboard()->send());
+$router->get('/admin/calendar/sources', static fn () => $admin()['calendar']->sources()->send());
+$router->get('/admin/calendar/sources/create', static fn () => $admin()['calendar']->createForm()->send());
+$router->get('/admin/calendar/sources/{id}/edit', static fn (array $_query,array $params) => $admin()['calendar']->editForm($params['id'])->send());
+$router->get('/admin/calendar/log', static fn () => $admin()['calendar']->log()->send());
+$calendarPost = static fn (callable $action) => $action($_POST, $_SERVER['CONTENT_TYPE'] ?? null,
+    isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string)$_SERVER['CONTENT_LENGTH']) ? (int)$_SERVER['CONTENT_LENGTH'] : null)->send();
+$router->post('/admin/calendar/sources', static fn () => $calendarPost(fn($form,$type,$length) => $admin()['calendar']->create($form,$type,$length)));
+$router->post('/admin/calendar/sources/{id}', static fn (array $_query,array $params) => $calendarPost(fn($form,$type,$length) => $admin()['calendar']->update($params['id'],$form,$type,$length)));
+$router->post('/admin/calendar/sources/{id}/enable', static fn (array $_query,array $params) => $calendarPost(fn($form,$type,$length) => $admin()['calendar']->setEnabled($params['id'],true,$form,$type,$length)));
+$router->post('/admin/calendar/sources/{id}/disable', static fn (array $_query,array $params) => $calendarPost(fn($form,$type,$length) => $admin()['calendar']->setEnabled($params['id'],false,$form,$type,$length)));
+$router->post('/admin/calendar/sources/{id}/delete', static fn (array $_query,array $params) => $calendarPost(fn($form,$type,$length) => $admin()['calendar']->delete($params['id'],$form,$type,$length)));
+$router->post('/admin/calendar/sources/{id}/sync', static fn (array $_query,array $params) => $calendarPost(fn($form,$type,$length) => $admin()['calendar']->synchronize($params['id'],$form,$type,$length)));
+$router->post('/admin/calendar/token/rotate', static fn () => $calendarPost(fn($form,$type,$length) => $admin()['calendar']->rotateToken($form,$type,$length)));
 $router->post('/admin/logout', static fn () => $admin()['logout']->submit($_POST, $context())->send());
 $router->get('/api/availability', static function (array $query): void {
     try {

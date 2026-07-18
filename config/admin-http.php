@@ -21,6 +21,7 @@ use App\Http\Controller\Admin\BookingManagementController;
 use App\Http\Controller\Admin\BlockedPeriodController;
 use App\Http\Controller\Admin\PricingAdminController;
 use App\Http\Controller\Admin\AdminActionGuard;
+use App\Http\Controller\Admin\CalendarAdminController;
 use App\Http\Controller\Admin\SecurityAdminActionRateLimiter;
 use App\Infrastructure\Persistence\Booking\PdoAdminBookingQueryRepository;
 use App\Infrastructure\Persistence\Booking\PdoBlockedPeriodRepository;
@@ -49,6 +50,16 @@ use App\Security\Session\NativeSessionIdRotator;
 use App\Security\Session\NativeSessionStorage;
 use App\Security\Session\SessionCookieOptions;
 use App\Security\Session\SystemClock;
+use App\Application\Calendar\BudapestCalendarSyncClock;
+use App\Application\Calendar\CalendarImportService;
+use App\Application\Calendar\IcsParser;
+use App\Application\Calendar\SecureCalendarFeedFetcher;
+use App\Infrastructure\Calendar\CurlCalendarFeedHttpClient;
+use App\Infrastructure\Calendar\NativeCalendarHostResolver;
+use App\Infrastructure\Persistence\Calendar\PdoCalendarExportTokenRepository;
+use App\Infrastructure\Persistence\Calendar\PdoCalendarSourceRepository;
+use App\Infrastructure\Persistence\Calendar\PdoCalendarSyncLogRepository;
+use App\Infrastructure\Persistence\Calendar\PdoExternalCalendarEventRepository;
 
 $root = dirname(__DIR__);
 $authConfig = require $root . '/config/auth.php';
@@ -106,6 +117,16 @@ $statusNotifications = new BookingStatusNotificationDispatcher(
     new SmtpMailer(new SmtpConfiguration($mailConfig['host'], $mailConfig['port'], $mailConfig['encryption'], $username, $password)),
     $audit,
 );
+$calendarSources = new PdoCalendarSourceRepository($pdo);
+$calendarLogs = new PdoCalendarSyncLogRepository($pdo);
+$calendarImporter = new CalendarImportService(
+    $calendarSources,
+    $calendarLogs,
+    new PdoExternalCalendarEventRepository($pdo),
+    new SecureCalendarFeedFetcher(new CurlCalendarFeedHttpClient(), new NativeCalendarHostResolver()),
+    new IcsParser(),
+    new BudapestCalendarSyncClock(),
+);
 
 return [
     'login' => new LoginController($workflow, $view, $csrf),
@@ -121,6 +142,10 @@ return [
         new PdoPricingRuleRepository($pdo),
         new PdoPricingEngineAdapter($pdo),
         $audit,
+    ),
+    'calendar' => new CalendarAdminController(
+        $workflow, $view, $csrf, $actionGuard, $calendarSources, $calendarLogs,
+        new PdoCalendarExportTokenRepository($pdo), $calendarImporter, $audit,
     ),
     'logout' => new LogoutController($workflow, $csrf, $view),
 ];

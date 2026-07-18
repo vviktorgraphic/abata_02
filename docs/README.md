@@ -53,7 +53,7 @@ A jelölések jelentése:
 
 **IMPLEMENTED:** tranzakciós `POST /api/bookings`, confirmed/blocked mentéskori újraellenőrzés, egymást nem blokkoló `pending` igények, bookinghoz kötött idempotencia, gyermekéletkor-tárolás, közös összetett HUF pricing engine, immutable JSON snapshot, valamint ugyanabban a tranzakcióban létrejövő booking-request outbox. A commit után indított SMTP-kísérlet hibája a bookingot nem törli.
 
-**IMPLEMENTED:** admin jóváhagyás és booking CRUD, pricing admin CRUD/preview és összetett pricing komponensek. **PLANNED:** automatikus outbox retry és stale `processing` helyreállítás, iCal és online fizetés.
+**IMPLEMENTED:** admin jóváhagyás és booking CRUD, pricing admin CRUD/preview és összetett pricing komponensek, továbbá Sprint 7 iCal parser/exporter, Google Calendar és Szallas.hu kézi import, forrás/sync-log persistence és tokenvédett export. **PLANNED:** automatikus outbox retry és stale `processing` helyreállítás, iCal cron/retry/grace és online fizetés.
 
 ## Frissítési szabály
 
@@ -70,3 +70,7 @@ A fejlesztő agent először ezt az indexet, majd az érintett modul dokumentuma
 ## Sprint 5 – IMPLEMENTED
 
 Admin booking lista/részlet, explicit state machine, tranzakciós history/audit/outbox, kétprocesszes confirm race teszt, blocked-period kezelés, státuszlevelek és védett A Bata admin UI. A production SMTP és az automatikus retry továbbra is **PLANNED**.
+
+## Sprint 7 – IMPLEMENTED alaphatókör
+
+RFC 5545 import/export, provider-validáció, fél-nyitott Budapest-napok, külső eseményből blocked period, duplikáció- és confirmed-konfliktus kezelés, admin forráskezelés/kézi sync/sync log és query-tokenes PII-mentes export. Cron, automatikus retry és eltűnési grace **PLANNED**.

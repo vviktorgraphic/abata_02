@@ -21,8 +21,8 @@ A lezárt döntések forrása a [tulajdonosi döntési napló](99_OWNER_DECISION
 3. Maximális vendégszám és csecsemőszabály.
 4. IFA konkrét értéke és a jogilag alkalmazható mentességi kategóriák. A szerkeszthető exemption modell és HALF_UP egész-HUF kerekítés RESOLVED/IMPLEMENTED.
 5. Előleg és online beszedés. A lemondási szabály RESOLVED: legalább 7 nappal érkezés előtt 0, később az immutable accommodation fee 50%-a.
-6. A `pending` iCal exportja. A blokkolás és élettartam RESOLVED: nem blokkol és nem jár le automatikusan.
-7. Szallas.hu és Google Calendar interoperabilitási tesztfixture-ek és szinkrongyakoriság; a két szolgáltató támogatása RESOLVED.
+6. **RESOLVED:** a `pending` booking nem kerül iCal exportba.
+7. Szallas.hu és Google Calendar production interoperabilitási smoke és szinkrongyakoriság; a két szolgáltató támogatása RESOLVED/IMPLEMENTED.
 
 ## RESOLVED hivatkozások
 
@@ -36,7 +36,7 @@ A lezárt döntések forrása a [tulajdonosi döntési napló](99_OWNER_DECISION
 
 - Production árak; gyermekár/kedvezmény; IFA és mentességek; hétvégi/szezonális kombináció; fix díjak és kerekítési üzleti szabályok.
 - Outbox retry ütemezés, maximális próbálkozás, stale `processing` reclaim, admin resend és e-mail retention.
-- Publikus booking rate-limit production küszöbök, trusted originlista és adatkezelési tájékoztató URL-je.
+- Publikus booking rate-limit production küszöbök és trusted originlista. Az adatkezelési tájékoztató URL-je RESOLVED: `/adatkezelesi_tajekoztato`.
 - Booking, gyermekéletkor, idempotencia és e-mail rekordok retention/törlési szabálya; az idempotencia automatikus időalapú cleanupja a jelenlegi döntés szerint nincs.
 
 ## Sprint 5 után nyitott
@@ -49,8 +49,16 @@ A lezárt döntések forrása a [tulajdonosi döntési napló](99_OWNER_DECISION
 
 ## Sprint 6 után nyitott
 
-- Konkrét production ársávok és összegek, a hétvégének minősülő napok, seasonal/fixed-fee értékek.
+- Konkrét production ársávok és összegek, seasonal/fixed-fee értékek. A hétvégi default RESOLVED: péntek és szombat éjszaka.
 - IFA production összege és jogilag jóváhagyott exemption kategóriák/kulcsok.
 - Előleg és bármilyen tényleges fizetési/beszedési folyamat.
 
 **RESOLVED Sprint 6:** külön booking-policy checkbox, konfigurált URL/verzió snapshot; mindhárom base unit; determinisztikus pricing precedencia és konfliktusleállás; 7 napos/50%-os cancellation formula immutable snapshotból.
+
+## Sprint 7 után nyitott
+
+- iCal cron gyakoriság, retry/backoff és eltűnt esemény grace.
+- Exporttoken-rotáció esetleges átfedési ideje.
+- Google Calendar és Szallas.hu production fixture/smoke.
+
+**RESOLVED Sprint 7:** query exporttoken; pending kizárása; manuális sync; policy `/foglalasi-szabalyzat`; privacy `/adatkezelesi_tajekoztato`; hétvége péntek/szombat éjszaka; IFA admin-konfigurált, a rendszer számolja.

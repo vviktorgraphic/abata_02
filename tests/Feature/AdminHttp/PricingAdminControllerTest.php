@@ -54,6 +54,14 @@ final class PricingAdminControllerTest extends TestCase
         self::assertSame('pricing_rule.created', $this->audit->events[0]->eventType);
     }
 
+    public function test_weekend_rule_defaults_to_friday_and_saturday_nights(): void
+    {
+        $form = $this->form(['rule_type' => 'weekend', 'applicable_weekdays' => '']);
+        $response = $this->controller()->create($form + ['_csrf' => $this->csrf->token()], 'application/x-www-form-urlencoded', 300);
+        self::assertInstanceOf(RedirectResponse::class, $response);
+        self::assertSame('[5,6]', $this->repository->created['applicable_weekdays']);
+    }
+
     public function test_csrf_invalid_number_and_equal_priority_conflict_are_rejected(): void
     {
         self::assertSame(403, $this->controller()->create($this->form(), 'application/x-www-form-urlencoded', 200)->status);
