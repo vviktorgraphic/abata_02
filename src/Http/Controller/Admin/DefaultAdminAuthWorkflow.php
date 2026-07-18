@@ -106,7 +106,7 @@ final readonly class DefaultAdminAuthWorkflow implements AdminAuthWorkflow
             $absoluteOrigin = $this->sessions->activeCreatedAt($oldToken, 'two_factor_pending', $now);
             if ($absoluteOrigin === null) {
                 $this->session->logout();
-                return false;
+                throw AdminSessionEstablishmentFailed::afterSuccessfulTwoFactor();
             }
             // Audit is mandatory before privilege promotion; failure leaves no authenticated session.
             $this->audit('admin.2fa.verify', 'accepted', $adminId, $ip, ['auth_stage' => 'two_factor']);
@@ -122,7 +122,9 @@ final readonly class DefaultAdminAuthWorkflow implements AdminAuthWorkflow
             );
         } catch (Throwable $exception) {
             $this->session->logout();
-            throw $exception;
+            throw $exception instanceof AdminSessionEstablishmentFailed
+                ? $exception
+                : AdminSessionEstablishmentFailed::afterSuccessfulTwoFactor($exception);
         }
         $this->rateLimiter->recordSuccess($this->policies->twoFactorVerify, (string) $adminId);
         return true;

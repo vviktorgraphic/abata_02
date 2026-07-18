@@ -35,6 +35,7 @@ A jelölések jelentése:
 | [13 – Backup és restore](13_BACKUP_AND_RESTORE.md) | Biztonságos MySQL backup/restore, staging próba és RPO/RTO mérés |
 | [15 – Production deployment](15_DEPLOYMENT.md) | cPanel release, HTTPS, proxy, session és SMTP runbook |
 | [16 – Release Candidate RC1](16_RELEASE_CANDIDATE_RC1.md) | Funkcionális bizonyíték, staging checklist, E2E és release gate |
+| [17 – Admin 2FA session redirect fix](17_ADMIN_2FA_SESSION_REDIRECT_FIX.md) | Bizonyított same-second touch gyökérok, biztonságos session fix és regressziós bizonyíték |
 | [98 – Nyitott döntések](98_OPEN_DECISIONS.md) | Prioritásos, még tulajdonosi vagy architekturális döntést igénylő kérdések |
 | [99 – Tulajdonosi döntések](99_OWNER_DECISIONS.md) | Dátummal rögzített, lezárt tulajdonosi döntések |
 

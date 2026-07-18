@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\AdminHttp;
 
 use App\Http\Controller\Admin\AdminAuthWorkflow;
+use App\Http\Controller\Admin\AdminSessionEstablishmentFailed;
 use App\Http\Controller\Admin\AdminView;
 use App\Http\Controller\Admin\DashboardController;
 use App\Http\Controller\Admin\HtmlResponse;
@@ -73,6 +74,32 @@ final class AdminControllersTest extends TestCase
         self::assertStringContainsString('action="/admin/2fa/resend"', $response->body);
         self::assertStringNotContainsString('action="/admin/verify', $response->body);
         self::assertSame(2, substr_count($response->body, 'name="_csrf"'));
+    }
+
+    public function test_successful_two_factor_rotatesCsrfAndRedirectsToDashboard(): void
+    {
+        $workflow = new FakeAdminAuthWorkflow(verifyAccepted: true);
+        $controller = new TwoFactorController($workflow, $this->view, $this->csrf);
+        $before = $this->csrf->token();
+
+        $response = $controller->verify(['_csrf' => $before, 'code' => '123456']);
+
+        self::assertInstanceOf(RedirectResponse::class, $response);
+        self::assertSame('/admin', $response->location);
+        self::assertNotSame($before, $this->csrf->token());
+        self::assertSame(1, $workflow->verifyCalls);
+    }
+
+    public function test_session_establishment_failureShowsSafeUserMessageInsteadOfSilentRedirect(): void
+    {
+        $controller = new TwoFactorController(new FailingSessionAuthWorkflow(), $this->view, $this->csrf);
+
+        $response = $controller->verify(['_csrf' => $this->csrf->token(), 'code' => '123456']);
+
+        self::assertInstanceOf(HtmlResponse::class, $response);
+        self::assertSame(500, $response->status);
+        self::assertStringContainsString('munkamenet nem hozható létre', $response->body);
+        self::assertStringNotContainsString('Authenticated admin session establishment failed', $response->body);
     }
 
     public function test_every_auth_post_rejects_a_missing_or_invalid_csrf_token(): void
@@ -160,15 +187,31 @@ final class FakeAdminAuthWorkflow implements AdminAuthWorkflow
     public int $resendCalls = 0;
 
     /** @param array{id: int, name: string}|null $admin */
-    public function __construct(private bool $loginAccepted = false, private ?array $admin = null)
+    public function __construct(
+        private bool $loginAccepted = false,
+        private ?array $admin = null,
+        private bool $verifyAccepted = false,
+    )
     {
     }
 
     public function login(string $email, string $password, array $requestContext = []): bool { ++$this->loginCalls; return $this->loginAccepted; }
-    public function verify(string $code, array $requestContext = []): bool { ++$this->verifyCalls; return false; }
+    public function verify(string $code, array $requestContext = []): bool { ++$this->verifyCalls; return $this->verifyAccepted; }
     public function resend(array $requestContext = []): bool { ++$this->resendCalls; return false; }
     public function logout(array $requestContext = []): void {}
     public function currentAdmin(): ?array { return $this->admin; }
+}
+
+final class FailingSessionAuthWorkflow implements AdminAuthWorkflow
+{
+    public function login(string $email, string $password, array $requestContext = []): bool { return false; }
+    public function verify(string $code, array $requestContext = []): bool
+    {
+        throw AdminSessionEstablishmentFailed::afterSuccessfulTwoFactor(new \RuntimeException('test infrastructure failure'));
+    }
+    public function resend(array $requestContext = []): bool { return false; }
+    public function logout(array $requestContext = []): void {}
+    public function currentAdmin(): ?array { return null; }
 }
 
 final class ArraySessionStorage implements SessionStorage

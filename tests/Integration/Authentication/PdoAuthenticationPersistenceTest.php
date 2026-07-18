@@ -148,6 +148,11 @@ final class PdoAuthenticationPersistenceTest extends TestCase
 
         self::assertTrue($repository->revoke($rawToken, $createdAt->add(new DateInterval('PT1H'))));
         self::assertFalse($repository->revoke($rawToken, $createdAt->add(new DateInterval('PT2H'))));
+        self::assertFalse($repository->touch(
+            $rawToken,
+            $createdAt->add(new DateInterval('PT1H')),
+            $createdAt->add(new DateInterval('PT1H15M')),
+        ));
     }
 
     public function testSessionSlidingExpiryIsCappedAndAbsoluteLifetimeIsEnforced(): void
@@ -182,6 +187,44 @@ final class PdoAuthenticationPersistenceTest extends TestCase
             $token,
             $createdAt->add(new DateInterval('PT1H')),
             $createdAt->add(new DateInterval('PT1H15M')),
+        ));
+    }
+
+    public function testTouchAcceptsAnActiveSessionWhenMySqlUpdateIsANoOpWithinTheSameSecond(): void
+    {
+        $repository = new AdminSessionRepository($this->pdo, 3600);
+        $token = 'same-second-session-' . bin2hex(random_bytes(16));
+        $now = $this->date('2026-07-16 12:00:00');
+        $expiresAt = $now->add(new DateInterval('PT15M'));
+
+        $repository->create($this->adminId, $token, 'authenticated', $now, $expiresAt, $now);
+
+        self::assertSame($this->adminId, $repository->activeAdminId($token, 'authenticated', $now));
+        self::assertTrue(
+            $repository->touch($token, $now, $expiresAt),
+            'An unchanged but active same-second session must not be treated as expired.',
+        );
+    }
+
+    public function testTouchRejectsIdleExpiredAndUnknownSessionsWhenUpdateChangesNoRows(): void
+    {
+        $repository = new AdminSessionRepository($this->pdo, 3600);
+        $token = 'idle-expired-session-' . bin2hex(random_bytes(16));
+        $createdAt = $this->date('2026-07-16 12:00:00');
+        $expiresAt = $createdAt->add(new DateInterval('PT15M'));
+        $activityAt = $expiresAt;
+
+        $repository->create($this->adminId, $token, 'authenticated', $createdAt, $expiresAt);
+
+        self::assertFalse($repository->touch(
+            $token,
+            $activityAt,
+            $activityAt->add(new DateInterval('PT15M')),
+        ));
+        self::assertFalse($repository->touch(
+            'unknown-session-' . bin2hex(random_bytes(16)),
+            $createdAt,
+            $expiresAt,
         ));
     }
 

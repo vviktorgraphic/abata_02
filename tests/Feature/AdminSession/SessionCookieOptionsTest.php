@@ -23,6 +23,19 @@ final class SessionCookieOptionsTest extends TestCase
         ], $options->toPhpOptions());
     }
 
+    public function testDevelopmentHttpCookieKeepsSecurityAttributesWithoutSecureTransportFlag(): void
+    {
+        $options = new SessionCookieOptions(secure: false, httpOnly: true, sameSite: 'Lax');
+
+        self::assertSame([
+            'lifetime' => 0,
+            'path' => '/',
+            'secure' => false,
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ], $options->toPhpOptions());
+    }
+
     public function testSameSiteNoneCannotBeUsedWithoutSecure(): void
     {
         $this->expectException(InvalidArgumentException::class);
