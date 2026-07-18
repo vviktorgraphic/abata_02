@@ -1,7 +1,7 @@
 # A Bata foglalási rendszer – rendszerspecifikáció
 
-**Állapot:** IMPLEMENTED dokumentációs index; az 1.0 célállapot PLANNED
-**Utolsó ellenőrzés:** 2026-07-16, Sprint 3 munkafa (commit előtt)
+**Állapot:** IMPLEMENTED dokumentációs index; 1.0.0-rc1 repository-validáció
+**Utolsó ellenőrzés:** 2026-07-18, `release/rc1` munkafa (commit előtt)
 
 ## Cél és igazságforrás
 
@@ -34,6 +34,7 @@ A jelölések jelentése:
 | [11 – Roadmap és döntések](11_ROADMAP_AND_DECISIONS.md) | Sprintterv, ADR-ek és nyitott kérdések |
 | [13 – Backup és restore](13_BACKUP_AND_RESTORE.md) | Biztonságos MySQL backup/restore, staging próba és RPO/RTO mérés |
 | [15 – Production deployment](15_DEPLOYMENT.md) | cPanel release, HTTPS, proxy, session és SMTP runbook |
+| [16 – Release Candidate RC1](16_RELEASE_CANDIDATE_RC1.md) | Funkcionális bizonyíték, staging checklist, E2E és release gate |
 | [98 – Nyitott döntések](98_OPEN_DECISIONS.md) | Prioritásos, még tulajdonosi vagy architekturális döntést igénylő kérdések |
 | [99 – Tulajdonosi döntések](99_OWNER_DECISIONS.md) | Dátummal rögzített, lezárt tulajdonosi döntések |
 

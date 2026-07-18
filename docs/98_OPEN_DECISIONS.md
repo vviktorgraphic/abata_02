@@ -2,7 +2,7 @@
 
 **Állapot:** DECISION REQUIRED
 **Utolsó felülvizsgálat:** 2026-07-18
-**Ellenőrzött kódbázis:** Sprint 9 production-deployment munkafa, commit előtt
+**Ellenőrzött kódbázis:** `release/rc1` munkafa, commit előtt
 
 A lezárt döntések forrása a [tulajdonosi döntési napló](99_OWNER_DECISIONS.md).
 

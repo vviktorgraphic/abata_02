@@ -1,0 +1,41 @@
+# A Bata 1.0.0-rc1 release notes
+
+**Állapot:** release candidate forráskód; production kiadásra jelenleg **NO-GO**
+**Dátum:** 2026-07-18
+
+## Fő funkciók
+
+- publikus availability naptár és tranzakciós, idempotens booking request;
+- külön privacy- és booking-policy elfogadási snapshot;
+- e-mailes kétfaktoros admin hitelesítés, CSRF, session és rate limit;
+- admin foglaláslista, részlet, auditált státuszváltások és blocked periodok;
+- közös HUF pricing engine, admin pricing CRUD/preview és immutable ár-snapshot;
+- 7 Budapest-naptári napos/50%-os lemondási szabály;
+- booking- és státuszlevél outbox, SMTP commit után;
+- kézi Google Calendar/Szallas.hu iCal import és tokenes, PII-mentes export;
+- cPanel/Apache deployment, backup/restore és monitoring runbook.
+
+## Ismert korlátozások
+
+- Nincs automatikus outbox retry/stale-claim worker.
+- Nincs automatikus iCal cron, retry/backoff vagy eltűnési grace.
+- Nincs jóváhagyott cleanup/retention worker; booking-idempotencia időalapú törlése tilos.
+- Nincs online fizetés vagy automatikus kötbérbeszedés.
+- A jogi oldalak fejlesztői `noindex` placeholderek.
+- A release artefaktum és automatizált suite nem helyettesíti a valós cPanel, HTTPS, SMTP/DNS és restore smoke-ot.
+
+## Nyitott owner döntések
+
+A teljes, prioritásos lista: [docs/98_OPEN_DECISIONS.md](docs/98_OPEN_DECISIONS.md). Production előtt különösen szükséges a jogi tartalom és verzió, SMTP-konfiguráció, admin abszolút session limit, rate-limit értékek, retention, production pricing/IFA adatok, backup ütemezés és monitoring/escalation jóváhagyása.
+
+## Production előfeltételek
+
+1. Az [RC1 staging checklist](docs/16_RELEASE_CANDIDATE_RC1.md) minden kötelező pontja bizonyítottan PASS.
+2. A [production deployment runbook](docs/15_DEPLOYMENT.md) szerinti cPanel release és HTTPS smoke sikeres.
+3. A production SMTP, SPF, DKIM és DMARC ellenőrzött.
+4. A checksumolt backup eltérő staging adatbázisba visszaállítható; az RPO/RTO mérés dokumentált.
+5. A jogi és tulajdonosi P0 kapuk lezártak.
+
+## Release recommendation
+
+**GO** a staging RC1 validációra. **NO-GO** production release-re mindaddig, amíg a fenti környezetfüggő és owner/legal kapuk nincsenek igazoltan lezárva.

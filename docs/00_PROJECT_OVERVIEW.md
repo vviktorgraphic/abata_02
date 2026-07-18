@@ -1,7 +1,7 @@
 # Projektáttekintés
 
 **Állapot:** IMPLEMENTED állapotfelmérés és PLANNED 1.0 rendszerterv
-**Utolsó ellenőrzött commit:** `9adc564`
+**Utolsó ellenőrzés:** 2026-07-18, `release/rc1` munkafa (commit előtt)
 
 ## A dokumentum célja
 
@@ -17,10 +17,10 @@ Ez a dokumentum elválasztja a repositoryban igazolható jelenlegi működést a
 
 | Szerepkör | Cél | Állapot |
 |---|---|---|
-| Publikus látogató / vendég | Foglaltság megtekintése, időszak és vendégadatok megadása | **IMPLEMENTED**, mentés nélkül |
-| Adminisztrátor | Belépés jelszóval és e-mailes 2FA-val; foglalások és árak kezelése | Auth, booking és pricing admin **IMPLEMENTED**; külső integrációk **PLANNED** |
+| Publikus látogató / vendég | Foglaltság megtekintése, időszak és vendégadatok megadása, pending igény beküldése | **IMPLEMENTED**, tranzakciós és idempotens mentéssel |
+| Adminisztrátor | Belépés jelszóval és e-mailes 2FA-val; foglalások, árak és naptárforrások kezelése | Auth, booking, pricing és kézi iCal admin **IMPLEMENTED**; automatikus jobok **PLANNED** |
 | Üzemeltető | Telepítés, migráció, mentés, cron, SMTP és megfigyelés | **PLANNED** productionre; Docker fejlesztői parancsok **IMPLEMENTED** |
-| Külső naptárszolgáltató | iCal események átadása és fogadása | **DEFERRED** későbbi sprintre |
+| Külső naptárszolgáltató | iCal események átadása és fogadása | Kézi import és tokenes export **IMPLEMENTED**; automatikus sync **PLANNED** |
 
 > **DECISION REQUIRED:** El kell dönteni, hogy az adminisztrátor és az üzemeltető 1.0-ban külön jogosultsági szerepkör-e. A jelenlegi `admins` séma nem tartalmaz szerepkört.
 
@@ -70,7 +70,7 @@ Minden tervezett modul elfogadási feltétele legalább: dokumentált üzleti sz
 | Fejlesztői környezet | Docker Compose, Mailpit, opcionális phpMyAdmin | **IMPLEMENTED** |
 | Production | hagyományos cPanel PHP/MySQL tárhely | **PLANNED** |
 | E-mail | cserélhető SMTP absztrakció; 2FA és booking-request sablon/transport | **IMPLEMENTED:** booking outbox + egyszeri commit utáni küldés; retry/admin resend **PLANNED** |
-| Naptárintegráció | RFC 5545 alapú iCal | **DEFERRED** |
+| Naptárintegráció | RFC 5545 alapú iCal | Kézi import és tokenes export **IMPLEMENTED**; cron/retry/grace **PLANNED** |
 
 ## cPanel-kompatibilitás
 
@@ -139,7 +139,7 @@ Példa: a `2026-08-01` érkezés és `2026-08-05` távozás négy éjszakát jel
 | Admin biztonsági alap | jelszó + e-mailes 2FA, session, CSRF, rate limit, audit | **IMPLEMENTED**, release smoke szükséges |
 | Foglalási mag | mentés, konkurenciavédelem, státuszok, admin kezelés | **IMPLEMENTED** |
 | Kereskedelmi folyamat | összetett pricing/policy/cancellation snapshot, outbox és SMTP-kísérlet | **IMPLEMENTED**; automatikus retry **PLANNED** |
-| Integráció és release | iCal, staging hardening, backup/restore, production smoke | **PLANNED** |
+| Integráció és release | iCal, hardening, backup/restore és deployment runbook | Repository scope **IMPLEMENTED**; valós staging/production smoke **PENDING** |
 
 Az 1.0 kiadás csak akkor fogadható el, ha a kritikus üzleti utak automatizált tesztjei sikeresek, a security kontrollok ellenőrzöttek, a staging telepítés és egy restore próba dokumentáltan lefutott, és nem maradt kiemelt `DECISION REQUIRED` kérdés, amely az adatok vagy az árképzés helyességét befolyásolja.
 
@@ -161,6 +161,6 @@ Az 1.0 kiadás csak akkor fogadható el, ha a kritikus üzleti utak automatizál
 
 **IMPLEMENTED komponensek:** az admin credential ellenőrzés, e-mailes 2FA, csúszó idle session, CSRF, rate limit, audit persistence, SMTP absztrakció és minimális admin UI kódja elkészült. A `008_create_admin_authentication_tables.sql` létrehozza a szükséges auth-táblákat.
 
-**IMPLEMENTED:** admin üzleti felület, jóváhagyás, pricing CRUD/preview, publikus booking create és snapshot/outbox. **PLANNED:** iCal, online fizetés és általános automatikus e-mail retry; release előtt HTTP/Mailpit smoke szükséges.
+**IMPLEMENTED:** admin üzleti felület, jóváhagyás, pricing CRUD/preview, publikus booking create és snapshot/outbox, valamint kézi iCal import és tokenes export. **PLANNED:** automatikus iCal/outbox retry és online fizetés; release előtt staging HTTP/SMTP/provider smoke szükséges.
 
 **DECISION REQUIRED:** abszolút session maximum; production SMTP port/titkosítás/auth/feladó; végleges rate-limit küszöbök.

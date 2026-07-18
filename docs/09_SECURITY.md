@@ -1,15 +1,15 @@
 # Biztonsági specifikáció és threat model
 
-**Állapot:** az alább külön jelölt alapkontrollok IMPLEMENTED; az 1.0 hardening és auth kontrollok PLANNED
-**Utolsó ellenőrzött commit:** `9adc564`
+**Állapot:** alkalmazási auth, booking és iCal biztonsági kontrollok IMPLEMENTED; környezetfüggő smoke és egyes hardening/retention elemek PENDING/PLANNED
+**Utolsó ellenőrzés:** 2026-07-18, `release/rc1` munkafa (commit előtt)
 
 ## Hatókör és biztonsági alapállás
 
-Ez a dokumentum a publikus foglalási felületet és API-t, a tervezett adminfelületet, adatbázist, e-mailt, iCal-integrációt, naplókat, backupot és cPanel üzemeltetést fedi le. Az egyetlen jelenlegi admin route csak [JSON placeholder](04_ADMIN_AND_AUTHENTICATION.md#jelenlegi-állapot), ezért az adminvédelmek még nem tekinthetők működőnek.
+Ez a dokumentum a publikus foglalási felületet és API-t, az implementált adminfelületet, adatbázist, e-mailt, iCal-integrációt, naplókat, backupot és cPanel üzemeltetést fedi le. Az admin auth/booking/pricing/iCal HTML route-ok működnek; általános JSON admin API nincs.
 
 **IMPLEMENTED:** környezeti változó alapú adatbázis-konfiguráció; hiányzó DB-változók fail-fast hibája; PDO exception mód, `utf8mb4`, natív prepared statement (`PDO::ATTR_EMULATE_PREPARES=false`); `public/` document root; `.env` kizárása a repositoryból; foglalási lekérdezésekben prepared statementek; publikus API általános 500-as hibája stack trace és credential nélkül.
 
-**IMPLEMENTED Sprint 3 alap:** admin auth/2FA/session/CSRF, rate limit, audit metadata/persistence és SMTP adapter. **PLANNED vagy környezetfüggő:** HTTPS-kényszerítés, teljes security-header smoke, központi output escaping és input séma, GDPR-retenció, backup titkosítás/restore próba, iCal- és production SMTP-hardening.
+**IMPLEMENTED:** admin auth/2FA/session/CSRF, rate limit, audit metadata/persistence, SMTP guard, HTTP security headerek/trusted proxy, publikus input hardening és iCal SSRF/token kontrollok. **PLANNED vagy környezetfüggő:** valós HTTPS/security-header/SMTP/iCal staging smoke, GDPR-retenció, backup titkosítás és restore próba.
 
 ## Védendő értékek és bizalmi határok
 
@@ -23,12 +23,12 @@ Bizalmi határ van a böngésző és HTTPS végpont, PHP és MySQL/SMTP, cron é
 
 ## Könnyű threat model
 
-Skála: valószínűség és hatás `Alacsony`, `Közepes` vagy `Magas`. Az állapot a `9adc564` commiton ellenőrzött tényleges védelmet jelzi.
+Skála: valószínűség és hatás `Alacsony`, `Közepes` vagy `Magas`. A történeti táblázatot a későbbi Sprint 7–9 IMPLEMENTED bekezdésekkel és az RC1 checklisttel együtt kell értelmezni.
 
 | # | Fenyegetés | Érintett elem | Valószínűség | Hatás | Kötelező kontroll | Ellenőrzési mód | Állapot |
 |---:|---|---|---|---|---|---|---|
 | 1 | SQL injection | API, admin, MySQL | Közepes | Magas | PDO prepared statement; dinamikus oszlop/rendezés allowlist | Unit/integration teszt támadó inputtal; kódreview | IMPLEMENTED a jelenlegi értékes lekérdezéseknél; PLANNED minden új queryre |
-| 2 | Tárolt/reflektált/DOM XSS | publikus UI, admin UI | Közepes | Magas | Kontextushelyes HTML/attribútum/JS escaping; `textContent`; CSP | Automata payload teszt és manuális böngészőteszt | PLANNED; nincs teljes admin/booking write felület |
+| 2 | Tárolt/reflektált/DOM XSS | publikus UI, admin UI | Közepes | Magas | Kontextushelyes HTML/attribútum/JS escaping; `textContent`; CSP | Automata payload teszt és manuális böngészőteszt | IMPLEMENTED alap; teljes böngésző/fuzz audit PENDING |
 | 3 | CSRF | admin auth POST-ok, logout | Magas | Magas | Sessionhöz kötött CSRF-token minden auth state-change kérésen; SameSite cookie | Feature teszt hiányzó/hibás tokennel | IMPLEMENTED auth route-okon |
 | 4 | Jelszó brute-force | admin login | Magas | Magas | IP- és fiókalapú rate limit és lockout | Küszöb- és időablak teszt; staging terhelési próba | IMPLEMENTED konfigurálható alapértékekkel; production küszöb OPEN |
 | 5 | 2FA-kód találgatása | 2FA verify | Közepes | Magas | 6 számjegy, 10 perc, max. 5 próbálkozás, atomi számláló, rate limit | Határérték-, lejárat- és persistence teszt | IMPLEMENTED |
@@ -37,27 +37,27 @@ Skála: valószínűség és hatás `Alacsony`, `Közepes` vagy `Magas`. Az áll
 | 8 | Credential stuffing / fiók-enumeráció | admin login | Magas | Magas | Általános hiba, dummy-hash időzítés, rate limit | Ismeretlen/inaktív/hibás fiók teszt | IMPLEMENTED alap |
 | 9 | Spam vagy automatizált booking | booking create | Magas | Közepes | Rate limit, idempotency key, honeypot, szervervalidáció | API abuse teszt és metrika/riasztás | IMPLEMENTED alap; production küszöb OPEN |
 | 10 | E-mail header injection | SMTP feladó/címzett/tárgy | Közepes | Magas | SMTP adapter, címvalidáció, CR/LF tiltás, sablon allowlist; `mail()` tilos | Unit teszt CR/LF payloadokkal | IMPLEMENTED 2FA mailerben |
-| 11 | iCal feed token kiszivárgása | export URL, log, analytics | Közepes | Magas | Nagy entrópiájú rotálható token, URL/log redaction, PII-mentes feed, cache szabály | Logscan, tokenrotációs és jogosulatlan hozzáférési teszt | PLANNED; iCal nincs |
-| 12 | SSRF külső iCal URL-lel | iCal importer, belső hálózat | Magas | Magas | Csak HTTPS, DNS/IP validáció minden redirectnél, privát/link-local/metadata cím tiltása, port allowlist | SSRF tesztek loopback, RFC1918, IPv6 és redirect célokra | PLANNED |
-| 13 | Rosszindulatú vagy túlméretes ICS | parser, memória/CPU, DB | Közepes | Magas | Méret-, esemény-, sor- és időkorlát, biztonságos parser, sémaellenőrzés, tranzakció | Fuzz, zip/size jellegű és hibás encoding tesztek | PLANNED |
+| 11 | iCal feed token kiszivárgása | export URL, log, analytics | Közepes | Magas | Nagy entrópiájú rotálható token, URL/log redaction, PII-mentes feed, cache szabály | Token- és jogosulatlan endpoint teszt; staging access-log scan | IMPLEMENTED alkalmazási kontroll; log smoke PENDING |
+| 12 | SSRF külső iCal URL-lel | iCal importer, belső hálózat | Magas | Magas | Csak HTTPS, DNS/IP validáció minden redirectnél, privát/link-local/metadata cím tiltása, port allowlist | SSRF tesztek loopback, RFC1918, IPv6 és redirect célokra | IMPLEMENTED automatizált tesztekkel |
+| 13 | Rosszindulatú vagy túlméretes ICS | parser, memória/CPU, DB | Közepes | Magas | Méret-, redirect- és eseménykorlát, biztonságos parser, validáció, tranzakció | Size/redirect és hibás ICS tesztek; további fuzz stagingen | IMPLEMENTED core; teljes fuzz PENDING |
 | 14 | Race condition / double booking | booking create, MySQL | Magas | Magas | Készlet-sorzár, tranzakciós confirmed/blocked újraellenőrzés és idempotencia | Párhuzamos integration teszt; pending overlap engedett | IMPLEMENTED |
 | 15 | PII vagy secret a logokban | app, audit, SMTP/iCal log | Közepes | Magas | Strukturált allowlist log, redaction, korrelációs ID; body/token/jelszó tiltása | Automata logscan ismert canary értékekkel | PLANNED egységesen; jelenlegi API hiba általános |
 | 16 | Secret commit/repository history | Git, `.env`, config | Közepes | Magas | `.env` ignore, `.env.example` csak placeholder, secret scanner, rotációs eljárás | CI secret scan és release előtti history ellenőrzés | IMPLEMENTED ignore/példa szabály; PLANNED automata scan |
-| 17 | Jogosulatlan adminművelet / IDOR | admin API és objektumok | Magas | Magas | Minden kérésen szerveroldali authz, objektumszintű ellenőrzés, deny-by-default, audit | Feature teszt anonim, lejárt és más azonosítós kéréssel | PLANNED; admin üzleti API nincs |
+| 17 | Jogosulatlan adminművelet / IDOR | admin route-ok és objektumok | Magas | Magas | Minden kérésen szerveroldali auth, deny-by-default, CSRF és audit | Feature teszt anonim/lejárt sessionnel és hibás célazonosítóval | IMPLEMENTED a jelenlegi HTML admin route-okon; JSON admin API PLANNED |
 | 18 | Backup kiszivárgása | SQL dump, fájlbackup | Közepes | Magas | Titkosítás átvitelkor és tároláskor, elkülönített minimális hozzáférés, retenció, leltár | Jogosultság-review, restore gyakorlat és hozzáférési audit | PLANNED |
-| 19 | Clickjacking | publikus/admin oldal | Közepes | Közepes | CSP `frame-ancestors 'none'` és/vagy `X-Frame-Options: DENY` | HTTP header teszt | PLANNED |
-| 20 | MIME sniffing / tartalomértelmezés | HTTP válaszok, assetek | Közepes | Közepes | Helyes Content-Type, `X-Content-Type-Options: nosniff` | Header smoke teszt minden response-osztályra | PLANNED; JSON Content-Type IMPLEMENTED az ismert JSON válaszokon |
+| 19 | Clickjacking | publikus/admin oldal | Közepes | Közepes | CSP `frame-ancestors 'none'` és `X-Frame-Options: DENY` | HTTP header teszt és staging smoke | IMPLEMENTED header; staging smoke PENDING |
+| 20 | MIME sniffing / tartalomértelmezés | HTTP válaszok, assetek | Közepes | Közepes | Helyes Content-Type, `X-Content-Type-Options: nosniff` | Automatizált header teszt és staging smoke | IMPLEMENTED közös header; teljes staging smoke PENDING |
 | 21 | Hibás CORS | API, admin session | Közepes | Magas | Same-origin alapértelmezés; nincs wildcard credentiallel; explicit origin/method/header allowlist ha szükséges | Preflight és idegen Origin teszt | PLANNED explicit policy; jelenleg nincs CORS engedélyezés |
 | 22 | Open redirect | login utáni `return_to` | Közepes | Közepes | Csak relatív belső allowlist útvonal, séma/host tiltás | Redirect payload feature teszt | PLANNED |
 | 23 | Hibainformáció- és stack trace szivárgás | API, PHP/cPanel log | Közepes | Közepes | Production `display_errors=Off`, általános válasz, védett részletes log | Hibainjektálás stagingen és response/log review | IMPLEMENTED általános 500 az availability/validate ágon; PLANNED globális handler |
 | 24 | Tömeges mezőhozzárendelés / hibás input | planned admin/booking write API | Közepes | Magas | Végpontonkénti input schema, allowlist DTO, hossz/típus/tartomány limit | Ismeretlen és privilegizált mezők feature tesztje | PLANNED |
-| 25 | Függőség/supply-chain kompromittálása | Composer, deployment | Közepes | Magas | `composer.lock`, audit, minimális csomagok, trusted artifact, review | `composer audit`, lock-diff review, SBOM döntés szerint | IMPLEMENTED lockfile; PLANNED release gate |
+| 25 | Függőség/supply-chain kompromittálása | Composer, deployment | Közepes | Magas | `composer.lock`, audit, minimális csomagok, trusted artifact, review | `composer audit --locked`, lock-diff review, SBOM döntés szerint | IMPLEMENTED RC1 gate; SBOM opcionális/PLANNED |
 
 ## Kötelező kontrollok
 
 ### Jelszó és 2FA
 
-**PLANNED:** jelszót csak PHP `password_hash()` aktuális ajánlott algoritmusával szabad tárolni, plaintextben, visszafejthetően vagy logban soha. Verify után szükség szerint rehash készül. Jelszó-reset külön, egyszer használatos, rövid lejáratú folyamatot igényel; megvalósítása előtt külön specifikáció szükséges. A 2FA részleteit, lockoutot és hibafolyamatokat az [admin auth dokumentum](04_ADMIN_AND_AUTHENTICATION.md#bejelentkezési-állapotgép) szabályozza.
+**IMPLEMENTED:** a jelszó PHP `password_hash()` hashként tárolódik, verify után szükség szerint rehash készül; plaintextben, visszafejthetően vagy logban nem maradhat. **PLANNED:** külön, egyszer használatos, rövid lejáratú jelszó-reset folyamat. A 2FA részleteit, lockoutot és hibafolyamatokat az [admin auth dokumentum](04_ADMIN_AND_AUTHENTICATION.md#bejelentkezési-állapotgép) szabályozza.
 
 ### HTTPS, cookie és session
 

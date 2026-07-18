@@ -1,7 +1,7 @@
 # Architektúra
 
 **Állapot:** IMPLEMENTED architektúra-leltár és PLANNED 1.0 célarchitektúra
-**Utolsó ellenőrzött commit:** `9adc564`
+**Utolsó ellenőrzés:** 2026-07-18, `release/rc1` munkafa (commit előtt)
 
 ## Hatókör és alapelvek
 
@@ -35,7 +35,7 @@ templates/booking/           publikus szerveroldali HTML template
 tests/                       unit, feature és integration tesztek
 ```
 
-**IMPLEMENTED:** A booking, közös pricing engine/admin CRUD, admin-auth és SMTP modulok követik ezt a réteghatárt. Az iCal továbbra is **PLANNED**.
+**IMPLEMENTED:** a booking, közös pricing engine/admin CRUD, admin-auth, SMTP és kézi iCal import/export modulok követik ezt a réteghatárt. Az automatikus iCal worker továbbra is **PLANNED**.
 
 ## Webes request flow
 
@@ -168,7 +168,7 @@ sequenceDiagram
     UC-->>Cron: összegzés, napló és riasztási állapot
 ```
 
-Szövegesen: ez **DEFERRED**, kód és séma még nincs. A cron forrásonként korlátozott hálózati letöltést végez, a parser egész napos `[DTSTART, DTEND)` eseményeket validál, majd `UID` és forrás alapján idempotensen frissít. A külső eseményt nem szabad belső bookingként összemosni; eltűnés, `CANCELLED`, konfliktus és saját feed visszaimportálása külön állapot. Az iCal nem valós idejű. Elfogadás: SSRF-védelem, méret/időkorlát, ismételt futás idempotenciája, cancellation/eltűnés/loop/conflict tesztek és auditálható utolsó siker. Részletek: [iCal szinkron](07_ICAL_SYNC.md).
+Szövegesen: a biztonságos HTTPS fetch, parser, kézi admin sync, UID/forrás alapú idempotens persistence, konfliktusjelzés és sync log **IMPLEMENTED**. A külső esemény nem belső booking, hanem külön blocked periodhoz kapcsolódik. **PLANNED/DEFERRED:** automatikus cron, globális worker lock, retry/backoff és eltűnési grace; ezért a diagram `Cron` résztvevője célállapot, jelenleg a kézi admin művelet indítja a use case-t. Az iCal nem valós idejű. Részletek: [iCal szinkron](07_ICAL_SYNC.md).
 
 ## Konfigurációkezelés
 
@@ -251,7 +251,7 @@ Infrastructure --+  (Application portok implementációja)
 | Admin auth | `Application/Authentication`, `Application/TwoFactor`, session szabályok | PDO session/code repo, password verifier | login/2FA/logout controller | **IMPLEMENTED** |
 | Pricing | `Application/Pricing`, `Domain/Pricing` közös engine | rule/snapshot repo | publikus create, admin CRUD/preview | **IMPLEMENTED** |
 | E-mail | booking-request renderer és mail port | SMTP adapter, atomi outbox claim | commit utáni egyszeri küldés **IMPLEMENTED**; retry/admin resend **PLANNED** |
-| iCal | import/export use case és ICS modell | HTTP kliens, parser, PDO adapter | tokenes feed, cron import | **DEFERRED** |
+| iCal | import/export use case és ICS modell | HTTP kliens, parser, PDO adapter | kézi import és tokenes feed **IMPLEMENTED**; cron **PLANNED** |
 | Audit | közös audit esemény port | append-only PDO adapter | admin read-only lista | Port/írás **IMPLEMENTED**; lista **PLANNED** |
 
 ## Architekturális kockázatok és technikai adósság

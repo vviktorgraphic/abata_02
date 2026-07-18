@@ -1,15 +1,15 @@
 # Tesztelés és üzemeltetés
 
-**Állapot:** IMPLEMENTED fejlesztői alapok és PLANNED staging/production folyamatok
-**Utolsó ellenőrzött commit:** `9adc564`
+**Állapot:** fejlesztői/automatizált alapok és production runbookok IMPLEMENTED; valós staging/production végrehajtás PENDING
+**Utolsó ellenőrzés:** 2026-07-18, `release/rc1` munkafa (commit előtt)
 
 ## Igazolt kiindulási állapot
 
-**IMPLEMENTED:** A dokumentációs sprint előtti, `9adc564` commiton végzett futtatás eredménye **16 teszt, 47 assertion, sikeres**. A suite PHPUnit 10.5 alapú, és unit-, feature-, valamint feltételes MySQL-integrációs teszteket tartalmaz. Ez az eredmény nem igazolja a lent felsorolt jövőbeli modulokat.
+**HISTORICAL:** a korai dokumentációs állapotban 16 teszt/47 assertion futott. Az aktuális RC1 eredményt a [release candidate checklist](16_RELEASE_CANDIDATE_RC1.md) és a végső commit riportja rögzíti; a suite PHPUnit 10.5 unit-, feature- és MySQL-integrációs teszteket tartalmaz.
 
 **IMPLEMENTED:** Docker Compose fejlesztői környezetben PHP 8.2 + Apache, MySQL 8 healthcheckkel, Mailpit és opcionális phpMyAdmin érhető el. A `public/` az egyetlen webes document root, a frontend natív CSS/JavaScript, production build és Node.js runtime nélkül.
 
-Minden további, ebben a dokumentumban előírt új teszt és production eljárás **PLANNED**, hacsak külön nincs IMPLEMENTED-ként jelölve. A jelenlegi architektúrát az [architektúra](01_ARCHITECTURE.md), a biztonsági kontrollokat a [biztonság](09_SECURITY.md) részletezi.
+A repositoryban szereplő automatizált tesztek és Sprint 9 runbookok **IMPLEMENTED** állapotúak; a valós cPanel/HTTPS/SMTP/restore/monitoring smoke **PENDING**, hacsak külön nincs végrehajtottként bizonyítva. A jelenlegi architektúrát az [architektúra](01_ARCHITECTURE.md), a biztonsági kontrollokat a [biztonság](09_SECURITY.md) részletezi.
 
 ## Tesztpiramis
 
@@ -113,7 +113,7 @@ Staging és production nem oszthat adatbázist, SMTP credentialt, iCal tokent, s
 
 ### Előfeltételek
 
-**PLANNED:** PHP 8.2+ CLI és web SAPI azonos támogatott minor verzióval; PDO MySQL és a tényleges függőségekhez szükséges extensionök; MySQL 8 kompatibilitás; Composer 2 vagy előre elkészített vendor artifact; Apache document root kizárólag `public/`; HTTPS; cPanel cron; írható, web rooton kívüli log/átmeneti könyvtár.
+**IMPLEMENTED deployment követelmény:** PHP 8.2+ CLI és web SAPI; PDO MySQL, mbstring, curl és openssl; MySQL 8; Composer 2 vagy ellenőrzött vendor artifact; Apache document root kizárólag `public/`; HTTPS; webrooton kívüli log/session/backup könyvtár. A tényleges cPanel megfelelés stagingen PENDING.
 
 Node.js nem production runtime-függőség, és frontend build lépés nincs. Production Composer telepítés:
 
@@ -151,7 +151,7 @@ Ugyanez a minta alkalmazandó e-mail retry és más ütemezett job belépési po
 
 ## Backup és restore
 
-**PLANNED backup minimum:**
+**IMPLEMENTED eszköz és runbook; staging restore PENDING — backup minimum:**
 
 - automatikus, időbélyegzett MySQL mentés és az alkalmazás által feltöltött tartós fájlok mentése;
 - `.env`/secretek külön, hozzáférésvezérelt secret-kezelése; ne kerüljenek alkalmazás-archívumba;

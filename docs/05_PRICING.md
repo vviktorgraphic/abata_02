@@ -1,7 +1,7 @@
 # Árképzés
 
-**Állapot:** minimális Sprint 4 kalkuláció és snapshot IMPLEMENTED + bővített 1.0 modell PLANNED
-**Utolsó ellenőrzött commit:** `9adc564`
+**Állapot:** Sprint 6 közös pricing engine, admin CRUD/preview és immutable snapshot IMPLEMENTED; konkrét production értékek és opcionális kedvezmények OPEN/PLANNED
+**Utolsó ellenőrzés:** 2026-07-18, `release/rc1` munkafa (commit előtt)
 
 Ez a dokumentum az 1.0 árkalkuláció implementálható keretét rögzíti. Nem határoz meg végleges üzleti árakat. Kapcsolódó specifikációk: [adatbázis- és domainmodell](02_DATABASE_AND_DOMAIN_MODEL.md), [publikus foglalási folyamat](03_PUBLIC_BOOKING_FLOW.md), [API referencia](08_API_REFERENCE.md), [biztonság](09_SECURITY.md), [roadmap és döntések](11_ROADMAP_AND_DECISIONS.md).
 
@@ -13,9 +13,11 @@ Ez a dokumentum az 1.0 árkalkuláció implementálható keretét rögzíti. Nem
 - **IMPLEMENTED (Sprint 6):** pricing repository, közös domain engine, admin CRUD és preview, tételes immutable snapshot, fix díj-, IFA- és konfigurálható exemption modell. A publikus booking és az admin preview ugyanazt az engine-határt használja.
 - **IMPLEMENTED (Sprint 6):** a támogatott alapegységek `per_person_per_night`, `per_night` és `per_booking`; a korábbi `person_night` értéket a 013 migráció konvertálja.
 
-> **Eltérés / DECISION REQUIRED:** a jelenlegi `nightly_price` egyetlen összeg, miközben a tervezett modell személyenkénti, életkor-, szezon-, hétvége- és díjalapú komponenseket kíván. A meglévő táblát nem szabad végleges modellként kezelni; bővítése vagy kiváltása kizárólag verziózott migrációval történhet.
+> **IMPLEMENTED bővítés:** a történeti `nightly_price` mellett a Sprint 6 verziózott migrációi és komponensmezői biztosítják a három base unitot, szezon/hétvége módosítást, fix díjat, IFA-t és exemption kulcsokat. Gyermekkedvezményt vagy production összeget a rendszer nem talál ki.
 
-## 2. Tervezett számítási modell — PLANNED
+## 2. Számítási modell — IMPLEMENTED és PLANNED elemek
+
+**IMPLEMENTED:** éjszakaszám, stay-length sáv, három base unit, szezonális és konfigurált hétvégi adjustment, fix díj, IFA/exemption és egész-HUF HALF_UP line-item kerekítés. **PLANNED / DECISION REQUIRED az alábbi célmodellben:** gyermek-kategória és kedvezmény, egyedi dátum override, cleaning fee mint külön üzleti típus, általános discount és manuális ár-override. A következő alpontok normatív célmodellje csak az explicit IMPLEMENTED listáig tekinthető elkészültnek.
 
 ### 2.1 Alapfogalmak és invariánsok
 
@@ -92,7 +94,9 @@ Javasolt technikai szabály: minden tétel nagy pontosságú decimális értékk
 
 > **DECISION REQUIRED:** a HUF egész forintra kerekítés és a `HALF_UP` mód üzleti/számviteli jóváhagyása, illetve hogy tételenként vagy csak végösszegben történjen kerekítés.
 
-## 3. Ár-pillanatkép és életciklus — PLANNED
+## 3. Ár-pillanatkép és életciklus — IMPLEMENTED és PLANNED elemek
+
+**IMPLEMENTED snapshot:** kalkulációs időpont, dátumok/éjszakák/vendégszám, alkalmazott szabályazonosítók, base unit, line itemek, accommodation fee, tax, total és HUF; a korábbi booking snapshotot későbbi szabálymódosítás nem írja át. **PLANNED:** gyermek-kategória, discount/cleaning/manual override mezők, explicit újraszámítás és snapshot-verziótörténet. Az alábbi teljes célmezőlista ezeket a tervezett elemeket is tartalmazza.
 
 Árajánlat vagy foglalás létrehozásakor megváltoztathatatlan snapshot készüljön legalább ezekkel:
 
@@ -126,7 +130,9 @@ Az alábbi `P = 10 000 HUF/felnőtt/éj`, gyermek-szorzók, díjak és százalé
 11. **Kerekítési példa:** szemléltető tétel `10 000 × 0,333 = 3 330,00`, más paraméternél `3 330,50 → 3 331 HUF` `HALF_UP` esetén. **DECISION REQUIRED:** elfogadott kerekítési mód.
 12. **Nem kombinálható kedvezmények:** `100 000` alapra szemléltető `10%` vagy fix `15 000`; ha csak a nagyobb választható, `100 000 - 15 000 = 85 000 HUF`. **DECISION REQUIRED:** kombinálási politika.
 
-## 5. Hibák és válaszviselkedés — PLANNED
+## 5. Hibák és válaszviselkedés — IMPLEMENTED és PLANNED elemek
+
+**IMPLEMENTED:** dátum/vendég/bázisegység/pénz validáció, hiányzó szabály és azonos nyertes prioritás esetén biztonságos kalkulációleállás. **PLANNED vagy owner-adatfüggő:** gyermek-kategória, kedvezmény és jogilag jóváhagyott IFA-mentesség minden célállapotbeli hibája; az alábbi lista vegyesen tartalmazza ezeket.
 
 Kalkuláció nem készülhet végleges eredménnyel, ha:
 
@@ -140,7 +146,9 @@ Kalkuláció nem készülhet végleges eredménnyel, ha:
 
 A publikus API mezőszintű, PII-mentes validációs hibát adjon; belső konfigurációs hiba általános publikus üzenetet és korrelációs azonosítót kapjon. Stack trace, szabálybelső vagy személyes adat nem kerülhet válaszba/logba.
 
-## 6. Admin szerkesztési igények — PLANNED
+## 6. Admin szerkesztés — IMPLEMENTED és PLANNED elemek
+
+**IMPLEMENTED:** szabálylista, létrehozás/szerkesztés, aktiválás/inaktiválás, validáció, CSRF/auth guard, audit és preview. **PLANNED:** külön jövőbeli verzió workflow, tömeges módosítás/megerősítés és manuális booking-árfelülírás. Az alábbi igénylista a teljes célállapotot írja le.
 
 - Lista, létrehozás, jövőbeli hatályú verzió létrehozása és inaktiválás; felhasznált szabály hard delete-je tilos.
 - Dátum-, tartózkodáshossz- és prioritásátfedések azonnali jelzése.
@@ -149,7 +157,9 @@ A publikus API mezőszintű, PII-mentes validációs hibát adjon; belső konfig
 - Minden módosítás auditálása régi/új értékkel; tömeges módosítás előtt megerősítés.
 - Manuális booking-árfelülírás külön jogosultság, kötelező indok és az eredeti összeg megtartása mellett.
 
-## 7. Elfogadási feltételek — PLANNED
+## 7. Elfogadási feltételek — részben IMPLEMENTED
+
+**IMPLEMENTED elfogadás:** a jelenlegi engine, repository, admin controller és immutable booking snapshot automatizált tesztjei. **PLANNED elfogadás:** gyermek-kedvezmény, általános discount, explicit újraszámítás/verziótörténet és manuális override pontjai; ezek teljesítését az RC1 nem állítja.
 
 1. Unit tesztek fedik a fél-nyitott éjszakaszámot, sávhatárokat, gyermek-kategóriákat, szezonváltást, hétvégét, díjat, IFA-t, kedvezményt és kerekítést.
 2. Integrációs teszt igazolja a szabályverziók determinisztikus kiválasztását és a snapshot változtathatatlanságát.
@@ -170,4 +180,4 @@ A Sprint 4 történeti implementációja kizárólag konfigurált `person_night`
 
 Hiányzó szabály vagy azonos nyertes prioritás konfigurációs hiba; booking nem jön létre hamis `0.00` árral. Az immutable snapshot tartalmazza a számítás időpontját, intervallumot, éjszakaszámot, vendégadatokat, szabályazonosítókat, a három támogatott alapegység egyikét, line itemeket, accommodation fee/tax/total értéket és `HUF` pénznemet.
 
-**PLANNED, döntés szükséges:** gyermekár/kedvezmény, IFA és mentességek, hétvégi és szezonális szabályok együttalkalmazása, fix díj, kedvezmény és admin felülírás. Ezekből a kód nem talál ki üzleti értéket. A demo seed kizárólag szemléltető fejlesztési adat, nem production ár.
+**OPEN / PLANNED, döntés szükséges:** gyermekár/kedvezmény, konkrét production IFA és jogi mentességek, konkrét hétvégi/szezonális/fix díj értékek, kedvezmény és admin ár-felülírás. A konfigurálható IFA/exemption, hétvégi/szezonális adjustment és fix díj számítási mechanizmusa IMPLEMENTED, de a kód nem talál ki production üzleti értéket. A demo seed kizárólag szemléltető fejlesztési adat.

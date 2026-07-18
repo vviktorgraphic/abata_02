@@ -1,7 +1,7 @@
 # Roadmap és döntési napló
 
 **Állapot:** Sprint 1–9 alkalmazási és deployment-readiness scope IMPLEMENTED, környezetfüggő release-kapuk nyitottak
-**Utolsó ellenőrzött állapot:** Sprint 9 production-deployment munkafa, commit előtt
+**Utolsó ellenőrzött állapot:** `release/rc1` munkafa, commit előtt
 
 ## Kiindulási helyzet
 
@@ -32,7 +32,7 @@
 | ADR-006 | IMPLEMENTED | Egyetlen szálláshely | Nincs property azonosító a jelenlegi sémában; multi-property **OUT OF SCOPE** 1.0-ban. |
 | ADR-007 | IMPLEMENTED | Repository rétegek read és booking write oldalon | A booking create tranzakciós PDO adapterrel, application/domain határral működik. |
 | ADR-008 | IMPLEMENTED alap | SMTP transport és booking e-mail outbox/log | Közvetlen `mail()` nincs; atomi egyszeri claim működik, retry/admin resend és production SMTP-paraméterek még nyitottak. |
-| ADR-009 | PLANNED | E-mailes 2FA az 1.0-ban | TOTP bővíthetőség megmarad, de TOTP **DEFERRED**. |
+| ADR-009 | IMPLEMENTED | E-mailes 2FA az 1.0-ban | TOTP bővíthetőség megmarad, de TOTP **DEFERRED**. |
 | ADR-010 | IMPLEMENTED | Query-tokenes iCal export feed | A token hashként tárolt, rotálható capability secret; feed nem tartalmaz PII-t és pending bookingot. |
 | ADR-011 | IMPLEMENTED alap | Importált iCal esemény külön entitás | Nem keverhető belső bookinggal; forrás és UID alapján idempotensen külön blocked periodhoz kapcsolódik. Eltűnés/grace PLANNED. |
 | ADR-012 | IMPLEMENTED | Megváltoztathatatlan ár-pillanatkép | Későbbi árszabály-változás nem írja át a korábbi booking árát. |
@@ -83,7 +83,7 @@ Tulajdonosi döntés után ebben a fájlban dátummal, indoklással és érintet
 
 Az admin authentication foundation komponensei **IMPLEMENTED** állapotúak: credential check, e-mailes 2FA, session/CSRF, rate limiting, audit persistence, mailer/SMTP, migráció és minimális auth UI. A végleges elfogadás feltétele a composition root bekötése, friss adatbázisos migráció, teljes teszt és Mailpit/browser smoke.
 
-Az admin booking CRUD és az összetett pricing admin/engine **IMPLEMENTED**. Az iCal és az általános automatikus e-mail retry rendszer továbbra is **PLANNED**.
+Az admin booking CRUD, az összetett pricing admin/engine és a kézi iCal import/tokenes export **IMPLEMENTED**. Az automatikus iCal cron/retry/grace és az általános automatikus e-mail retry rendszer továbbra is **PLANNED**.
 
 Nyitott kapuk: abszolút session maximum; production SMTP port/TLS/auth/feladó; végleges rate-limit küszöbök és retention.
 
@@ -91,11 +91,11 @@ Nyitott kapuk: abszolút session maximum; production SMTP port/TLS/auth/feladó;
 
 **IMPLEMENTED Sprint 4 történeti alap:** `POST /api/bookings`, tranzakciós készletzár, pending overlap, idempotencia, gyermekéletkorok és immutable snapshot/outbox. A Sprint 6 ezt közös összetett HUF pricing engine-re bővítette.
 
-**IMPLEMENTED a későbbi sprintekben:** admin approval/list/detail és pricing admin CRUD/összetett komponensmodell. **PLANNED:** production pricing értékek, outbox retry/stale claim recovery, iCal és online fizetés.
+**IMPLEMENTED a későbbi sprintekben:** admin approval/list/detail, pricing admin CRUD/összetett komponensmodell és kézi iCal import/tokenes export. **PLANNED:** production pricing értékek, outbox retry/stale claim recovery, automatikus iCal jobok és online fizetés.
 
 ## Sprint 5 teljesítési állapot
 
-**IMPLEMENTED:** admin lista/részlet, explicit state machine, tranzakciós státuszváltás/history/audit/outbox, concurrency lock, blocked-period kezelés, státusz-email és security guard. A Pricing Administration Sprint 6-ban elkészült. **PLANNED:** automatikus outbox retry/stale reclaim, iCal és payment.
+**IMPLEMENTED:** admin lista/részlet, explicit state machine, tranzakciós státuszváltás/history/audit/outbox, concurrency lock, blocked-period kezelés, státusz-email és security guard. A Pricing Administration Sprint 6-ban, a kézi iCal import/tokenes export Sprint 7-ben elkészült. **PLANNED:** automatikus outbox retry/stale reclaim, automatikus iCal jobok és payment.
 
 ## Sprint 6 teljesítési állapot
 

@@ -1,7 +1,7 @@
 # iCal szinkron
 
 **Állapot:** Sprint 7 alaphatókör IMPLEMENTED; az ütemezett és haladó reconciliation funkciók PLANNED
-**Utolsó felülvizsgálat:** 2026-07-16
+**Utolsó felülvizsgálat:** 2026-07-18, `release/rc1` munkafa (commit előtt)
 
 ## Hatókör és alapelv
 
@@ -53,7 +53,7 @@ END:VCALENDAR
 
 **IMPLEMENTED validáció:** teljes, szabályosan lezárt `VCALENDAR`/`VEVENT`, érvényes `DTSTART < DTEND`, CRLF/LF sortörés, line folding, escape-elés, feed-/esemény-/sorhosszlimit. A parser a `DATE` mellett `DATE-TIME` értéket is elfogad; UTC vagy `TZID` alapján `Europe/Budapest` időre váltja, az import pedig minden érintett helyi naptári napot blokkol.
 
-> **SPECIFICATION CONFLICT:** a korábbi terv a `DATE-TIME` csendes naposítását tiltotta, a Sprint 7 tényleges kompatibilitási szabálya viszont Budapest-napokra alakítja. A kód szerinti viselkedés itt explicit dokumentált; további szolgáltatóspecifikus kivételhez új tulajdonosi döntés szükséges.
+> **RESOLVED SPECIFICATION DIFFERENCE:** a korábbi terv a `DATE-TIME` csendes naposítását tiltotta; a Sprint 7 elfogadott kompatibilitási szabálya Budapest-napokra alakítja. A kód szerinti viselkedés itt explicit dokumentált; további szolgáltatóspecifikus kivételhez új tulajdonosi döntés szükséges.
 
 ## Adatszétválasztás
 
@@ -122,7 +122,7 @@ Az admin-only rotációs válasz szándékos, egyszeri kivétel a „token ne ke
 4. importált külső esemény alapértelmezetten nem kerül vissza az exportba;
 5. ugyanazon külső esemény több feedből érkező másolata nem egyesíthető automatikusan pusztán dátum alapján.
 
-> **SPECIFICATION CONFLICT:** a jelenlegi export repository minden aktív blocked periodot exportál, így az importból létrejött blocked periodot is. Ez ellentmond a fenti PLANNED loop-prevention 4. pontnak. A Sprint 7 nem tartalmaz eredet szerinti exportszűrést; ezt nem tekintjük implementáltnak, és külön specifikáció/megoldás szükséges.
+> **IMPLEMENTED loop prevention:** az export repository kizárja azokat a blocked periodokat, amelyekhez importált külső naptáresemény tartozik. Ezt integrációs teszt igazolja, ezért a saját feed visszaimportált eseménye nem tükröződik vissza az exportba.
 
 Példa: ha egy partner a rendszer exportját visszaadja saját feedjében, a saját UID felismerése miatt nem jön létre újabb blokkolás és nincs végtelen tükröződés.
 

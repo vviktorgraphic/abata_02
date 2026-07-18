@@ -3,7 +3,7 @@
 > A production SMTP paraméterezés, SPF/DKIM/DMARC előkészítés és staging kézbesítési smoke végrehajtható lépéseit a [production deployment runbook](15_DEPLOYMENT.md#production-smtp) tartalmazza. Provider rekordot, credentialt vagy enforcement policyt a rendszer nem feltételez.
 
 **Állapot:** 2FA, booking-request és booking-status/cancellation e-mail, outbox és manuális failed resend IMPLEMENTED; automatikus retry/stale reclaim PLANNED
-**Utolsó ellenőrzés:** 2026-07-16, Sprint 3 munkafa (commit előtt)
+**Utolsó ellenőrzés:** 2026-07-18, `release/rc1` munkafa (commit előtt)
 
 Ez a dokumentum az 1.0 tranzakciós e-mail folyamatait tervezi. Kapcsolódó dokumentumok: [admin és hitelesítés](04_ADMIN_AND_AUTHENTICATION.md), [adatbázis- és domainmodell](02_DATABASE_AND_DOMAIN_MODEL.md), [árképzés](05_PRICING.md), [iCal](07_ICAL_SYNC.md), [biztonság](09_SECURITY.md), [tesztelés és üzemeltetés](10_TESTING_AND_OPERATIONS.md).
 
@@ -31,9 +31,9 @@ docker compose exec app php -r "require 'vendor/autoload.php'; `$c=require 'conf
 
 Ezután staging címzettel valós TLS-kézfogást és kézbesítést kell smoke tesztelni. A parancs sikeressége csak konfiguráció-validáció, nem igazolja a szolgáltató elérhetőségét vagy a DNS/SPF/DKIM/DMARC beállítást.
 
-**IMPLEMENTED részhalmaz:** van mailer absztrakció, SMTP klienskonfiguráció és HTML/plain-text 2FA sablon. **PLANNED:** outbox, e-mail napló, retry worker/cron, admin újraküldés és foglalási eseményekből induló levél.
+**IMPLEMENTED:** mailer absztrakció, SMTP klienskonfiguráció, HTML/plain-text 2FA, booking-request és booking-status/cancellation sablon, tranzakciós outbox, commit utáni küldés és failed státuszlevél admin újraküldése. **PLANNED:** automatikus retry worker/cron, stale claim recovery, bounce/complaint kezelés és általános e-mail adminnapló.
 
-## 2. Transport és komponensek — PLANNED
+## 2. Transport és komponensek — IMPLEMENTED alap, PLANNED worker/provider elemek
 
 - Kizárólag hitelesített SMTP transport használható TLS-sel. A PHP `mail()` közvetlen és közvetett fallbackként is **tiltott**.
 - Az alkalmazási réteg üzleti eseményt és stabil sablonazonosítót ad át egy `EmailSender`/outbox absztrakciónak; domainkód nem ismeri az SMTP-t.
@@ -178,7 +178,7 @@ A booking tranzakció az SMTP művelet előtt létrehozza az egyedi outbox rekor
 
 A levél az A Bata nevet, publikus referenciát, dátumokat, éjszakák és vendégek számát, gyermekkorokat, végösszeget és HUF pénznemet tartalmazza, továbbá jelzi, hogy ez csak igény, amely admin jóváhagyás után válik véglegessé.
 
-**TECHNICAL DEBT / PLANNED:** nincs automatikus retry worker, admin resend vagy stale `processing` recovery. Ha a folyamat a claim után a végállapot frissítése előtt megszakad, a rekord `processing` állapotban maradhat; ezt időkorlátos reclaimmel és cron-kompatibilis retryval kell kezelni.
+**TECHNICAL DEBT / PLANNED:** booking-request levélhez nincs admin resend, továbbá nincs automatikus retry worker vagy stale `processing` recovery. A failed státuszlevél adminból újraküldhető. Ha a folyamat a claim után a végállapot frissítése előtt megszakad, a rekord `processing` állapotban maradhat; ezt időkorlátos reclaimmel és cron-kompatibilis retryval kell kezelni.
 
 ## Státuszértesítések – IMPLEMENTED Sprint 5
 

@@ -1,7 +1,7 @@
 # Adminfelület és hitelesítés
 
-**Állapot:** Sprint 3 auth komponensek IMPLEMENTED; teljes admin üzleti felület PLANNED
-**Utolsó ellenőrzés:** 2026-07-16, Sprint 3 munkafa (commit előtt)
+**Állapot:** auth, booking management, pricing és iCal adminfelület IMPLEMENTED; kézi booking, settings és kereshető audit UI PLANNED
+**Utolsó ellenőrzés:** 2026-07-18, `release/rc1` munkafa (commit előtt)
 
 ## Jelenlegi állapot
 
@@ -13,7 +13,7 @@
 
 **IMPLEMENTED:** pending és authenticated sessionállapot, rotáció a biztonsági határokon, 15 perces csúszó idle timeout, konfigurálható abszolút session-élettartam, logout és szerveroldali visszavonás; sessionhöz kötött CSRF minden admin POST controllerben; konfigurálható login/2FA rate limit és szigorúan szűrt audit események.
 
-**IMPLEMENTED UI-alap:** login-, 2FA-, dashboard- és logout-controller, szerveroldali sablonok, A Bata design (`#19194B`, `#F0A236`, `#FFFFFF`). A teljes foglaláskezelő adminfelület nincs kész.
+**IMPLEMENTED UI:** login-, 2FA-, dashboard-, logout-, booking lista/részlet/státusz-, blocked-period-, pricing- és iCal-controller, szerveroldali sablonok, A Bata design (`#19194B`, `#F0A236`, `#FFFFFF`). Kézi booking, általános settings és kereshető auditnapló UI nincs.
 
 **IMPLEMENTED HTTP-integráció:** a front controller beköti a login, 2FA verify/resend, dashboard és logout route-okat. A release-kapuhoz Docker/Mailpit smoke továbbra is szükséges.
 
@@ -23,11 +23,11 @@
 
 **IMPLEMENTED:** az `admins` tábla tárolja az `email`, `password_hash`, `name`, `is_active` és időbélyeg mezőket. A séma önmagában nem jelent működő autentikációt; részletei az [adatbázis- és domainmodellben](02_DATABASE_AND_DOMAIN_MODEL.md) találhatók.
 
-**IMPLEMENTED alapok:** jelszóellenőrzés, 2FA-kód, admin session, logout, CSRF-védelem, rate limit/lockout persistence, audit log port/adapter és minimális admin UI komponensek rendelkezésre állnak. **PLANNED:** teljes admin üzleti UI és részletes jogosultsági modell.
+**IMPLEMENTED:** jelszóellenőrzés, 2FA-kód, admin session, logout, CSRF-védelem, rate limit/lockout persistence, audit log port/adapter és a fent felsorolt üzleti adminmodulok. **PLANNED:** kézi booking, settings, kereshető audit UI és esetleges részletesebb jogosultsági modell.
 
 ## Szerepkör és jogosultsági modell
 
-**PLANNED:** az 1.0 egyetlen `admin` szerepkört használ. Minden adminművelet aktív, teljesen hitelesített sessiont igényel; a jelszófázist teljesítő, de 2FA-ra váró állapot nem ad üzleti adathoz hozzáférést. Minden objektumhoz szerveroldali jogosultságvizsgálat tartozik, a kliensoldali menü elrejtése nem kontroll.
+**IMPLEMENTED:** az 1.0 egyetlen `admin` szerepkört használ. Minden implementált adminművelet aktív, teljesen hitelesített sessiont igényel; a jelszófázist teljesítő, de 2FA-ra váró állapot nem ad üzleti adathoz hozzáférést. A kliensoldali menü elrejtése nem jogosultsági kontroll.
 
 > **DECISION REQUIRED:** szükséges-e 1.0-ban külön read-only operátor vagy több jogosultsági szint. Ennek hiányában az egyetlen adminszerepkör elve érvényes.
 
@@ -37,20 +37,20 @@
 |---|---|---|---|
 | Login | IMPLEMENTED | E-mail + jelszó, majd kötelező e-mailes 2FA | Helyes jelszó önmagában nem nyit adminoldalt; hibák nem fedik fel a fiók létét. |
 | Dashboard | IMPLEMENTED alap | Minimális védett céloldal; üzleti összesítések még nincsenek | Csak teljes sessionnel érhető el. |
-| Foglaláslista | PLANNED | Lapozás, szűrés, rendezés | Minden paraméter validált; PII csak hitelesített adminnak jelenik meg. |
-| Foglalás részlete | PLANNED | Vendégek, státusztörténet, ár- és kommunikációs adatok | Nem létező és nem engedélyezett rekord biztonságos választ ad; megtekintés auditálható. |
-| Státuszkezelés | PLANNED | Csak engedélyezett átmenetek | Tiltott átmenet nem módosít adatot; siker esetén status history és audit rekord készül. |
+| Foglaláslista | IMPLEMENTED | Lapozás, keresés és szűrés | Minden paraméter validált; PII csak hitelesített adminnak jelenik meg. |
+| Foglalás részlete | IMPLEMENTED | Vendég-, státusz-, ár-, policy-, audit- és e-mail adatok | Nem létező rekord biztonságos választ ad. |
+| Státuszkezelés | IMPLEMENTED | Csak engedélyezett átmenetek | Tiltott átmenet nem módosít adatot; siker esetén status history és audit rekord készül. |
 | Kézi foglalás | PLANNED | Admin által bevitt foglalás | Mentés tranzakcióban újraellenőrzi az átfedést; kettős foglalás nem jöhet létre. |
-| Blokkolt időszak | PLANNED | Létrehozás, módosítás, feloldás | Fél-nyitott dátumintervallum és indok kötelező; változás auditált. |
-| Pricing | PLANNED | Szabályok és felülírások kezelése | Jogosultság, validáció, verziózás/audit; korábbi ár-pillanatkép nem változik. |
-| E-mail napló | PLANNED | Küldési állapot, hiba, biztonságos újraküldés | Levéltörzs és titok nem kerül általános logba; újraküldés idempotens és auditált. |
-| iCal | PLANNED | Források, státusz, kézi sync és konfliktusok | Token maszkolt; SSRF-védelem; kézi futtatás auditált. |
+| Blokkolt időszak | IMPLEMENTED | Létrehozás és soft-delete feloldás | Fél-nyitott dátumintervallum és indok kötelező; változás auditált. |
+| Pricing | IMPLEMENTED | Szabály CRUD/aktiválás és preview | Jogosultság, validáció és audit; korábbi ár-pillanatkép nem változik. |
+| E-mail állapot | IMPLEMENTED részhalmaz | Booking részleten státusz és failed státuszlevél újraküldés | Levéltörzs és titok nem kerül általános logba; újraküldés auditált. |
+| iCal | IMPLEMENTED | Források, státusz, kézi sync, log és exporttoken | Token maszkolt; SSRF-védelem; kézi futtatás auditált. |
 | Settings | PLANNED | Validált alkalmazásbeállítások | Ismeretlen kulcs nem írható; érzékeny érték nem jelenik meg visszaolvashatóan. |
 | Audit log | PLANNED | Kereshető, csak hozzáfűzhető eseménynapló | Ki, mikor, mit, mely objektumon és milyen eredménnyel tett; secret és szükségtelen PII nélkül. |
 
 ## Bejelentkezési állapotgép
 
-**PLANNED:** minden dátum/idő `Europe/Budapest` alkalmazási időzónában értelmezendő; a biztonsági időpontok adatbázisbeli reprezentációját a migráció tervezésekor egységesíteni kell.
+**IMPLEMENTED:** minden üzleti dátum/idő `Europe/Budapest` alkalmazási időzónában értelmezendő; a session és 2FA időpontokat a persistence réteg konzisztensen kezeli.
 
 ```mermaid
 stateDiagram-v2
@@ -83,9 +83,9 @@ Sikerkor a rendszer:
 
 ### 2. E-mailes 2FA
 
-**PLANNED:** a kód pontosan hat számjegy, 10 perc után lejár, egyszer használható, és challenge-enként maximum 5 hibás ellenőrzés engedett. Új kód kiadása érvényteleníti az előzőt. A verify és resend végpont IP-, fiók- és challenge-alapú rate limitet kap. A kód nem kerül URL-be, cookie-ba, logba vagy e-mail tárgysorba.
+**IMPLEMENTED:** a kód pontosan hat számjegy, 10 perc után lejár, egyszer használható, és challenge-enként maximum 5 hibás ellenőrzés engedett. Új kód kiadása érvényteleníti az előzőt. A verify és resend végpont rate limitelt. A kód nem kerül URL-be, cookie-ba, logba vagy e-mail tárgysorba.
 
-> **DECISION REQUIRED:** az újraküldés minimum várakozási ideje, óránkénti maximuma, a jelszópróbák küszöbe/ablaka, valamint a lockout hossza még véglegesítendő. A kontrollt ezen értékek lezárása nélkül nem szabad implementációs részletként rögzíteni.
+> **IMPLEMENTED DEVELOPMENT DEFAULT / PRODUCTION DECISION REQUIRED:** az újraküldés minimuma 60 másodperc; a login/2FA rate-limit küszöbök konfigurálhatók. A konkrét production küszöböket és lockout értékeket az ownernek kell jóváhagynia.
 
 **DEFERRED:** TOTP támogatás. A challenge és faktor modell legyen bővíthető `email_code` mellett későbbi `totp` típussal, de TOTP nem 1.0 elfogadási feltétel.
 
@@ -120,13 +120,13 @@ Sikerkor a rendszer:
 
 ## CSRF, session rotation, rate limit és audit minimum
 
-**PLANNED:** minden állapotváltoztató admin kérés szerveroldali, sessionhöz kötött, egyszer használat után rotálható CSRF-tokent ellenőriz. Origin/Referer ellenőrzés védelmi mélység, nem a token helyettesítője. Login, verify és resend külön rate-limit bucketet kap IP és fiókcél szerint. A számlálók frissítése atomi; proxy mögött csak megbízható proxy által beállított kliens IP fogadható el.
+**IMPLEMENTED:** minden jelenlegi állapotváltoztató admin kérés sessionhöz kötött CSRF-tokent ellenőriz; login, verify, resend és érzékeny admin action rate limitelt, a proxy IP-je csak exact trusted listáról fogadható el. **PLANNED:** további origin/referer defense-in-depth és minden jövőbeli admin végpont azonos kontrollba kötése.
 
 Az audit log minimum mezői: eseménytípus, időpont, admin azonosító ha ismert, cél objektumtípus és azonosító, eredmény, korrelációs azonosító, biztonságosan kezelt kliens IP és user agent. Jelszó, 2FA-kód, session ID, CSRF-token, iCal-token és teljes e-mail-tartalom soha nem naplózható. Az audit bejegyzés alkalmazási úton nem módosítható vagy törölhető.
 
 ## cPanel-kompatibilis kialakítás
 
-**PLANNED:** a megoldás PHP 8.2+, MySQL és Composer production artifact mellett működik; Node.js nem runtime-függőség. A `public/` marad az egyetlen document root. Session tárolás nem hagyatkozhat ellenőrizetlenül megosztott hosting alapértelmezésre; a választott szerveroldali tároló, takarító cron és fájljogosultság dokumentálandó. SMTP hitelesítő adatok és app secret a webrooton kívüli környezeti konfigurációban maradnak.
+**IMPLEMENTED deployment contract:** PHP 8.2+, MySQL és Composer artifact, Node.js runtime nélkül, kizárólagos `public/` document roottal és webrooton kívüli secret environmenttel. **PENDING környezeti gate:** a cPanel session storage/jogosultság és a tényleges SMTP/HTTPS viselkedés staging ellenőrzése; session cleanup ütemezéséhez retention döntés szükséges.
 
 ## Modul elfogadási feltételei
 

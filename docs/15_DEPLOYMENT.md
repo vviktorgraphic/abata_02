@@ -26,7 +26,7 @@ Az alábbi parancsok PowerShellből, SSH-n keresztül vagy a cPanel Terminalban 
 
 1. Töltsd fel az ellenőrzött commit tiszta release artefaktumát egy új, nem webes release könyvtárba. Ne tölts fel `.git`, `.env`, tesztadat vagy backup fájlt.
 2. Futtasd a release gyökerében: `composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction`.
-3. Ellenőrizd: `composer validate --no-check-publish` és `composer audit --no-dev`.
+3. Ellenőrizd: `composer validate --no-check-publish` és `composer audit --locked`. A projekt jelenleg csak fejlesztői Composer csomagokat zárol; a `--no-dev` audit üres csomaglistával hibakódot adna, ezért a release lock teljes tartalmát auditáljuk.
 4. A `.env.production.example` csak mezőleltár: az alkalmazás szándékosan nem tölt be `.env` fájlt. A cPanel PHP/Apache handler számára minden változót a hosting dokumentált environment/secret mechanizmusával kell átadni; a CLI parancsokat ugyanebben a védett environmentben vagy egy webrooton kívüli, jogosultságszűkített wrapperből kell indítani. A handler és CLI környezetét secret kiírása nélkül külön ellenőrizd. Ha a hosting nem tud ugyanazokat a változókat biztonságosan átadni mindkettőnek, a deploy blokkolt; ne tedd a secretet `.htaccess` fájlba és ne feltételezz automatikus dotenv betöltést.
 5. Futtasd az új kóddal, ugyanazon production környezettel: `php bin/db-check.php`, majd `php bin/migrate.php`. Migráció előtt kötelező az ellenőrzött backup.
 6. Állítsd a domain document rootját az új release `public/` könyvtárára. Symlinkcsere csak akkor használható, ha a cPanel konfigurációja követi és a váltás atomi.

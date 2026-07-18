@@ -1,7 +1,7 @@
 # API-referencia
 
 **Állapot:** IMPLEMENTED és PLANNED részekre bontva
-**Utolsó ellenőrzött commit:** `9adc564`
+**Utolsó ellenőrzés:** 2026-07-18, `release/rc1` munkafa (commit előtt)
 
 A jelenlegi route-ok auth nélkül érhetők el. A JSON-válaszok `Content-Type: application/json; charset=utf-8` fejlécet kapnak. Verziózott API-prefix, CORS-konfiguráció, cache-fejléc, rate limit, CSRF-védelem és egységes hibaboríték jelenleg nincs. A domain jelentéseket lásd a [publikus foglalási folyamatban](03_PUBLIC_BOOKING_FLOW.md) és az [adatmodellben](02_DATABASE_AND_DOMAIN_MODEL.md).
 
@@ -201,7 +201,7 @@ Az alábbi HTML végpontok controllerei, sablonjai és `public/index.php` route-
 | GET | `/admin` | authenticated session | minimális védett dashboard |
 | POST | `/admin/logout` | authenticated + CSRF | session visszavonása, cookie törlése |
 
-Minden auth POST hibás vagy hiányzó CSRF esetén `403` és állapotváltozás nélkül tér vissza. A login válasza nem különböztetheti meg az ismeretlen, inaktív és hibás jelszavú fiókot. A dashboard és logout teljes 2FA nélkül nem használható. JSON admin API, teljes dashboard és admin CRUD továbbra is **PLANNED**.
+Minden auth POST hibás vagy hiányzó CSRF esetén `403` és állapotváltozás nélkül tér vissza. A login válasza nem különböztetheti meg az ismeretlen, inaktív és hibás jelszavú fiókot. A dashboard és logout teljes 2FA nélkül nem használható. A booking/pricing/iCal admin HTML route-ok IMPLEMENTED; általános JSON admin API továbbra is **PLANNED**.
 
 ## PLANNED – 1.0 API
 

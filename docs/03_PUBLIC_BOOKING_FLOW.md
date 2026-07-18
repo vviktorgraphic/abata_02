@@ -1,7 +1,7 @@
 # Publikus foglalási folyamat
 
 **Állapot:** IMPLEMENTED és PLANNED részekre bontva
-**Utolsó ellenőrzött commit:** `9adc564`
+**Utolsó ellenőrzés:** 2026-07-18, `release/rc1` munkafa (commit előtt)
 
 Ez a dokumentum a publikus felület jelenlegi működését és a foglalás tényleges rögzítéséhez szükséges 1.0 tervet írja le. Az API pontos szerződése az [API-referenciában](08_API_REFERENCE.md), a dátum- és adatmodell az [adatbázis- és domainmodellben](02_DATABASE_AND_DOMAIN_MODEL.md), a biztonsági kontrollok a [biztonsági specifikációban](09_SECURITY.md) találhatók.
 

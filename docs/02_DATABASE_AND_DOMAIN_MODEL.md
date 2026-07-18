@@ -1,7 +1,7 @@
 # Adatbázis- és domainmodell
 
 **Állapot:** IMPLEMENTED jelenlegi séma + PLANNED 1.0 bővítések
-**Utolsó ellenőrzött commit:** `9adc564`
+**Utolsó ellenőrzés:** 2026-07-18, `release/rc1` munkafa (commit előtt)
 
 Ez a dokumentum a migrációkban és a kapcsolódó PHP-kódban igazolt jelenlegi állapotot, valamint ettől szigorúan elkülönítve az 1.0 tervezett adatmodelljét írja le. A mezőleírások igazságforrásai a `database/migrations/*.sql` fájlok és a `Migrator` implementációja. Kapcsolódó témák: [architektúra](01_ARCHITECTURE.md), [publikus foglalási folyamat](03_PUBLIC_BOOKING_FLOW.md), [árképzés](05_PRICING.md), [iCal](07_ICAL_SYNC.md), [biztonság és adatvédelem](09_SECURITY.md).
 

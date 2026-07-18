@@ -2,7 +2,7 @@
 
 **Állapot:** RESOLVED tulajdonosi döntések és részben nyitott konfiguráció
 **Döntés dátuma:** 2026-07-16
-**Ellenőrzött kódbázis:** Sprint 9 production-deployment munkafa, commit előtt
+**Ellenőrzött kódbázis:** `release/rc1` munkafa, commit előtt
 
 ## Projekt és design
 
