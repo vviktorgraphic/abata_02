@@ -1,12 +1,12 @@
 # Roadmap és döntési napló
 
-**Állapot:** PLANNED, a felsorolt alapdöntések egy része IMPLEMENTED
-**Utolsó ellenőrzött commit:** `9adc564`
+**Állapot:** Sprint 1–8 alkalmazási scope IMPLEMENTED, production deployment kapuk nyitottak
+**Utolsó ellenőrzött állapot:** Sprint 8 production-hardening munkafa, commit előtt
 
 ## Kiindulási helyzet
 
 **IMPLEMENTED:** technikai alap, MySQL séma, migrációfuttató, publikus két hónapos naptár, read-only availability API, mentés nélküli booking-validáció és demo seeder.
-**IMPLEMENTED:** admin authentication/2FA, admin booking management, tranzakciós booking persistence, közös összetett pricing engine és admin CRUD/preview, immutable pricing/policy/cancellation snapshot, booking és státusz outbox/e-mail, valamint a Sprint 7 kézi iCal import és tokenes export. **PLANNED:** automatikus e-mail retry/stale reclaim, iCal cron/retry/grace, online fizetés és production hardening.
+**IMPLEMENTED:** admin authentication/2FA, admin booking management, tranzakciós booking persistence, közös pricing engine, immutable pricing/policy/privacy/cancellation snapshot, booking és státusz outbox/e-mail, kézi iCal import és tokenes export, továbbá a Sprint 8 SMTP/session/HTTPS alkalmazási hardening. **PLANNED / RELEASE GATE:** jóváhagyott jogi tartalom, production deployment smoke, backup/restore, automatikus e-mail retry és iCal cron/retry/grace.
 
 ## Tervezett sprintek
 

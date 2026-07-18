@@ -24,6 +24,7 @@ try {
         $key, $requestHash, $reference, $arrival, $departure, 'Concurrency Test Guest',
         'concurrency@example.invalid', '+3612345678', 1, [], null,
         '2040-01-01 12:00:00', 'test-v1', '/booking-policy',
+        '2040-01-01 12:00:00', 'privacy-test-v1', '/adatkezelesi_tajekoztato',
     ), $pricing);
     $payload = ['ok' => true, 'booking_id' => $result->bookingId, 'replayed' => $result->replayed];
 } catch (Throwable $error) {

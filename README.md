@@ -30,6 +30,8 @@ Az alkalmazás: `http://localhost:8080`; Mailpit: `http://localhost:8025`. Az op
 docker compose --profile tools up -d
 ```
 
+Fejlesztésben a Compose alapértelmezett, hitelesítés nélküli Mailpit transportja használható. Productionben az alkalmazás fail-fast módon csak hitelesített `tls` (STARTTLS) vagy `ssl` SMTP konfigurációval indul. A tulajdonos szolgáltatóspecifikus host-, port-, feladó- és credentialértékei továbbra is **OPEN** deployment adatok; ezeket kizárólag a hosting secret/environment kezelésében szabad megadni, `.env` vagy napló nem kerülhet Gitbe. A teljes production ellenőrzés: [e-mail runbook](docs/06_EMAIL_WORKFLOWS.md#production-smtp-runbook--implemented-configuration-guard-open-owner-values).
+
 Ekkor a phpMyAdmin a `http://localhost:8081` címen érhető el.
 
 ## Migrációk
@@ -255,6 +257,8 @@ A demo seed szemléltető fejlesztési árat tartalmaz, production árként nem 
 **IMPLEMENTED:** egyetlen szerveroldali pricing engine kezeli a tartózkodáshossz-sávot, mindhárom alapegységet, szezonális és konfigurált hétvégi adjustmentet, fix díjat, IFA-t és admin által megadott exemption kulcsokat. Azonos nyertes prioritás konfigurációs hiba; a publikus booking és az admin preview ugyanazt az engine-t használja. A konkrét production értékek nincsenek előre feltételezve.
 
 A publikus űrlapon az adatkezelési jelölőtől külön, előre ki nem jelölt booking-policy checkbox kötelező. A booking tranzakciója a Budapest-idő szerinti elfogadási időt, a `BOOKING_POLICY_VERSION` értéket és a validált `BOOKING_POLICY_URL` címet snapshotolja. A confirmed booking legalább 7 naptári nappal érkezés előtt kötbérmentesen mondható le; később az immutable snapshot `accommodation_fee` értékének 50%-a a rögzített kötbér. Automatikus terhelés nincs.
+
+**IMPLEMENTED Sprint 8:** a külön privacy elfogadás Budapest-időpontja, `PRIVACY_POLICY_VERSION` és validált `PRIVACY_POLICY_URL` értéke is immutable snapshotként, audit eseménnyel együtt kerül a booking tranzakcióba. A `/foglalasi-szabalyzat` és `/adatkezelesi_tajekoztato` útvonal működik, de szándékosan csak `noindex` fejlesztői placeholdert mutat. **P0 RELEASE GATE:** jóváhagyott jogi tartalom és végleges verzióazonosítók nélkül production release tilos.
 
 PowerShell release-ellenőrzés:
 

@@ -62,7 +62,8 @@ final class TransactionalBookingRepositoryTest extends TestCase
         self::assertSame(1, $this->countBookingRows('email_outbox', $created->bookingId));
         self::assertSame(1, $this->countBookingRows('booking_idempotency', $created->bookingId));
         $booking = $this->pdo->prepare(
-            'SELECT booking_policy_accepted_at, booking_policy_version, booking_policy_url
+            'SELECT booking_policy_accepted_at, booking_policy_version, booking_policy_url,
+                    privacy_accepted_at, privacy_policy_version, privacy_policy_url
              FROM bookings WHERE id = :id'
         );
         $booking->execute(['id' => $created->bookingId]);
@@ -70,6 +71,9 @@ final class TransactionalBookingRepositoryTest extends TestCase
             'booking_policy_accepted_at' => '2040-01-01 12:00:00',
             'booking_policy_version' => 'test-v1',
             'booking_policy_url' => '/booking-policy',
+            'privacy_accepted_at' => '2040-01-01 12:00:00',
+            'privacy_policy_version' => 'privacy-test-v1',
+            'privacy_policy_url' => '/adatkezelesi_tajekoztato',
         ], $booking->fetch(PDO::FETCH_ASSOC));
         $audit = $this->pdo->prepare(
             "SELECT COUNT(*) FROM audit_logs
@@ -77,6 +81,12 @@ final class TransactionalBookingRepositoryTest extends TestCase
         );
         $audit->execute(['id' => (string) $created->bookingId]);
         self::assertSame(1, (int) $audit->fetchColumn());
+        $privacyAudit = $this->pdo->prepare(
+            "SELECT COUNT(*) FROM audit_logs
+             WHERE event_type = 'privacy_policy.accepted' AND target_type = 'booking' AND target_id = :id"
+        );
+        $privacyAudit->execute(['id' => (string) $created->bookingId]);
+        self::assertSame(1, (int) $privacyAudit->fetchColumn());
     }
 
     public function testSameKeyWithDifferentPayloadIsRejected(): void
@@ -141,6 +151,9 @@ final class TransactionalBookingRepositoryTest extends TestCase
             '2040-01-01 12:00:00',
             'test-v1',
             '/booking-policy',
+            '2040-01-01 12:00:00',
+            'privacy-test-v1',
+            '/adatkezelesi_tajekoztato',
         );
 
         try {
@@ -188,6 +201,7 @@ final class TransactionalBookingRepositoryTest extends TestCase
     {
         yield 'after booking insert' => ['booking_inserted'];
         yield 'after policy audit insert' => ['policy_audit_inserted'];
+        yield 'after privacy audit insert' => ['privacy_audit_inserted'];
         yield 'after status history insert' => ['history_inserted'];
     }
 
@@ -277,6 +291,9 @@ final class TransactionalBookingRepositoryTest extends TestCase
             '2040-01-01 12:00:00',
             'test-v1',
             '/booking-policy',
+            '2040-01-01 12:00:00',
+            'privacy-test-v1',
+            '/adatkezelesi_tajekoztato',
         );
     }
 

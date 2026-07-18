@@ -54,7 +54,7 @@ Az űrlap mezői:
 - kötelező `privacy` checkbox;
 - rejtett `arrival_date` és `departure_date`.
 
-> **IMPLEMENTED:** a booking create szerveroldalon validálja az `adults`, `children`, `child_ages` és `notes` mezőket és konzisztenciájukat. **PLANNED:** a privacy szöveghez még tényleges, jogilag jóváhagyott tájékoztató-link szükséges.
+> **IMPLEMENTED:** a booking create szerveroldalon validálja az `adults`, `children`, `child_ages` és `notes` mezőket és konzisztenciájukat. Az `/adatkezelesi_tajekoztato` technikai oldal és a privacy snapshot elkészült. **RELEASE GATE:** az oldalon jelenleg egyértelmű, `noindex` fejlesztői placeholder látható; production előtt jóváhagyott jogi tartalom és végleges verzióazonosító szükséges.
 
 ### Kliens- és szerveroldali validáció
 
@@ -155,3 +155,5 @@ Commit után a rendszer megkísérli az e-mail kézbesítését. SMTP-hibánál 
 A publikus foglalás létrehozásához az adatkezelési elfogadástól külön `booking_policy_accepted=true` szükséges. A checkbox nincs előre kijelölve, a „Foglalási szabályzat” linkje konfigurációból érkezik. A szerver a boolean értéket önállóan validálja; hiány vagy hamis érték esetén `422`, booking, idempotencia-, snapshot- és outbox rekord nélkül.
 
 A sikeres booking tranzakcióban rögzül a Budapest-idő szerinti `booking_policy_accepted_at`, továbbá a változatlan `BOOKING_POLICY_VERSION` és `BOOKING_POLICY_URL`. A URL relatív vagy HTTPS lehet; HTTP csak development/local/testing környezetben. Ezek a mezők az elfogadott szabályzat verziósnapshotjai, későbbi konfigurációváltozás nem írja át őket.
+
+Ugyanebben a tranzakcióban rögzül a külön privacy elfogadás `privacy_accepted_at`, `PRIVACY_POLICY_VERSION` és `PRIVACY_POLICY_URL` snapshotja, valamint a `privacy_policy.accepted` audit esemény. A két elfogadás időpontja ugyanaz a Budapest-idő szerinti szerveridő. A régi bookingok `NULL` privacy snapshotja „nem bizonyítható”, nem pedig automatikus elfogadást jelent.

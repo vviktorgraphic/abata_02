@@ -15,6 +15,20 @@ Ez a dokumentum az 1.0 tranzakciós e-mail folyamatait tervezi. Kapcsolódó dok
 
 **IMPLEMENTED:** Docker fejlesztésben Mailpit szolgáltatás elérhető, és a repository szabálya tiltja a PHP `mail()` közvetlen használatát.
 
+## Production SMTP runbook – IMPLEMENTED configuration guard, OPEN owner values
+
+**IMPLEMENTED:** `APP_ENV=production` esetén az alkalmazás induláskor elutasítja a hiányos levelezési konfigurációt. Kötelező az érvényes `MAIL_HOST`, `MAIL_PORT`, `MAIL_FROM_EMAIL`, `MAIL_FROM_NAME`, továbbá az együtt megadott `MAIL_USERNAME` és `MAIL_PASSWORD`. A transport csak `MAIL_ENCRYPTION=tls` (STARTTLS) vagy `MAIL_ENCRYPTION=ssl` lehet. A TLS peer- és hostnév-ellenőrzés, illetve az önaláírt tanúsítvány tiltása kódszintű, nem kapcsolható ki environment változóval. Developmentben a Compose/Mailpit `none`, credential nélküli beállítása továbbra is támogatott.
+
+**OPEN – owner/deployment:** a production SMTP-szolgáltató, host, port, titkosítási mód, feladó domain/név és credential konkrét értékei. A secretet a cPanel/hosting titkos environment-kezelésében kell beállítani; tilos Gitbe, webrootba, shell argumentumba, képernyőképbe vagy deployment naplóba írni.
+
+PowerShell-kompatibilis release ellenőrzés (az értékek kiírása nélkül):
+
+```powershell
+docker compose exec app php -r "require 'vendor/autoload.php'; `$c=require 'config/mail.php'; new App\Infrastructure\Mail\SmtpConfiguration(`$c['host'], `$c['port'], `$c['encryption'], `$c['username'] ?: null, `$c['password'] ?: null, production: `$c['production']); echo 'SMTP configuration valid', PHP_EOL;"
+```
+
+Ezután staging címzettel valós TLS-kézfogást és kézbesítést kell smoke tesztelni. A parancs sikeressége csak konfiguráció-validáció, nem igazolja a szolgáltató elérhetőségét vagy a DNS/SPF/DKIM/DMARC beállítást.
+
 **IMPLEMENTED részhalmaz:** van mailer absztrakció, SMTP klienskonfiguráció és HTML/plain-text 2FA sablon. **PLANNED:** outbox, e-mail napló, retry worker/cron, admin újraküldés és foglalási eseményekből induló levél.
 
 ## 2. Transport és komponensek — PLANNED
