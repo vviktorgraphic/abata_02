@@ -1,18 +1,20 @@
 # Nyitott döntések
 
 **Állapot:** DECISION REQUIRED
-**Utolsó felülvizsgálat:** 2026-07-16
-**Ellenőrzött kódbázis:** Sprint 3 munkafa, commit előtt
+**Utolsó felülvizsgálat:** 2026-07-18
+**Ellenőrzött kódbázis:** Sprint 8 production-hardening munkafa, commit előtt
 
 A lezárt döntések forrása a [tulajdonosi döntési napló](99_OWNER_DECISIONS.md).
 
 ## P0 – production előtt kötelező
 
-1. **SMTP:** port, TLS mód, authentikáció, felhasználónév és feladó e-mail.
-2. **Admin session:** abszolút maximális élettartam; a 15 perces idle timeout már RESOLVED.
+1. **SMTP production értékek:** port, TLS mód, felhasználónév, jelszó és feladó e-mail. A production fail-fast authenticated TLS/SSL kényszerítés IMPLEMENTED; a konkrét credential deployment secret.
+2. **Admin session:** a production abszolút maximális élettartam konkrét tulajdonosi értéke. A konfigurálható, pending és authenticated állapoton átívelő szerveroldali korlát IMPLEMENTED; a 15 perces idle timeout RESOLVED.
 3. **Rate limit:** login IP/fiók végleges küszöbei, időablak és lockout idő. A Sprint 3 konfigurálható **IMPLEMENTED DEVELOPMENT DEFAULT** értékeket használ (`10/IP`, `5/fiók`, 15 perces ablak és 15 perces lockout); ezek nem production üzleti döntések.
 4. **Adatmegőrzés:** login attempt, audit, session és 2FA rekordok konkrét retentionje.
 5. **Backup:** az 5 perces RTO-t teljesítő cPanel restore automatizálás és staging mérési eljárás.
+6. **Jogi tartalom:** a két technikai route IMPLEMENTED, de a jóváhagyott foglalási szabályzat, adatkezelési tájékoztató és végleges verzióazonosítók owner/legal döntést igényelnek; a fejlesztői placeholder production release blocker.
+7. **HTTPS deployment:** tanúsítvány, HTTP→HTTPS redirect, Secure-cookie és HSTS staging smoke. Az alkalmazási HSTS/trusted-proxy fail-fast támogatás IMPLEMENTED.
 
 ## P1 – kapcsolódó modul előtt
 
@@ -62,3 +64,13 @@ A lezárt döntések forrása a [tulajdonosi döntési napló](99_OWNER_DECISION
 - Google Calendar és Szallas.hu production fixture/smoke.
 
 **RESOLVED Sprint 7:** query exporttoken; pending kizárása; manuális sync; policy `/foglalasi-szabalyzat`; privacy `/adatkezelesi_tajekoztato`; hétvége péntek/szombat éjszaka; IFA admin-konfigurált, a rendszer számolja.
+
+## Sprint 8 után nyitott
+
+- Jóváhagyott jogi szövegek és végleges policy-verziók.
+- Production SMTP konkrét szolgáltatói értékek és staging kézbesítési próba.
+- Admin session abszolút lifetime production értéke.
+- HTTPS/tanúsítvány/redirect/HSTS staging smoke.
+- Backup/restore automatizálás, retention és végleges rate-limit küszöbök; ezek a Sprint 8 konkrét implementációs listáján kívül maradtak.
+
+**IMPLEMENTED Sprint 8:** privacy acceptance időpont + immutable URL/verzió snapshot és audit; jogi route-ok biztonságos noindex placeholderrel; production SMTP authenticated TLS/SSL fail-fast; konfigurálható teljes auth-folyamatot capelő abszolút session lifetime; trusted-proxy validáció és HTTPS-feltételes HSTS.

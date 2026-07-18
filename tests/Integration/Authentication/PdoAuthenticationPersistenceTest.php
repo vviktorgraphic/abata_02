@@ -150,6 +150,83 @@ final class PdoAuthenticationPersistenceTest extends TestCase
         self::assertFalse($repository->revoke($rawToken, $createdAt->add(new DateInterval('PT2H'))));
     }
 
+    public function testSessionSlidingExpiryIsCappedAndAbsoluteLifetimeIsEnforced(): void
+    {
+        $repository = new AdminSessionRepository($this->pdo, 3600);
+        $token = 'absolute-session-' . bin2hex(random_bytes(16));
+        $createdAt = $this->date('2026-07-16 12:00:00');
+        $repository->create(
+            $this->adminId,
+            $token,
+            'authenticated',
+            $createdAt,
+            $createdAt->add(new DateInterval('PT15M')),
+        );
+
+        self::assertTrue($repository->touch(
+            $token,
+            $createdAt->add(new DateInterval('PT14M')),
+            $createdAt->add(new DateInterval('PT2H')),
+        ));
+        $statement = $this->pdo->prepare(
+            'SELECT expires_at FROM admin_sessions WHERE session_token_hash = :token_hash'
+        );
+        $statement->execute(['token_hash' => hash('sha256', $token)]);
+        self::assertSame('2026-07-16 13:00:00', $statement->fetchColumn());
+        self::assertNull($repository->activeAdminId(
+            $token,
+            'authenticated',
+            $createdAt->add(new DateInterval('PT1H')),
+        ));
+        self::assertFalse($repository->touch(
+            $token,
+            $createdAt->add(new DateInterval('PT1H')),
+            $createdAt->add(new DateInterval('PT1H15M')),
+        ));
+    }
+
+    public function testRotatedAuthenticatedSessionKeepsPendingAbsoluteLifetimeOrigin(): void
+    {
+        $repository = new AdminSessionRepository($this->pdo, 3600);
+        $pendingToken = 'pending-session-' . bin2hex(random_bytes(16));
+        $authenticatedToken = 'authenticated-session-' . bin2hex(random_bytes(16));
+        $origin = $this->date('2026-07-16 12:00:00');
+        $verificationAt = $origin->add(new DateInterval('PT50M'));
+
+        $repository->create($this->adminId, $pendingToken, 'two_factor_pending', $origin, $origin->add(new DateInterval('PT15M')));
+        foreach ([10, 20, 30, 40, 50] as $minute) {
+            $activityAt = $origin->add(new DateInterval('PT' . $minute . 'M'));
+            self::assertTrue($repository->touch(
+                $pendingToken,
+                $activityAt,
+                $activityAt->add(new DateInterval('PT15M')),
+            ));
+        }
+        $persistedOrigin = $repository->activeCreatedAt($pendingToken, 'two_factor_pending', $verificationAt);
+        self::assertSame($origin->format('Y-m-d H:i:s'), $persistedOrigin?->format('Y-m-d H:i:s'));
+        self::assertNotNull($persistedOrigin);
+
+        $repository->create(
+            $this->adminId,
+            $authenticatedToken,
+            'authenticated',
+            $persistedOrigin,
+            $verificationAt->add(new DateInterval('PT15M')),
+            $verificationAt,
+        );
+
+        $statement = $this->pdo->prepare(
+            'SELECT created_at, last_activity_at, expires_at FROM admin_sessions WHERE session_token_hash = :token_hash'
+        );
+        $statement->execute(['token_hash' => hash('sha256', $authenticatedToken)]);
+        $row = $statement->fetch();
+        self::assertIsArray($row);
+        self::assertSame('2026-07-16 12:00:00', $row['created_at']);
+        self::assertSame('2026-07-16 12:50:00', $row['last_activity_at']);
+        self::assertSame('2026-07-16 13:00:00', $row['expires_at']);
+        self::assertNull($repository->activeAdminId($authenticatedToken, 'authenticated', $origin->add(new DateInterval('PT1H'))));
+    }
+
     private function date(string $dateTime): DateTimeImmutable
     {
         return new DateTimeImmutable($dateTime, new DateTimeZone('Europe/Budapest'));

@@ -323,10 +323,12 @@ final class TransactionalBookingRepository
                 'INSERT INTO bookings
                     (reference, status, arrival_date, departure_date, guest_name, guest_email,
                      guest_phone, adults, children, total_amount, currency, notes,
+                     privacy_accepted_at, privacy_policy_version, privacy_policy_url,
                      booking_policy_accepted_at, booking_policy_version, booking_policy_url)
                  VALUES
                     (:reference, \'pending\', :arrival, :departure, :name, :email,
                      :phone, :adults, :children, :total, :currency, :notes,
+                     :privacy_accepted_at, :privacy_version, :privacy_url,
                      :policy_accepted_at, :policy_version, :policy_url)'
             );
             $booking->execute([
@@ -341,6 +343,9 @@ final class TransactionalBookingRepository
                 'total' => $pricing->totalAmount,
                 'currency' => $pricing->currency,
                 'notes' => $command->notes,
+                'privacy_accepted_at' => $command->privacyAcceptedAt,
+                'privacy_version' => $command->privacyPolicyVersion,
+                'privacy_url' => $command->privacyPolicyUrl,
                 'policy_accepted_at' => $command->bookingPolicyAcceptedAt,
                 'policy_version' => $command->bookingPolicyVersion,
                 'policy_url' => $command->bookingPolicyUrl,
@@ -362,6 +367,21 @@ final class TransactionalBookingRepository
                 ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
             ]);
             ($this->transactionProbe ?? static fn (string $stage): null => null)('policy_audit_inserted');
+
+            $privacyAudit = $this->pdo->prepare(
+                'INSERT INTO audit_logs
+                    (event_type, admin_id, target_type, target_id, outcome, metadata_json)
+                 VALUES (\'privacy_policy.accepted\', NULL, \'booking\', :target_id, \'success\', :metadata)'
+            );
+            $privacyAudit->execute([
+                'target_id' => (string) $bookingId,
+                'metadata' => json_encode([
+                    'booking_reference' => $command->reference,
+                    'privacy_policy_version' => $command->privacyPolicyVersion,
+                    'privacy_policy_url' => $command->privacyPolicyUrl,
+                ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
+            ]);
+            ($this->transactionProbe ?? static fn (string $stage): null => null)('privacy_audit_inserted');
 
             $child = $this->pdo->prepare(
                 'INSERT INTO booking_child_ages (booking_id, position, age)

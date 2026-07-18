@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controller\HomeController;
+use App\Http\Controller\LegalPageController;
 use App\Http\Router;
 use App\Application\Availability\GetAvailabilityHandler;
 use App\Application\Booking\BookingOutboxDispatcher;
@@ -37,11 +38,32 @@ require dirname(__DIR__) . '/vendor/autoload.php';
 
 date_default_timezone_set($_ENV['APP_TIMEZONE'] ?? getenv('APP_TIMEZONE') ?: 'Europe/Budapest');
 
+$httpSecurity = require dirname(__DIR__) . '/config/http-security.php';
+$transportSecurity = new App\Http\RequestTransportSecurity($httpSecurity['trusted_proxy_ips']);
+foreach (App\Http\Controller\Admin\SecurityHeaders::common() as $name => $value) {
+    header($name . ': ' . $value);
+}
+foreach (App\Http\Controller\Admin\SecurityHeaders::transport(
+    $httpSecurity['environment'],
+    $transportSecurity->isHttps($_SERVER),
+    $httpSecurity['hsts_max_age_seconds'],
+) as $name => $value) {
+    header($name . ': ' . $value);
+}
+
 $router = new Router();
 $bookingPolicy = require dirname(__DIR__) . '/config/booking-policy.php';
-$controller = new HomeController(dirname(__DIR__) . '/templates', $bookingPolicy['url']);
+$privacyPolicy = require dirname(__DIR__) . '/config/privacy-policy.php';
+$controller = new HomeController(
+    dirname(__DIR__) . '/templates',
+    $bookingPolicy['url'],
+    $privacyPolicy['url'],
+);
+$legalController = new LegalPageController(dirname(__DIR__) . '/templates');
 
 $router->get('/', [$controller, 'index']);
+$router->get('/foglalasi-szabalyzat', [$legalController, 'bookingPolicy']);
+$router->get('/adatkezelesi_tajekoztato', [$legalController, 'privacyPolicy']);
 $router->get('/health', [$controller, 'health']);
 $router->get('/calendar/export.ics', static function (array $query): void {
     try {
@@ -166,7 +188,7 @@ $router->post('/api/booking/validate', static function (): void {
         App\Http\JsonResponse::send(['valid' => false, 'error' => 'Az ellenőrzés átmenetileg nem érhető el.'], 500);
     }
 });
-$router->post('/api/bookings', static function () use ($bookingPolicy): void {
+$router->post('/api/bookings', static function () use ($bookingPolicy, $privacyPolicy): void {
     try {
         $root = dirname(__DIR__);
         $pdo = ConnectionFactory::create(require $root . '/config/database.php');
@@ -198,6 +220,7 @@ $router->post('/api/bookings', static function () use ($bookingPolicy): void {
             $mail['encryption'],
             $mail['username'] !== '' ? $mail['username'] : null,
             $mail['password'] !== '' ? $mail['password'] : null,
+            production: $mail['production'],
         ));
         $outbox = new BookingOutboxDispatcher(new BookingRequestOutboxDispatcher(
             new PdoBookingRequestOutbox($pdo),
@@ -211,6 +234,8 @@ $router->post('/api/bookings', static function () use ($bookingPolicy): void {
             clock: new BudapestBookingClock(),
             bookingPolicyUrl: $bookingPolicy['url'],
             bookingPolicyVersion: $bookingPolicy['version'],
+            privacyPolicyUrl: $privacyPolicy['url'],
+            privacyPolicyVersion: $privacyPolicy['version'],
         );
         $controller = new BookingCreateController(
             App\Domain\Booking\BookingCreateRequestValidator::forBudapestToday(

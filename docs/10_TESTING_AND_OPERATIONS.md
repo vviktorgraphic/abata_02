@@ -133,7 +133,7 @@ Ha a tárhelyen Composer nem futtatható, ugyanazon PHP-platformkövetelményekk
 4. Web rooton kívüli `.env` létrehozása jogosultságszűkítéssel; DB, `APP_ENV=production`, `APP_DEBUG=false`, `APP_TIMEZONE=Europe/Budapest`, SMTP és későbbi iCal secret beállítása. Értéket nem szabad terminálba vagy naplóba írni.
 5. Adatbázismentés és visszaállíthatóság ellenőrzése, majd `php bin/migrate.php`. A migráció csak előrefelé fut, ezért előzetes kompatibilitási terv kötelező.
 6. Szükséges web rooton kívüli log/cache könyvtár létrehozása legszűkebb jogosultsággal; általános `777` tilos.
-7. HTTPS átirányítás, security headerek, secure cookie, SMTP és cron beállítása.
+7. HTTPS átirányítás, security headerek, secure cookie, SMTP és cron beállítása. Productionben add meg a pozitív `HSTS_MAX_AGE_SECONDS` és `ADMIN_SESSION_ABSOLUTE_TIMEOUT_SECONDS` értékeket; `TRUSTED_PROXY_IPS` csak saját, ellenőrzött reverse proxy pontos IP-címeit tartalmazhatja.
 8. Atomikus release-váltás vagy cPanel által támogatott, rövid karbantartási ablak; opcache ürítése a hosting lehetősége szerint.
 9. Staging/production smoke és logellenőrzés; sikertelenségnél rollback.
 
@@ -242,6 +242,8 @@ Az 1.0 üzemeltetési készültség feltétele:
 ### cPanel Sprint 3 konfiguráció
 
 Productionben kötelező a hosszú, véletlen `AUTH_RATE_LIMIT_PEPPER`, a HTTPS miatt `SESSION_COOKIE_SECURE=true`, valamint a tulajdonos által jóváhagyott `MAIL_HOST`, `MAIL_PORT`, `MAIL_ENCRYPTION`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_EMAIL` és `MAIL_FROM_NAME`. Secret nem kerülhet Gitbe, webrootba, parancssori argumentumba vagy deployment naplóba.
+
+**IMPLEMENTED SMTP release guard:** productionben authenticated TLS/SSL kötelező, a hiányos vagy plain SMTP konfiguráció fail-fast hibával leáll. A tanúsítvány-ellenőrzés nem kapcsolható ki. **OPEN:** a szolgáltató- és feladóspecifikus production értékeket a tulajdonos/deployment felelős adja meg és staging kézbesítéssel igazolja; lásd [production SMTP runbook](06_EMAIL_WORKFLOWS.md#production-smtp-runbook--implemented-configuration-guard-open-owner-values).
 
 Az első admin a `composer admin:create` paranccsal hozható létre. Az e-mail az `ADMIN_CREATE_EMAIL`, a legalább 12 karakteres jelszót tartalmazó átmeneti fájl abszolút útvonala az `ADMIN_CREATE_PASSWORD_FILE` környezeti változóban adandó át. A plaintext fájl legyen repositoryn és `public/`-on kívül, minimális jogosultságú, és siker után törlendő. A parancs nem fogad jelszót CLI argumentumként.
 

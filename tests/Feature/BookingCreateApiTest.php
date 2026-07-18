@@ -80,6 +80,8 @@ final class BookingCreateApiTest extends TestCase
             new \App\Application\Booking\BudapestBookingClock(),
             '/booking-policy',
             'test-v1',
+            '/adatkezelesi_tajekoztato',
+            'privacy-test-v1',
         );
         $controller = new BookingCreateController(
             new BookingCreateRequestValidator(new DateTimeImmutable('2040-01-01', new DateTimeZone('Europe/Budapest'))),

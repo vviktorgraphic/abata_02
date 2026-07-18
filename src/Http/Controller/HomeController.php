@@ -6,7 +6,11 @@ namespace App\Http\Controller;
 
 final readonly class HomeController
 {
-    public function __construct(private string $templateDirectory, private string $bookingPolicyUrl = '/foglalasi-szabalyzat')
+    public function __construct(
+        private string $templateDirectory,
+        private string $bookingPolicyUrl = '/foglalasi-szabalyzat',
+        private string $privacyPolicyUrl = '/adatkezelesi_tajekoztato',
+    )
     {
     }
 
@@ -14,6 +18,7 @@ final readonly class HomeController
     public function index(array $query = []): void
     {
         $bookingPolicyUrl = $this->bookingPolicyUrl;
+        $privacyPolicyUrl = $this->privacyPolicyUrl;
         require $this->templateDirectory . '/booking/index.php';
     }
 

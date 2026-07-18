@@ -102,12 +102,24 @@ final readonly class DefaultAdminAuthWorkflow implements AdminAuthWorkflow
 
         $oldToken = session_id();
         try {
+            $now = $this->now();
+            $absoluteOrigin = $this->sessions->activeCreatedAt($oldToken, 'two_factor_pending', $now);
+            if ($absoluteOrigin === null) {
+                $this->session->logout();
+                return false;
+            }
             // Audit is mandatory before privilege promotion; failure leaves no authenticated session.
             $this->audit('admin.2fa.verify', 'accepted', $adminId, $ip, ['auth_stage' => 'two_factor']);
-            $this->sessions->revoke($oldToken, $this->now());
+            $this->sessions->revoke($oldToken, $now);
             $this->session->authenticate($adminId);
-            $now = $this->now();
-            $this->sessions->create($adminId, session_id(), 'authenticated', $now, $now->modify('+' . $this->idleSeconds . ' seconds'));
+            $this->sessions->create(
+                $adminId,
+                session_id(),
+                'authenticated',
+                $absoluteOrigin,
+                $now->modify('+' . $this->idleSeconds . ' seconds'),
+                $now,
+            );
         } catch (Throwable $exception) {
             $this->session->logout();
             throw $exception;

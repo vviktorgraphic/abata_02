@@ -61,7 +61,9 @@ Skála: valószínűség és hatás `Alacsony`, `Közepes` vagy `Magas`. Az áll
 
 ### HTTPS, cookie és session
 
-**PLANNED:** production és staging kizárólag HTTPS; HTTP permanensen HTTPS-re irányít, HSTS csak teljes HTTPS-próba és domainhatás ellenőrzése után kapcsolható. Admin cookie minimum `Secure; HttpOnly; SameSite=Lax` (szigorúbb érték kompatibilitásvizsgálattal), minimális `Path`, szükségtelen `Domain` nélkül. Session ID login/2FA után rotálódik, szerveroldalon lejár és visszavonható.
+**IMPLEMENTED alkalmazási támogatás:** productionben a `SESSION_COOKIE_SECURE=true`, a pozitív `HSTS_MAX_AGE_SECONDS` és az explicit `ADMIN_SESSION_ABSOLUTE_TIMEOUT_SECONDS` kötelező. A HSTS fejléc kizárólag production környezetben és HTTPS-kérésnél kerül ki. Az alkalmazás az `X-Forwarded-Proto` értéket csak a `TRUSTED_PROXY_IPS` pontos IP-listáján szereplő reverse proxytól fogadja el; üres lista mellett nem bízik forwarded fejlécben. A közös publikus és admin válaszok nosniff, frame, referrer és permissions headereket kapnak; az admin ezen felül no-store és szigorú CSP választ használ. **KÖRNYEZETFÜGGŐ RELEASE-KAPU:** a webszerver HTTP→HTTPS átirányítása, TLS és HSTS staging smoke továbbra is deployment feladat.
+
+Fejlesztési alapérték: 28 800 másodperc abszolút admin session-élettartam és kikapcsolt HSTS (`0`). Productionben mindkettőt explicit kell beállítani; production timeoutot és HSTS időtartamot a rendszer nem talál ki.
 
 ### Security headerek
 
@@ -100,7 +102,7 @@ A konkrét CSP-t a jelenlegi inline/template használat felmérése után kell r
 
 **PLANNED:** adatminimalizálás, célhoz kötöttség és hozzáférési korlátozás alkalmazandó. A foglalási űrlap adatkezelési tájékoztatója különítse el a szerződés/ajánlat kezeléséhez szükséges adatot az opcionális hozzájárulástól; előre bepipált checkbox nem használható. Érintetti hozzáférési, helyesbítési, törlési/korlátozási és exportkérésekhez azonosítási és auditált eljárás kell. Jogi/számviteli megőrzés felülírhat törlési kérelmet, de csak dokumentált jogalappal és minimális adatkörrel.
 
-> **PLANNED – P1 release-kockázat:** a jelenlegi publikus validáció név, e-mail, telefon és megjegyzés PII-t fogad, miközben a kötelező `privacy` checkbox mögött nincs tényleges tájékoztató-link, és nincs `Cache-Control: no-store`, Content-Type/body-size kontroll vagy rate limit. A tájékoztató, a szükséges adatkezelés jogalapa és az opcionális hozzájárulás terminológiája production előtt jogi/tulajdonosi döntést és technikai kontrollt igényel.
+> **IMPLEMENTED Sprint 8 technikai kontroll:** a kötelező privacy checkbox konfigurált URL/verzió immutable snapshotját és audit eseményét a booking tranzakció tárolja. A két publikus jogi útvonal biztonságosan escape-elt, `noindex` fejlesztői placeholdert ad. **P0 RELEASE GATE:** a tényleges tartalmat, jogalapot, terminológiát, verziót és hatálybalépést jogi/tulajdonosi jóváhagyás nélkül tilos productionben publikálni.
 
 > **DECISION REQUIRED:** booking, vendég, audit, e-mail napló és backup konkrét megőrzési ideje, adatkezelői tájékoztató, jogalapok és incidensfolyamat tulajdonosi/jogi jóváhagyást igényelnek.
 

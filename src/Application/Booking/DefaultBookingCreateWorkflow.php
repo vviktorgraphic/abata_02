@@ -16,11 +16,14 @@ final readonly class DefaultBookingCreateWorkflow implements BookingCreateWorkfl
         private BookingClock $clock,
         private string $bookingPolicyUrl,
         private string $bookingPolicyVersion,
+        private string $privacyPolicyUrl,
+        private string $privacyPolicyVersion,
     ) {
     }
 
     public function create(BookingCreateRequest $request): BookingCreateOutcome
     {
+        $acceptedAt = $this->clock->now()->format('Y-m-d H:i:s');
         $result = $this->repository->create(new BookingPersistenceCommand(
             $request->idempotencyKey,
             $request->canonicalHash(),
@@ -33,9 +36,12 @@ final readonly class DefaultBookingCreateWorkflow implements BookingCreateWorkfl
             $request->adults,
             $request->childAges,
             $request->notes === '' ? null : $request->notes,
-            $this->clock->now()->format('Y-m-d H:i:s'),
+            $acceptedAt,
             $this->bookingPolicyVersion,
             $this->bookingPolicyUrl,
+            $acceptedAt,
+            $this->privacyPolicyVersion,
+            $this->privacyPolicyUrl,
         ), $this->pricing);
 
         // Persistence has committed before SMTP is attempted. A delivery failure

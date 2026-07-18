@@ -2,7 +2,7 @@
 
 **Állapot:** RESOLVED tulajdonosi döntések és részben nyitott konfiguráció
 **Döntés dátuma:** 2026-07-16
-**Ellenőrzött kódbázis:** Sprint 3 munkafa, commit előtt
+**Ellenőrzött kódbázis:** Sprint 8 production-hardening munkafa, commit előtt
 
 ## Projekt és design
 
@@ -16,9 +16,9 @@
 - **RESOLVED:** e-mailes 2FA kód érvényessége 10 perc.
 - **RESOLVED:** a 2FA-kód 6 számjegyű és legfeljebb 5 próbálkozást enged.
 - **RESOLVED:** új 2FA-kód legkorábban 60 másodperc után kérhető.
-- **OPEN:** abszolút maximális session-élettartam; ebben a sprintben nem kerül feltételezett limit a kódba.
+- **OPEN:** az abszolút maximális session-élettartam konkrét production értéke.
 
-Az implementáció a 15 perces idle határt csúszó lejáratként kezeli. Ez nem értelmezhető abszolút maximumnak.
+**IMPLEMENTED Sprint 8:** az abszolút élettartam kötelezően konfigurálható productionben, és a jelszó utáni pending állapottól a 2FA utáni authenticated sessionig közös szerveroldali korlát. A fejlesztői `28800` másodperc nem tulajdonosi production döntés.
 
 ## SMTP
 
@@ -26,6 +26,7 @@ Az implementáció a 15 perces idle határt csúszó lejáratként kezeli. Ez ne
 - **OPEN:** SMTP port, titkosítás, felhasználónév, feladó e-mail és authentikáció.
 - **IMPLEMENTED fejlesztési konfiguráció:** localhoston a Docker Mailpit host/port használható hitelesítés nélkül.
 - Credential vagy más secret nem kerülhet repositoryba.
+- **IMPLEMENTED Sprint 8:** productionben csak hitelesített TLS/SSL SMTP konfiguráció fogadható el, kötelező certificate- és hostnév-ellenőrzéssel; a konkrét port/user/feladó/credential továbbra is OPEN/deployment secret.
 
 ## Árképzés
 
@@ -83,3 +84,11 @@ Az implementáció a 15 perces idle határt csúszó lejáratként kezeli. Ez ne
 - **RESOLVED:** külső esemény külön entitás és blocked period, soha nem booking; confirmed konfliktus bookingot nem módosít.
 - **RESOLVED:** admin forráskezelés és kézi sync; automatikus cron nincs implementálva.
 - **OPEN:** cron gyakoriság, retry/backoff, eltűnési grace és tokenrotációs átfedés.
+
+## Sprint 8 production hardening
+
+- **IMPLEMENTED:** privacy elfogadási időpont, URL és verzió immutable snapshotként, ugyanabban a booking tranzakcióban auditálva; történeti rekordokra nem készül visszamenőleges elfogadási bizonyíték.
+- **IMPLEMENTED:** `/foglalasi-szabalyzat` és `/adatkezelesi_tajekoztato` technikai route, biztonságos `noindex` fejlesztői placeholderrel.
+- **OPEN / RELEASE BLOCKER:** a két jogi dokumentum jóváhagyott szövege és végleges verziója.
+- **IMPLEMENTED:** HTTPS-feltételes HSTS, common security headerek és exact, fail-fast trusted proxy lista.
+- **OPEN / DEPLOYMENT:** tanúsítvány, HTTP→HTTPS redirect és staging security smoke.

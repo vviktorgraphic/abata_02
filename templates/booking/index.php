@@ -80,7 +80,7 @@
             </div>
             <label class="consent full">
                 <input name="privacy_accepted" type="checkbox" required>
-                <span>Elolvastam és elfogadom az <a href="/adatkezelesi_tajekoztato" target="_blank" rel="noopener noreferrer">adatkezelési tájékoztatót</a>.</span>
+                <span>Elolvastam és elfogadom az <a href="<?= htmlspecialchars($privacyPolicyUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" target="_blank" rel="noopener noreferrer">adatkezelési tájékoztatót</a>.</span>
             </label>
             <label class="consent full">
                 <input name="booking_policy_accepted" type="checkbox" required aria-describedby="booking-policy-error">

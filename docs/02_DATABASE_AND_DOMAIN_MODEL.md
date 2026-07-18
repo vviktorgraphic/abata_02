@@ -11,6 +11,8 @@ Ez a dokumentum a migrációkban és a kapcsolódó PHP-kódban igazolt jelenleg
 
 A forward-only `013_add_pricing_policy_and_cancellation.sql` a bookinghoz adja a policy-elfogadás atomikus snapshotját (`booking_policy_accepted_at`, `booking_policy_version`, `booking_policy_url`) és a cancellation snapshot mezőit (`cancelled_at`, rate, amount, HUF currency, rule version és JSON calculation snapshot), konzisztencia-ellenőrzésekkel és indexekkel.
 
+**IMPLEMENTED Sprint 8:** a `016_add_privacy_acceptance_snapshot.sql` nullable, all-or-none privacy snapshotot ad (`privacy_accepted_at`, `privacy_policy_version`, `privacy_policy_url`). Új publikus bookingnál mindhárom érték atomikusan rögzül. A korábbi rekordok mindhárom mezője szándékosan `NULL`: a migráció nem állít elő visszamenőleges, nem bizonyítható elfogadási tényt.
+
 A `pricing_rules` egységes, bővíthető modellje támogatja a `stay_length`, `base`, `seasonal`, `weekend`, `fixed_fee`, `tourism_tax` és admin által konfigurált `exemption` típusokat; a három alapegységet; adjustment módot; éjszaka- és hétköznap-feltételeket; prioritást; active/soft-delete állapotot; valamint létrehozó és módosító admin FK-kat. A 013 migráció a korábbi `person_night` értéket `per_person_per_night` értékre alakítja, korábbi migráció módosítása nélkül.
 
 Minden üzleti tábla InnoDB, `utf8mb4` karakterkészletű és `utf8mb4_unicode_ci` kollációjú. A foglalási napok `DATE` típusúak. A `TIMESTAMP` mezők technikai időpontok; a PHP dátumkezelés kötelező időzónája `Europe/Budapest`.

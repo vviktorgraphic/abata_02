@@ -93,10 +93,10 @@ $workflow = new DefaultAdminAuthWorkflow(
     $admins,
     new IssueTwoFactorCode($codes, new TwoFactorCodeGenerator($dateClock), $dateClock),
     new VerifyTwoFactorCode($codes, $dateClock),
-    new SmtpMailer(new SmtpConfiguration($mailConfig['host'], $mailConfig['port'], $mailConfig['encryption'], $username, $password)),
+    new SmtpMailer(new SmtpConfiguration($mailConfig['host'], $mailConfig['port'], $mailConfig['encryption'], $username, $password, production: $mailConfig['production'])),
     new TwoFactorMailRenderer($root . '/templates/email', $mailConfig['from_email']),
     $session,
-    new AdminSessionRepository($pdo),
+    new AdminSessionRepository($pdo, $authConfig['session_absolute_timeout_seconds']),
     $rateLimiter,
     $policies,
     new PdoAuditLog($pdo),
@@ -114,7 +114,7 @@ $blockedRepository = new PdoBlockedPeriodRepository($pdo, $audit);
 $statusNotifications = new BookingStatusNotificationDispatcher(
     new PdoBookingStatusNotificationOutbox($pdo),
     new BookingStatusMailRenderer($root . '/templates/email', $mailConfig['from_email']),
-    new SmtpMailer(new SmtpConfiguration($mailConfig['host'], $mailConfig['port'], $mailConfig['encryption'], $username, $password)),
+    new SmtpMailer(new SmtpConfiguration($mailConfig['host'], $mailConfig['port'], $mailConfig['encryption'], $username, $password, production: $mailConfig['production'])),
     $audit,
 );
 $calendarSources = new PdoCalendarSourceRepository($pdo);

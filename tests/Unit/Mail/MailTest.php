@@ -61,4 +61,38 @@ final class MailTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
         new SmtpConfiguration('smtp.example.test', 587, 'none', 'user', 'secret');
     }
+
+    public function testProductionSmtpRequiresAuthentication(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        new SmtpConfiguration('smtp.example.test', 587, 'tls', production: true);
+    }
+
+    public function testProductionSmtpRequiresTls(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        new SmtpConfiguration('smtp.example.test', 25, 'none', 'user', 'secret', production: true);
+    }
+
+    public function testProductionAuthenticatedTlsConfigurationIsAccepted(): void
+    {
+        $configuration = new SmtpConfiguration('smtp.example.test', 587, 'tls', 'user', 'secret', production: true);
+        self::assertTrue($configuration->production);
+    }
+
+    /** @dataProvider invalidSmtpHosts */
+    public function testSmtpHostRejectsUrisPathsAndWhitespace(string $host): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        new SmtpConfiguration($host, 587, 'tls', 'user', 'secret');
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function invalidSmtpHosts(): iterable
+    {
+        yield 'URI' => ['smtp://example.test'];
+        yield 'path' => ['example.test/smtp'];
+        yield 'space' => ['smtp example.test'];
+        yield 'credentials' => ['user@example.test'];
+    }
 }

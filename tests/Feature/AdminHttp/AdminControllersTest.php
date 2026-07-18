@@ -123,6 +123,21 @@ final class AdminControllersTest extends TestCase
         self::assertSame('nosniff', $headers['X-Content-Type-Options']);
         self::assertStringContainsString("frame-ancestors 'none'", $headers['Content-Security-Policy']);
         self::assertStringNotContainsString('unsafe-inline', $headers['Content-Security-Policy']);
+
+        $common = SecurityHeaders::common();
+        self::assertSame('DENY', $common['X-Frame-Options']);
+        self::assertSame('nosniff', $common['X-Content-Type-Options']);
+        self::assertSame('strict-origin-when-cross-origin', $common['Referrer-Policy']);
+    }
+
+    public function test_hsts_contract_requires_both_production_and_https(): void
+    {
+        self::assertSame([], SecurityHeaders::transport('development', true, 0));
+        self::assertSame([], SecurityHeaders::transport('production', false, 31536000));
+        self::assertSame(
+            ['Strict-Transport-Security' => 'max-age=31536000'],
+            SecurityHeaders::transport('production', true, 31536000),
+        );
     }
 
     public function test_redirect_response_rejects_external_and_protocol_relative_targets(): void

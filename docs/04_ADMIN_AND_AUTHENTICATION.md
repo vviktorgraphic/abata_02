@@ -11,13 +11,13 @@
 
 **IMPLEMENTED:** kriptográfiailag generált hatjegyű e-mailes 2FA, hash-elt tárolás, 10 perces TTL, maximum öt hibás próbálkozás, egyszer használhatóság és 60 másodperces resend-várakozás. A kódot a mailer kapja meg, adatbázisba és audit metadata-ba nem kerül plaintextként.
 
-**IMPLEMENTED:** pending és authenticated sessionállapot, rotáció a biztonsági határokon, 15 perces csúszó idle timeout, logout és szerveroldali visszavonás; sessionhöz kötött CSRF minden admin POST controllerben; konfigurálható login/2FA rate limit és szigorúan szűrt audit események.
+**IMPLEMENTED:** pending és authenticated sessionállapot, rotáció a biztonsági határokon, 15 perces csúszó idle timeout, konfigurálható abszolút session-élettartam, logout és szerveroldali visszavonás; sessionhöz kötött CSRF minden admin POST controllerben; konfigurálható login/2FA rate limit és szigorúan szűrt audit események.
 
 **IMPLEMENTED UI-alap:** login-, 2FA-, dashboard- és logout-controller, szerveroldali sablonok, A Bata design (`#19194B`, `#F0A236`, `#FFFFFF`). A teljes foglaláskezelő adminfelület nincs kész.
 
 **IMPLEMENTED HTTP-integráció:** a front controller beköti a login, 2FA verify/resend, dashboard és logout route-okat. A release-kapuhoz Docker/Mailpit smoke továbbra is szükséges.
 
-**DECISION REQUIRED:** abszolút session maximum nincs megadva; a rendszer ebben a sprintben csak a 15 perces idle lejáratot érvényesíti. A rate-limit küszöbök konfigurálható fejlesztési alapértékek, véglegesítésük nyitott.
+**IMPLEMENTED:** az abszolút session maximumot az `ADMIN_SESSION_ABSOLUTE_TIMEOUT_SECONDS` adja meg. Productionben kötelező és a 15 perces idle timeoutnál nagyobb pozitív egész; fejlesztésben a dokumentált alapérték 28 800 másodperc. A rate-limit küszöbök konfigurálható fejlesztési alapértékek, véglegesítésük nyitott.
 
 **IMPLEMENTED:** a korábbi JSON placeholdert a Sprint 3 HTML login controller és sablon váltotta fel.
 
@@ -91,9 +91,9 @@ Sikerkor a rendszer:
 
 ### 3. Session és cookie
 
-**IMPLEMENTED:** a session ID a pending és authenticated biztonsági határon rotálódik. A cookie konfigurálható `Secure`, mindig `HttpOnly`, `SameSite=Lax`, minimális path hatókörű; session ID nem kerül URL-be. A szerveroldali session tartalmazza az admin azonosítóját, auth szintjét, létrehozási és utolsó aktivitási idejét, a csúszó idle lejáratot és a visszavonást. Abszolút lejárat nincs feltételezve.
+**IMPLEMENTED:** a session ID a pending és authenticated biztonsági határon rotálódik. A cookie konfigurálható `Secure`, mindig `HttpOnly`, `SameSite=Lax`, minimális path hatókörű; session ID nem kerül URL-be. A szerveroldali session tartalmazza az admin azonosítóját, auth szintjét, létrehozási és utolsó aktivitási idejét, a csúszó idle lejáratot és a visszavonást. Az aktív session lekérdezése és atomi touch művelete a `created_at + ADMIN_SESSION_ABSOLUTE_TIMEOUT_SECONDS` határt is ellenőrzi; az `expires_at` soha nem csúszhat ezen túl. A sikeres 2FA miatti session-ID rotáció az eredeti pending session `created_at` értékét örökíti, ezért a teljes password→2FA→authenticated folyamat egyetlen abszolút időkeretet használ.
 
-> **DECISION REQUIRED:** az idle és abszolút session-élettartam. Érzékeny műveleteknél rövid idejű friss hitelesítés megkövetelése külön döntendő el.
+> **CONFIGURATION REQUIRED:** productionben az abszolút élettartam explicit megadandó. Érzékeny műveleteknél rövid idejű friss hitelesítés megkövetelése külön döntendő el.
 
 ### 4. Logout és visszavonás
 
