@@ -2,6 +2,17 @@
 
 A projekt változásai ebben a fájlban követik a release-eket. A formátum a Keep a Changelog elveit használja; a verziózás célja Semantic Versioning.
 
+## [Unreleased]
+
+### Fixed
+
+- A sikeres admin 2FA után az azonos másodpercben változatlan MySQL session touch többé nem okoz téves logoutot és login redirectet.
+- Session-létrehozási hiba esetén néma redirect helyett biztonságos felhasználói hiba jelenik meg.
+
+### Security
+
+- A session fixation elleni ID-rotáció és az immutable abszolút lifetime-origin megmaradt; sikeres 2FA után a CSRF token is rotálódik.
+
 ## [1.0.0-rc1] - 2026-07-18
 
 ### Added

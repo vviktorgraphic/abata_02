@@ -31,12 +31,25 @@ final readonly class TwoFactorController
             return $this->csrfFailure();
         }
         $code = is_string($input['code'] ?? null) ? $input['code'] : '';
-        if (!$this->auth->verify($code, $context)) {
+        try {
+            $verified = $this->auth->verify($code, $context);
+        } catch (AdminSessionEstablishmentFailed $exception) {
+            error_log(sprintf(
+                'Admin session establishment failed after successful 2FA (%s).',
+                $exception->getPrevious() === null ? 'session_state' : $exception->getPrevious()::class,
+            ));
+            return new HtmlResponse($this->view->render('verify', [
+                'error' => 'A bejelentkezési munkamenet nem hozható létre. Kérjük, próbálja meg újra.',
+                'csrfToken' => $this->csrf->token(),
+            ]), 500);
+        }
+        if (!$verified) {
             return new HtmlResponse($this->view->render('verify', [
                 'error' => 'A kód nem fogadható el. Kérj új kódot, vagy jelentkezz be újra.',
                 'csrfToken' => $this->csrf->token(),
             ]), 422);
         }
+        $this->csrf->rotate();
         return new RedirectResponse('/admin');
     }
 

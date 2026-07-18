@@ -3,6 +3,8 @@
 **Állapot:** release candidate forráskód; production kiadásra jelenleg **NO-GO**
 **Dátum:** 2026-07-18
 
+> **RC1 hotfix:** a sikeres admin 2FA utáni same-second session touch téves logoutját a `fix/admin-2fa-session-redirect` branch javítja. A javítás részletei: [docs/17_ADMIN_2FA_SESSION_REDIRECT_FIX.md](docs/17_ADMIN_2FA_SESSION_REDIRECT_FIX.md).
+
 ## Fő funkciók
 
 - publikus availability naptár és tranzakciós, idempotens booking request;

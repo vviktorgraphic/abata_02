@@ -61,7 +61,26 @@ final readonly class AdminSessionRepository
             'expires_at' => $this->format($expiresAt),
             'token_hash' => $this->hash($rawSessionToken),
         ]);
-        return $statement->rowCount() === 1;
+        if ($statement->rowCount() === 1) {
+            return true;
+        }
+
+        // MySQL reports zero affected rows when the same-second activity and
+        // expiry values are unchanged. Distinguish that valid no-op from a
+        // revoked, expired or absolute-lifetime-exhausted session.
+        $active = $this->pdo->prepare(
+            'SELECT 1 FROM admin_sessions
+             WHERE session_token_hash = :token_hash AND revoked_at IS NULL AND expires_at > :current_time
+               AND DATE_ADD(created_at, INTERVAL ' . $this->absoluteLifetimeSeconds . ' SECOND) > :absolute_current_time
+             LIMIT 1'
+        );
+        $active->execute([
+            'token_hash' => $this->hash($rawSessionToken),
+            'current_time' => $this->format($activityAt),
+            'absolute_current_time' => $this->format($activityAt),
+        ]);
+
+        return $active->fetchColumn() !== false;
     }
 
     /** Returns the admin id only for a non-revoked, non-expired session at the required auth level. */
