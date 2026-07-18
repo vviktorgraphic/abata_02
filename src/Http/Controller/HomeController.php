@@ -6,7 +6,7 @@ namespace App\Http\Controller;
 
 final readonly class HomeController
 {
-    public function __construct(private string $templateDirectory, private string $bookingPolicyUrl = '/booking-policy')
+    public function __construct(private string $templateDirectory, private string $bookingPolicyUrl = '/foglalasi-szabalyzat')
     {
     }
 

@@ -22,7 +22,17 @@ final class TwoFactorCodeTest extends TestCase
         self::assertMatchesRegularExpression('/^\d{6}$/D', $generated->plainCode);
         self::assertNotSame($generated->plainCode, $generated->code->codeHash());
         self::assertTrue(password_verify($generated->plainCode, $generated->code->codeHash()));
+        self::assertFalse(property_exists($generated, 'plaintext'), 'The delivery boundary must use the DTO plainCode contract.');
         self::assertSame('2026-07-16 12:10:00', $generated->code->expiresAt()->format('Y-m-d H:i:s'));
+    }
+
+    public function testAdminDeliveryUsesTheGeneratedCodeContract(): void
+    {
+        $workflow = file_get_contents(dirname(__DIR__, 3) . '/src/Http/Controller/Admin/DefaultAdminAuthWorkflow.php');
+
+        self::assertIsString($workflow);
+        self::assertStringNotContainsString('->plaintext', $workflow);
+        self::assertSame(2, substr_count($workflow, '->plainCode'));
     }
 
     /** @dataProvider unusableCodeProvider */

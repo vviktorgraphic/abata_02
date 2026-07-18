@@ -17,6 +17,8 @@ final class BookingFrontendTest extends TestCase
         self::assertStringContainsString('Foglalás | A Bata', $template);
         self::assertStringContainsString('name="contact_name"', $template);
         self::assertStringContainsString('name="privacy_accepted"', $template);
+        self::assertStringContainsString('/adatkezelesi_tajekoztato', $template);
+        self::assertStringContainsString('/foglalasi-szabalyzat', $template);
         self::assertStringContainsString('name="booking_policy_accepted"', $template);
         self::assertStringContainsString('Foglalási szabályzatot', $template);
         self::assertStringContainsString('aria-live="polite"', $template);

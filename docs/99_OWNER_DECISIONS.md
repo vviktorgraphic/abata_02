@@ -29,12 +29,14 @@ Az implementáció a 15 perces idle határt csúszó lejáratként kezeli. Ez ne
 
 ## Árképzés
 
-**RESOLVED követelmény:** adminfelületen szerkeszthető lesz a konkrét ársáv, az árazási alapegység, a szezonális ár, a hétvégi ár, valamint az idegenforgalmi adó és mentességei. A konkrét értékek és kombinációs szabályok továbbra is **OPEN**; lásd [árképzés](05_PRICING.md).
+**RESOLVED követelmény:** adminfelületen szerkeszthető a konkrét ársáv, az árazási alapegység, a szezonális ár, a hétvégi ár, valamint az idegenforgalmi adó és mentességei. A hétvégi alapértelmezés péntek és szombat éjszaka. Az IFA-t az admin konfigurálja, a rendszer kizárólag számolja; production adóértéket vagy jogi mentességet nem talál ki. A további konkrét értékek és kombinációs szabályok **OPEN**; lásd [árképzés](05_PRICING.md).
 
 ## iCal
 
 - **RESOLVED:** Szallas.hu és Google Calendar import/export támogatandó.
-- **OPEN:** `pending` foglalások exportjának szabálya.
+- **RESOLVED:** csak confirmed booking és aktív blocked period exportálódik; pending/rejected/cancelled/invalidated booking nem.
+- **RESOLVED:** az exporttoken query paraméterben van: `/calendar/export.ics?token=...`.
+- **RESOLVED:** Sprint 7-ben kézi sync van; cron/retry/grace nincs feltételezve.
 
 ## Backup
 
@@ -65,7 +67,8 @@ Az implementáció a 15 perces idle határt csúszó lejáratként kezeli. Ez ne
 - **RESOLVED:** támogatott base unit: `per_person_per_night`, `per_night`, `per_booking`; a pricing engine sorrendje determinisztikus, azonos nyertes prioritás konfliktus.
 - **RESOLVED:** legalább 7 Europe/Budapest naptári nappal érkezés előtt a confirmed booking kötbérmentesen lemondható; később a booking immutable pricing snapshot `accommodation_fee` értékének 50%-a a HUF kötbér.
 - **RESOLVED:** a cancellation snapshot és vendéglevél nem jelent automatikus terhelést; online beszedés nincs implementálva.
-- **OPEN:** production ársávok/összegek, hétvégi napok, szezonális/fix díjak, IFA érték és jogilag jóváhagyott exemption kategóriák.
+- **RESOLVED:** booking-policy URL `/foglalasi-szabalyzat`; privacy URL `/adatkezelesi_tajekoztato`; hétvégi default péntek/szombat éjszaka; IFA admin-konfigurált és a rendszer számolja.
+- **OPEN:** production ársávok/összegek, szezonális/fix díjak, IFA érték és jogilag jóváhagyott exemption kategóriák.
 
 ## Sprint 5 admin booking management
 
@@ -74,3 +77,9 @@ Az implementáció a 15 perces idle határt csúszó lejáratként kezeli. Ez ne
 - **RESOLVED:** confirmed/rejected/cancelled levél commit után; invalidated nem küld.
 - **RESOLVED:** blocked period confirmed bookinggal nem ütközhet, pendinggel figyelmeztetéssel igen; eltávolítása soft delete.
 - **OPEN:** automatikus retry/max-attempt/stale reclaim paraméterei.
+
+## Sprint 7 iCal sync
+
+- **RESOLVED:** külső esemény külön entitás és blocked period, soha nem booking; confirmed konfliktus bookingot nem módosít.
+- **RESOLVED:** admin forráskezelés és kézi sync; automatikus cron nincs implementálva.
+- **OPEN:** cron gyakoriság, retry/backoff, eltűnési grace és tokenrotációs átfedés.

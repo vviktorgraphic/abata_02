@@ -5,13 +5,13 @@
     <p class="intro">Írd be az e-mailben kapott hatjegyű kódot.</p>
     <?php if (isset($error)): ?><div class="alert" role="alert"><?= htmlspecialchars((string) $error, ENT_QUOTES, 'UTF-8') ?></div><?php endif; ?>
     <?php if (isset($message)): ?><div class="notice" role="status"><?= htmlspecialchars((string) $message, ENT_QUOTES, 'UTF-8') ?></div><?php endif; ?>
-    <form method="post" action="/admin/verify">
+    <form method="post" action="/admin/2fa/verify">
         <input type="hidden" name="_csrf" value="<?= htmlspecialchars((string) $csrfToken, ENT_QUOTES, 'UTF-8') ?>">
         <label for="code">Hatjegyű ellenőrző kód</label>
         <input id="code" name="code" class="code-input" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" minlength="6" maxlength="6" required autofocus>
         <button type="submit">Ellenőrzés</button>
     </form>
-    <form method="post" action="/admin/verify/resend" class="secondary-action">
+    <form method="post" action="/admin/2fa/resend" class="secondary-action">
         <input type="hidden" name="_csrf" value="<?= htmlspecialchars((string) $csrfToken, ENT_QUOTES, 'UTF-8') ?>">
         <button type="submit" class="button-secondary">Új kód kérése</button>
     </form>

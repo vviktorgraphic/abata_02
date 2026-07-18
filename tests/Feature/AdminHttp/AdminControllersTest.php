@@ -69,6 +69,9 @@ final class AdminControllersTest extends TestCase
         self::assertStringContainsString('inputmode="numeric"', $response->body);
         self::assertStringContainsString('autocomplete="one-time-code"', $response->body);
         self::assertStringContainsString('pattern="[0-9]{6}"', $response->body);
+        self::assertStringContainsString('action="/admin/2fa/verify"', $response->body);
+        self::assertStringContainsString('action="/admin/2fa/resend"', $response->body);
+        self::assertStringNotContainsString('action="/admin/verify', $response->body);
         self::assertSame(2, substr_count($response->body, 'name="_csrf"'));
     }
 

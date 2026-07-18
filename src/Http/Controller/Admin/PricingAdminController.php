@@ -152,7 +152,7 @@ final readonly class PricingAdminController
         $max = $this->optionalInteger($form['maximum_nights'] ?? null, 1, 3650);
         if ($min !== null && $max !== null && $min > $max) throw new \InvalidArgumentException();
         $weekdays = $this->integerList($form['applicable_weekdays'] ?? '', 1, 7, 7);
-        if ($type === 'weekend' && $weekdays === []) throw new \InvalidArgumentException();
+        if ($type === 'weekend' && $weekdays === []) $weekdays = [5, 6];
         $exemption = is_string($form['exemption_key'] ?? null) ? trim($form['exemption_key']) : '';
         if (($type === 'exemption' && !preg_match('/^[a-z0-9][a-z0-9_-]{0,63}$/', $exemption)) || ($type !== 'exemption' && $exemption !== '')) throw new \InvalidArgumentException();
         return ['name'=>$name,'rule_type'=>$type,'valid_from'=>$from,'valid_until'=>$until,'nightly_price'=>$form['amount'],
@@ -173,6 +173,6 @@ final readonly class PricingAdminController
     /** @return list<int> */ private function integerList(mixed $value,int $min,int $max,int $limit): array { if (!is_string($value)) throw new \InvalidArgumentException(); if (trim($value)==='') return []; $parts=array_map('trim',explode(',',$value)); if(count($parts)>$limit) throw new \InvalidArgumentException(); return array_map(fn(string $v):int=>$this->integer($v,$min,$max),$parts); }
     /** @return list<string> */ private function keyList(mixed $value): array { if(!is_string($value)) throw new \InvalidArgumentException(); if(trim($value)==='') return []; $keys=array_map('trim',explode(',',$value)); if(count($keys)>30) throw new \InvalidArgumentException(); foreach($keys as $key) if(!preg_match('/^[a-z0-9][a-z0-9_-]{0,63}$/',$key)) throw new \InvalidArgumentException(); return array_values(array_unique($keys)); }
     private function audit(string $type,int $adminId,?int $id=null):void { $metadata=['target_type'=>'pricing_rule']; if($id!==null)$metadata['target_id']=(string)$id; $this->audit->append(new AuditEvent($type,'success',new \DateTimeImmutable('now',new \DateTimeZone('Europe/Budapest')),new AuditMetadata($metadata),$adminId)); }
-    /** @return array<string,mixed> */ private function defaults():array { return ['name'=>'','rule_type'=>'base','valid_from'=>'','valid_until'=>'','amount'=>'0.00','adjustment_mode'=>'fixed','base_unit'=>'per_person_per_night','minimum_nights'=>'1','maximum_nights'=>'','applicable_weekdays'=>'','exemption_key'=>'','priority'=>'0','is_active'=>1]; }
+    /** @return array<string,mixed> */ private function defaults():array { return ['name'=>'','rule_type'=>'base','valid_from'=>'','valid_until'=>'','amount'=>'0.00','adjustment_mode'=>'fixed','base_unit'=>'per_person_per_night','minimum_nights'=>'1','maximum_nights'=>'','applicable_weekdays'=>'5,6','exemption_key'=>'','priority'=>'0','is_active'=>1]; }
     private function error(int $status,string $message):HtmlResponse { return new HtmlResponse($this->view->render('error',['message'=>$message]),$status); }
 }
