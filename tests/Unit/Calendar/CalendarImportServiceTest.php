@@ -59,6 +59,24 @@ final class CalendarImportServiceTest extends TestCase
         self::assertCount(1, $events->calls);
     }
 
+    public function testUtcDateTimeAcrossBudapestDstFallbackBlocksTheExactLocalCalendarDay(): void
+    {
+        $events = new FakeImportEvents([ImportedEventPersistenceResult::BLOCKED]);
+        $result = $this->service(
+            new FakeImportSources($this->source('google_calendar')),
+            new FakeImportLogs(),
+            $events,
+            $this->feed([$this->event('dst-fallback', '20261024T223000Z', '20261025T023000Z', false)]),
+        )->import(4);
+
+        self::assertSame('success', $result->status);
+        self::assertSame(
+            ['2026-10-25', '2026-10-26'],
+            [$events->calls[0]['start'], $events->calls[0]['end']],
+            'Both instants fall on the Budapest DST transition day, which is blocked exactly once.',
+        );
+    }
+
     public function testFetchOrParseFailureIsRecordedAndMarksSourceError(): void
     {
         $sources = new FakeImportSources($this->source('google_calendar'));

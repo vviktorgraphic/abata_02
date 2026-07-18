@@ -134,8 +134,8 @@ final class IcsParser
         if ($startProperty === null || $endProperty === null) {
             throw new IcsParseException('VEVENT DTSTART and DTEND are required.');
         }
-        $allDay = strtoupper($startProperty['params']['VALUE'] ?? '') === 'DATE';
-        if ($allDay !== (strtoupper($endProperty['params']['VALUE'] ?? '') === 'DATE')) {
+        $allDay = $this->isDateValue($startProperty, 'DTSTART');
+        if ($allDay !== $this->isDateValue($endProperty, 'DTEND')) {
             throw new IcsParseException('VEVENT DTSTART and DTEND must use the same value type.');
         }
         $start = $this->dateTime($startProperty, $allDay, 'DTSTART');
@@ -161,6 +161,23 @@ final class IcsParser
             $this->text($this->one($properties, 'DESCRIPTION')['value'] ?? ''),
             $this->optionalTimestamp($properties, 'LAST-MODIFIED'),
         );
+    }
+
+    /** @param array{params: array<string,string>, value: string} $property */
+    private function isDateValue(array $property, string $name): bool
+    {
+        $valueType = strtoupper(trim($property['params']['VALUE'] ?? ''));
+        if (!in_array($valueType, ['', 'DATE', 'DATE-TIME'], true)) {
+            throw new IcsParseException("VEVENT {$name} contains an unsupported VALUE type.");
+        }
+
+        $isDate = $valueType === 'DATE'
+            || ($valueType === '' && preg_match('/^\d{8}$/', trim($property['value'])) === 1);
+        if ($isDate && isset($property['params']['TZID'])) {
+            throw new IcsParseException("VEVENT {$name} DATE value must not contain TZID.");
+        }
+
+        return $isDate;
     }
 
     /** @param array<string, list<array{params: array<string,string>, value: string}>> $properties

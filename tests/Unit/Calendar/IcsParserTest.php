@@ -11,6 +11,18 @@ use PHPUnit\Framework\TestCase;
 
 final class IcsParserTest extends TestCase
 {
+    public function testAcceptsBareDateAsAnAllDayHalfOpenRangeWithoutTimezoneShift(): void
+    {
+        $event = (new IcsParser())->parse(self::feed(
+            "UID:szallas-date\nDTSTART:20260807\nDTEND:20260809"
+        ))->events[0];
+
+        self::assertTrue($event->allDay);
+        self::assertSame('2026-08-07', $event->arrivalDate());
+        self::assertSame('2026-08-09', $event->departureDate());
+        self::assertSame('Europe/Budapest', $event->startsAt->getTimezone()->getName());
+    }
+
     public function testParsesCrLfAllDayEventAsHalfOpenBudapestRange(): void
     {
         $calendar = (new IcsParser())->parse(implode("\r\n", [
@@ -47,7 +59,23 @@ final class IcsParserTest extends TestCase
 
         self::assertFalse($calendar->events[0]->allDay);
         self::assertSame('2026-10-25T02:30:00+02:00', $calendar->events[0]->startsAt->format('c'));
+        self::assertSame('2026-10-25T03:30:00+01:00', $calendar->events[0]->endsAt->format('c'));
         self::assertSame('Europe/Budapest', $calendar->events[0]->endsAt->getTimezone()->getName());
+    }
+
+    public function testAcceptsUtcFloatingAndTzidDateTimes(): void
+    {
+        $cases = [
+            ["DTSTART:20260807T120000Z\nDTEND:20260809T100000Z", '2026-08-07T14:00:00+02:00'],
+            ["DTSTART:20260807T140000\nDTEND:20260809T100000", '2026-08-07T14:00:00+02:00'],
+            ["DTSTART;TZID=Europe/Budapest:20260807T140000\nDTEND;TZID=Europe/Budapest:20260809T100000", '2026-08-07T14:00:00+02:00'],
+        ];
+
+        foreach ($cases as [$properties, $expectedStart]) {
+            $event = (new IcsParser())->parse(self::feed("UID:timed-format\n{$properties}"))->events[0];
+            self::assertFalse($event->allDay);
+            self::assertSame($expectedStart, $event->startsAt->format('c'));
+        }
     }
 
     #[DataProvider('invalidFeeds')]
@@ -62,12 +90,17 @@ final class IcsParserTest extends TestCase
         return [
             'no calendar' => ['BEGIN:VEVENT\nEND:VEVENT'],
             'incomplete event' => ["BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:u\nEND:VCALENDAR"],
-            'missing uid' => [self::feed('DTSTART;VALUE=DATE:20260101\nDTEND;VALUE=DATE:20260102')],
-            'invalid date' => [self::feed('UID:u\nDTSTART;VALUE=DATE:20260230\nDTEND;VALUE=DATE:20260302')],
-            'zero duration' => [self::feed('UID:u\nDTSTART;VALUE=DATE:20260101\nDTEND;VALUE=DATE:20260101')],
-            'mixed types' => [self::feed('UID:u\nDTSTART;VALUE=DATE:20260101\nDTEND:20260102T120000')],
-            'bad sequence' => [self::feed('UID:u\nDTSTART;VALUE=DATE:20260101\nDTEND;VALUE=DATE:20260102\nSEQUENCE:-1')],
-            'duplicate uid' => [self::feed('UID:u\nUID:v\nDTSTART;VALUE=DATE:20260101\nDTEND;VALUE=DATE:20260102')],
+            'missing uid' => [self::feed("DTSTART;VALUE=DATE:20260101\nDTEND;VALUE=DATE:20260102")],
+            'invalid date' => [self::feed("UID:u\nDTSTART;VALUE=DATE:20260230\nDTEND;VALUE=DATE:20260302")],
+            'invalid bare date length' => [self::feed("UID:u\nDTSTART:2026087\nDTEND:20260809")],
+            'nonexistent bare date' => [self::feed("UID:u\nDTSTART:20260230\nDTEND:20260302")],
+            'zero duration' => [self::feed("UID:u\nDTSTART;VALUE=DATE:20260101\nDTEND;VALUE=DATE:20260101")],
+            'bare reverse duration' => [self::feed("UID:u\nDTSTART:20260102\nDTEND:20260101")],
+            'mixed types' => [self::feed("UID:u\nDTSTART;VALUE=DATE:20260101\nDTEND:20260102T120000")],
+            'date with tzid' => [self::feed("UID:u\nDTSTART;TZID=Europe/Budapest:20260101\nDTEND;TZID=Europe/Budapest:20260102")],
+            'unknown tzid' => [self::feed("UID:u\nDTSTART;TZID=Invalid/Zone:20260101T120000\nDTEND;TZID=Invalid/Zone:20260101T130000")],
+            'bad sequence' => [self::feed("UID:u\nDTSTART;VALUE=DATE:20260101\nDTEND;VALUE=DATE:20260102\nSEQUENCE:-1")],
+            'duplicate uid' => [self::feed("UID:u\nUID:v\nDTSTART;VALUE=DATE:20260101\nDTEND;VALUE=DATE:20260102")],
         ];
     }
 

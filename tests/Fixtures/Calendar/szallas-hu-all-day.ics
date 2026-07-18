@@ -1,0 +1,23 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Szallas.hu compatible regression fixture//EN
+BEGIN:VEVENT
+UID:generic-reservation-1@szallas.example
+DTSTART:20260807
+DTEND:20260809
+SUMMARY:Szallas.hu Reserved
+END:VEVENT
+BEGIN:VEVENT
+UID:generic-reservation-2@szallas.example
+DTSTART:20260824
+DTEND:20260826
+SUMMARY:Szallas.hu Reserved
+END:VEVENT
+BEGIN:VEVENT
+UID:generic-unavailable-3@szallas.example
+DTSTAMP:20260718T141149Z
+DTSTART:20270101
+DTEND:20271201
+SUMMARY:Szallas.hu (Not available)
+END:VEVENT
+END:VCALENDAR

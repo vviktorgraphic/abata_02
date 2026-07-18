@@ -8,6 +8,8 @@ Az `release/rc1` forrás release candidate állapotú. A funkciók és ismert ko
 
 Az RC1 utáni admin 2FA session redirect hibajavítás gyökérokát, session/cookie invariánsait és ellenőrzését a [2FA session fix dokumentum](docs/17_ADMIN_2FA_SESSION_REDIRECT_FIX.md) rögzíti.
 
+A kézi Szallas.hu iCal import az explicit `VALUE=DATE` mellett a szolgáltató bare `YYYYMMDD` egész napos eseményeit is támogatja; a pontos formátum- és időzónaszerződés az [iCal dokumentációban](docs/07_ICAL_SYNC.md) található.
+
 ## Rendszerspecifikáció
 
 Az aktuális implementáció és a tervezett 1.0 célrendszer elsődleges, verziókezelt specifikációja a [docs/README.md](docs/README.md) indexből érhető el. A dokumentáció az **IMPLEMENTED** és **PLANNED** állapotot elkülönítve kezeli; fejlesztés előtt az érintett fejezeteket a kóddal, migrációkkal és tesztekkel együtt kell ellenőrizni.
