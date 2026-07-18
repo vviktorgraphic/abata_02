@@ -63,6 +63,8 @@ Skála: valószínűség és hatás `Alacsony`, `Közepes` vagy `Magas`. Az áll
 
 **IMPLEMENTED alkalmazási támogatás:** productionben a `SESSION_COOKIE_SECURE=true`, a pozitív `HSTS_MAX_AGE_SECONDS` és az explicit `ADMIN_SESSION_ABSOLUTE_TIMEOUT_SECONDS` kötelező. A HSTS fejléc kizárólag production környezetben és HTTPS-kérésnél kerül ki. Az alkalmazás az `X-Forwarded-Proto` értéket csak a `TRUSTED_PROXY_IPS` pontos IP-listáján szereplő reverse proxytól fogadja el; üres lista mellett nem bízik forwarded fejlécben. A közös publikus és admin válaszok nosniff, frame, referrer és permissions headereket kapnak; az admin ezen felül no-store és szigorú CSP választ használ. **KÖRNYEZETFÜGGŐ RELEASE-KAPU:** a webszerver HTTP→HTTPS átirányítása, TLS és HSTS staging smoke továbbra is deployment feladat.
 
+**IMPLEMENTED Sprint 9 deployment readiness:** a [production deployment runbook](15_DEPLOYMENT.md) és a külön Apache production `.htaccess` sablon reprodukálható HTTP→HTTPS, Secure-cookie, HSTS és trusted-proxy ellenőrzést ad. A redirect sablon szándékosan nem kerül a lokális HTTP Docker konfigurációba. A tanúsítvány, proxy IP, HSTS időtartam és staging smoke továbbra is környezetfüggő release-kapu.
+
 Fejlesztési alapérték: 28 800 másodperc abszolút admin session-élettartam és kikapcsolt HSTS (`0`). Productionben mindkettőt explicit kell beállítani; production timeoutot és HSTS időtartamot a rendszer nem talál ki.
 
 ### Security headerek

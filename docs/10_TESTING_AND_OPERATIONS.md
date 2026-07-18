@@ -175,6 +175,8 @@ Adatvesztő hiba esetén a jóváhagyott backup restore eljárás használható;
 
 ## Monitoring és naplózás
 
+A production health/readiness, probe, naplórotáció, alerting és a tényleges cron inventory részletes runbookja: [Production monitoring és cron](14_MONITORING_AND_CRON.md).
+
 **PLANNED:** Monitorozandó legalább:
 
 - HTTPS health endpoint elérhetősége és válaszideje;

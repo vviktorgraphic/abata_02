@@ -5,7 +5,9 @@
     "type": "project",
     "require": {
         "php": "^8.2",
+        "ext-curl": "*",
         "ext-mbstring": "*",
+        "ext-openssl": "*",
         "ext-pdo": "*"
     },
     "require-dev": {
@@ -23,8 +25,10 @@
     },
     "scripts": {
         "admin:create": "php bin/admin-create.php",
+        "backup:database": "php bin/backup-database.php",
         "db:check": "php bin/db-check.php",
         "migrate": "php bin/migrate.php",
+        "restore:database": "php bin/restore-database.php",
         "seed:demo": "php bin/seed-demo.php",
         "test": "phpunit"
     },

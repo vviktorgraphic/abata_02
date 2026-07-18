@@ -10,6 +10,7 @@ final readonly class HomeController
         private string $templateDirectory,
         private string $bookingPolicyUrl = '/foglalasi-szabalyzat',
         private string $privacyPolicyUrl = '/adatkezelesi_tajekoztato',
+        private ?\Closure $readinessCheck = null,
     )
     {
     }
@@ -25,7 +26,17 @@ final readonly class HomeController
     /** @param array<string, mixed> $query */
     public function health(array $query = []): void
     {
-        $this->json(['status' => 'ok', 'time' => (new \DateTimeImmutable())->format(DATE_ATOM)]);
+        try {
+            if ($this->readinessCheck !== null && ($this->readinessCheck)() !== true) {
+                throw new \RuntimeException('Readiness check failed.');
+            }
+
+            http_response_code(200);
+            $this->json(['status' => 'ok']);
+        } catch (\Throwable) {
+            http_response_code(503);
+            $this->json(['status' => 'unavailable']);
+        }
     }
 
     /** @param array<string, mixed> $query */

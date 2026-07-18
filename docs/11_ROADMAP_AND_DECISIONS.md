@@ -1,12 +1,12 @@
 # Roadmap és döntési napló
 
-**Állapot:** Sprint 1–8 alkalmazási scope IMPLEMENTED, production deployment kapuk nyitottak
-**Utolsó ellenőrzött állapot:** Sprint 8 production-hardening munkafa, commit előtt
+**Állapot:** Sprint 1–9 alkalmazási és deployment-readiness scope IMPLEMENTED, környezetfüggő release-kapuk nyitottak
+**Utolsó ellenőrzött állapot:** Sprint 9 production-deployment munkafa, commit előtt
 
 ## Kiindulási helyzet
 
 **IMPLEMENTED:** technikai alap, MySQL séma, migrációfuttató, publikus két hónapos naptár, read-only availability API, mentés nélküli booking-validáció és demo seeder.
-**IMPLEMENTED:** admin authentication/2FA, admin booking management, tranzakciós booking persistence, közös pricing engine, immutable pricing/policy/privacy/cancellation snapshot, booking és státusz outbox/e-mail, kézi iCal import és tokenes export, továbbá a Sprint 8 SMTP/session/HTTPS alkalmazási hardening. **PLANNED / RELEASE GATE:** jóváhagyott jogi tartalom, production deployment smoke, backup/restore, automatikus e-mail retry és iCal cron/retry/grace.
+**IMPLEMENTED:** admin authentication/2FA, admin booking management, tranzakciós booking persistence, közös pricing engine, immutable pricing/policy/privacy/cancellation snapshot, booking és státusz outbox/e-mail, kézi iCal import és tokenes export, továbbá az alkalmazási hardening, a cPanel deployment runbook, a backup/restore eszközök és a DB-readiness health endpoint. **PLANNED / RELEASE GATE:** jóváhagyott jogi tartalom, környezetben végrehajtott production/staging smoke, automatikus e-mail retry és iCal cron/retry/grace.
 
 ## Tervezett sprintek
 
@@ -104,3 +104,7 @@ Nyitott kapuk: abszolút session maximum; production SMTP port/TLS/auth/feladó;
 ## Sprint 7 teljesítési állapot
 
 **IMPLEMENTED:** RFC 5545 parser/exporter; Google Calendar és Szallas.hu kézi import; forrás, külső esemény és sync-log persistence; külső eseményből külön blocked period; idempotencia és confirmed-konfliktus figyelmeztetés; admin forrás CRUD/kézi sync/log; query-tokenes, PII-mentes export confirmed bookingokkal és aktív blocked periodokkal. **PLANNED:** cron, automatikus retry/backoff, eltűnési grace, manuális konfliktusfeloldás és tokenrotációs átfedés.
+
+## Sprint 9 teljesítési állapot
+
+**IMPLEMENTED:** cPanel/Apache deployment runbook és HTTPS-sablon; placeholder-only production environment leltár; authenticated SMTP, SPF/DKIM/DMARC és staging smoke eljárás; checksumolt, céladatbázishoz kötött backup/restore CLI; RPO/RTO mérési útmutató; adatbázis-readiness `/health`; monitoring, logolás és alerting runbook. **PLANNED / BLOCKED:** az iCal, outbox retry és cleanup cronhoz nincs futtatható worker vagy jóváhagyott ütemezési/retention szabály, ezért production cront nem találunk ki. A környezetfüggő staging/production smoke és az owner/legal kapuk továbbra is nyitottak.

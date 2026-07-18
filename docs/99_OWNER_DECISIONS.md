@@ -2,7 +2,7 @@
 
 **Állapot:** RESOLVED tulajdonosi döntések és részben nyitott konfiguráció
 **Döntés dátuma:** 2026-07-16
-**Ellenőrzött kódbázis:** Sprint 8 production-hardening munkafa, commit előtt
+**Ellenőrzött kódbázis:** Sprint 9 production-deployment munkafa, commit előtt
 
 ## Projekt és design
 
@@ -92,3 +92,11 @@
 - **OPEN / RELEASE BLOCKER:** a két jogi dokumentum jóváhagyott szövege és végleges verziója.
 - **IMPLEMENTED:** HTTPS-feltételes HSTS, common security headerek és exact, fail-fast trusted proxy lista.
 - **OPEN / DEPLOYMENT:** tanúsítvány, HTTP→HTTPS redirect és staging security smoke.
+
+## Sprint 9 production deployment readiness
+
+- **IMPLEMENTED:** cPanel/Apache deployment és rollback runbook, külön production HTTPS redirect sablonnal.
+- **IMPLEMENTED:** checksumolt, secretet parancssorban nem továbbító backup/restore CLI, explicit céladatbázis-megerősítéssel.
+- **IMPLEMENTED:** adatbázis-readiness health endpoint és monitoring/alerting runbook.
+- **OPEN / OWNER-OPERATIONS:** backup gyakoriság és retention; monitoring szolgáltató/SLA/riasztási küszöb; iCal/outbox/cleanup worker szabályai és ütemezése.
+- **OPEN / ENVIRONMENT:** HTTPS, SMTP, restore és RPO/RTO staging smoke; ezek dokumentációja nem bizonyítja a környezetbeli teljesülést.

@@ -1,0 +1,18 @@
+# Replace PRODUCTION_HOST with the escaped canonical hostname before installation.
+# Install as public/.htaccess only after HTTPS works on that production hostname.
+# Do not use this template in the local HTTP-only Docker environment.
+Options -Indexes
+RewriteEngine On
+
+# Reject unapproved Host headers without reflecting them into a redirect.
+RewriteCond %{HTTP_HOST} !^PRODUCTION_HOST$ [NC]
+RewriteRule ^ - [R=400,L]
+
+# Apache terminates TLS. If a controlled reverse proxy terminates TLS, configure
+# its redirect at the proxy instead; do not trust a client-supplied forwarded header.
+RewriteCond %{HTTPS} !=on
+RewriteRule ^ https://PRODUCTION_HOST%{REQUEST_URI} [R=308,L,NE]
+
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [QSA,L]
