@@ -2,7 +2,7 @@
 
 **Állapot:** DECISION REQUIRED
 **Utolsó felülvizsgálat:** 2026-07-18
-**Ellenőrzött kódbázis:** Sprint 8 production-hardening munkafa, commit előtt
+**Ellenőrzött kódbázis:** Sprint 9 production-deployment munkafa, commit előtt
 
 A lezárt döntések forrása a [tulajdonosi döntési napló](99_OWNER_DECISIONS.md).
 
@@ -12,9 +12,9 @@ A lezárt döntések forrása a [tulajdonosi döntési napló](99_OWNER_DECISION
 2. **Admin session:** a production abszolút maximális élettartam konkrét tulajdonosi értéke. A konfigurálható, pending és authenticated állapoton átívelő szerveroldali korlát IMPLEMENTED; a 15 perces idle timeout RESOLVED.
 3. **Rate limit:** login IP/fiók végleges küszöbei, időablak és lockout idő. A Sprint 3 konfigurálható **IMPLEMENTED DEVELOPMENT DEFAULT** értékeket használ (`10/IP`, `5/fiók`, 15 perces ablak és 15 perces lockout); ezek nem production üzleti döntések.
 4. **Adatmegőrzés:** login attempt, audit, session és 2FA rekordok konkrét retentionje.
-5. **Backup:** az 5 perces RTO-t teljesítő cPanel restore automatizálás és staging mérési eljárás.
+5. **Backup:** a checksumolt backup/restore eszköz és staging mérési eljárás IMPLEMENTED; az 5 perces RTO tényleges cPanel staging mérése, retention és ütemezés OPEN.
 6. **Jogi tartalom:** a két technikai route IMPLEMENTED, de a jóváhagyott foglalási szabályzat, adatkezelési tájékoztató és végleges verzióazonosítók owner/legal döntést igényelnek; a fejlesztői placeholder production release blocker.
-7. **HTTPS deployment:** tanúsítvány, HTTP→HTTPS redirect, Secure-cookie és HSTS staging smoke. Az alkalmazási HSTS/trusted-proxy fail-fast támogatás IMPLEMENTED.
+7. **HTTPS deployment:** a redirect sablon és alkalmazási Secure-cookie/HSTS/trusted-proxy kontroll IMPLEMENTED; a tanúsítvány és staging smoke környezetfüggő OPEN kapu.
 
 ## P1 – kapcsolódó modul előtt
 
@@ -74,3 +74,12 @@ A lezárt döntések forrása a [tulajdonosi döntési napló](99_OWNER_DECISION
 - Backup/restore automatizálás, retention és végleges rate-limit küszöbök; ezek a Sprint 8 konkrét implementációs listáján kívül maradtak.
 
 **IMPLEMENTED Sprint 8:** privacy acceptance időpont + immutable URL/verzió snapshot és audit; jogi route-ok biztonságos noindex placeholderrel; production SMTP authenticated TLS/SSL fail-fast; konfigurálható teljes auth-folyamatot capelő abszolút session lifetime; trusted-proxy validáció és HTTPS-feltételes HSTS.
+
+## Sprint 9 után nyitott
+
+- Production/staging HTTPS, SMTP-kézbesítés, backup-restore és RPO/RTO smoke eredménye.
+- Backup retention és futási gyakoriság.
+- iCal sync, outbox retry és cleanup worker, valamint ezek retry/lock/retention és ütemezési szabályai.
+- Monitoring szolgáltató, elérhetőségi cél és végleges riasztási küszöbök.
+
+**IMPLEMENTED Sprint 9:** cPanel deployment/rollback runbook; Apache HTTPS redirect sablon; production environment mezőleltár; biztonságos backup/restore CLI; DB-readiness health endpoint; monitoring és cron inventory dokumentáció.

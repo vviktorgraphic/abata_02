@@ -1,5 +1,7 @@
 # E-mail folyamatok
 
+> A production SMTP paraméterezés, SPF/DKIM/DMARC előkészítés és staging kézbesítési smoke végrehajtható lépéseit a [production deployment runbook](15_DEPLOYMENT.md#production-smtp) tartalmazza. Provider rekordot, credentialt vagy enforcement policyt a rendszer nem feltételez.
+
 **Állapot:** 2FA, booking-request és booking-status/cancellation e-mail, outbox és manuális failed resend IMPLEMENTED; automatikus retry/stale reclaim PLANNED
 **Utolsó ellenőrzés:** 2026-07-16, Sprint 3 munkafa (commit előtt)
 

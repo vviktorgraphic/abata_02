@@ -10,6 +10,8 @@ Az aktuális implementáció és a tervezett 1.0 célrendszer elsődleges, verzi
 
 Dockeres használathoz Docker Engine és Docker Compose szükséges. Helyi, cPanel-szerű futtatáshoz PHP 8.2+, PDO MySQL és Composer 2 kell, a webszerver document rootja pedig kizárólag a `public/` könyvtár legyen.
 
+Production cPanel/Apache telepítéshez, HTTPS- és SMTP-smoke-hoz, valamint biztonságos rollbackhez a [production deployment runbook](docs/15_DEPLOYMENT.md) követendő. A [production környezetminta](.env.production.example) csak placeholder mezőleltár, nem futtatható titkok kitöltése és a nyitott tulajdonosi értékek jóváhagyása nélkül.
+
 ```powershell
 Copy-Item .env.example .env
 docker compose build
@@ -96,10 +98,14 @@ docker compose exec app composer test
 
 Docker nélkül, telepített függőségekkel: `composer test`.
 
+## Production backup és restore
+
+A `composer backup:database` webrooton/repositoryn kívüli könyvtárba készít atomikusan véglegesített, SHA-256 ellenőrzőösszeggel kísért MySQL dumpot. A `composer restore:database` csak checksum-ellenőrzés és adatbázisnévhez kötött explicit megerősítés után indul. A credential nem adható parancssori argumentumban, automatikus retention/törlés pedig nincs. A cPanel eljárás, staging restore-próba és a 4 órás RPO/5 perces RTO mérési útmutató: [docs/13_BACKUP_AND_RESTORE.md](docs/13_BACKUP_AND_RESTORE.md).
+
 ## Végpontok
 
 - `GET /` – publikus, két hónapos foglalási naptár és adatbekérő űrlap
-- `GET /health` – health check
+- `GET /health` – PII-mentes alkalmazás- és adatbázis-readiness (`200 ok`, függőséghibánál `503 unavailable`)
 - `GET /api/availability?from=2026-08-01&to=2026-10-01` – publikus foglaltsági adatok
 - `POST /api/booking/validate` – mentés nélküli, előkészítő űrlap-validáció
 - `GET /admin/login` – admin belépési oldal

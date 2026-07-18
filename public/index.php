@@ -58,6 +58,10 @@ $controller = new HomeController(
     dirname(__DIR__) . '/templates',
     $bookingPolicy['url'],
     $privacyPolicy['url'],
+    static function (): bool {
+        $pdo = ConnectionFactory::create(require dirname(__DIR__) . '/config/database.php');
+        return (string) $pdo->query('SELECT 1')->fetchColumn() === '1';
+    },
 );
 $legalController = new LegalPageController(dirname(__DIR__) . '/templates');
 

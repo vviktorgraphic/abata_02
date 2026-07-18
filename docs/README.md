@@ -30,7 +30,10 @@ A jelölések jelentése:
 | [08 – API referencia](08_API_REFERENCE.md) | Jelenlegi és tervezett HTTP végpontok |
 | [09 – Biztonság](09_SECURITY.md) | Threat model és kötelező kontrollok |
 | [10 – Tesztelés és üzemeltetés](10_TESTING_AND_OPERATIONS.md) | Tesztpiramis, cPanel telepítés, backup és monitoring |
+| [14 – Monitoring és cron](14_MONITORING_AND_CRON.md) | Health/readiness, naplózás, alerting és cron inventory |
 | [11 – Roadmap és döntések](11_ROADMAP_AND_DECISIONS.md) | Sprintterv, ADR-ek és nyitott kérdések |
+| [13 – Backup és restore](13_BACKUP_AND_RESTORE.md) | Biztonságos MySQL backup/restore, staging próba és RPO/RTO mérés |
+| [15 – Production deployment](15_DEPLOYMENT.md) | cPanel release, HTTPS, proxy, session és SMTP runbook |
 | [98 – Nyitott döntések](98_OPEN_DECISIONS.md) | Prioritásos, még tulajdonosi vagy architekturális döntést igénylő kérdések |
 | [99 – Tulajdonosi döntések](99_OWNER_DECISIONS.md) | Dátummal rögzített, lezárt tulajdonosi döntések |
 
