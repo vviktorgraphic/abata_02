@@ -9,11 +9,16 @@ final class PricingEngine
     private const TIMEZONE = 'Europe/Budapest';
 
     /** @param list<PricingRule> $rules */
-    public function calculate(PricingInput $input, array $rules, ?\DateTimeImmutable $calculatedAt = null): PricingResult
+    public function calculate(PricingInput $input, array $rules, ?\DateTimeImmutable $calculatedAt = null, ?PersonPricingConfiguration $personConfiguration = null): PricingResult
     {
         [$arrival, $departure, $nights] = $this->period($input);
         $people = $input->adults + count($input->childAges);
         $active = array_values(array_filter($rules, static fn (PricingRule $r): bool => $r->active));
+        $personSnapshot = null;
+        if ($personConfiguration?->mode === 'person') {
+            [$accommodation, $items, $applied, $personSnapshot] = $this->personAccommodation($input, $personConfiguration, $active, $arrival, $departure);
+            $baseUnit = 'per_person_per_night';
+        } else {
         $stay = array_values(array_filter($active, fn (PricingRule $r): bool => $r->type === 'stay_length'
             && ($r->minimumNights === null || $nights >= $r->minimumNights)
             && ($r->maximumNights === null || $nights <= $r->maximumNights)
@@ -23,6 +28,7 @@ final class PricingEngine
         if ($base->baseUnit === null) {
             throw new PricingConfigurationError('The winning base rule has no base unit.');
         }
+        $baseUnit = $base->baseUnit;
 
         $baseMinor = $this->minor($base->amount);
         $baseQuantity = match ($base->baseUnit) {
@@ -65,6 +71,7 @@ final class PricingEngine
                 $applied[] = $rule->id;
             }
         }
+        }
 
         $fixedFees = array_values(array_filter($active, fn (PricingRule $r): bool => $r->type === 'fixed_fee' && $this->overlaps($r, $arrival, $departure)));
         $this->assertNoPriorityTies($fixedFees, 'fixed fee');
@@ -104,15 +111,81 @@ final class PricingEngine
         $totalHuf = array_sum(array_column($roundedItems, 'total_huf'));
         $now = ($calculatedAt ?? new \DateTimeImmutable('now', new \DateTimeZone(self::TIMEZONE)))->setTimezone(new \DateTimeZone(self::TIMEZONE));
         $snapshot = [
-            'version' => 2, 'calculated_at' => $now->format(DATE_ATOM),
+            'version' => $personSnapshot === null ? 2 : 3, 'calculated_at' => $now->format(DATE_ATOM),
             'arrival_date' => $input->arrivalDate, 'departure_date' => $input->departureDate, 'nights' => $nights,
             'adults' => $input->adults, 'children' => array_map(static fn (int $age): array => ['age' => $age], $input->childAges),
-            'pricing_rule_ids' => array_values(array_unique($applied)), 'base_unit' => $base->baseUnit,
+            'pricing_rule_ids' => array_values(array_unique($applied)), 'base_unit' => $baseUnit,
             'line_items' => $roundedItems, 'accommodation_fee' => $this->huf($accommodationHuf),
             'taxes' => $this->huf($taxHuf), 'total' => $this->huf($totalHuf), 'currency' => 'HUF',
             'rounding' => ['mode' => 'HALF_UP', 'scale' => 0, 'stage' => 'line_item'],
         ];
+        if ($personSnapshot !== null) {
+            $snapshot += $personSnapshot;
+            $snapshot['other_fees'] = $this->huf($totalHuf - $accommodationHuf - $taxHuf);
+            $snapshot['applied_rules'] = array_map(static fn (PricingRule $rule): array => get_object_vars($rule),
+                array_values(array_filter($active, static fn (PricingRule $rule): bool => in_array($rule->id, $applied, true))));
+        }
+        if ($totalHuf > 9999999999) { throw new PricingConfigurationError('Pricing total exceeds supported storage range.'); }
         return new PricingResult($this->huf($totalHuf), $this->huf($accommodationHuf), $this->huf($taxHuf), 'HUF', $roundedItems, $snapshot['pricing_rule_ids'], $snapshot);
+    }
+
+    /** @param list<PricingRule> $active @return array{int,list<array<string,mixed>>,list<int>,array<string,mixed>} */
+    private function personAccommodation(PricingInput $input, PersonPricingConfiguration $configuration, array $active, \DateTimeImmutable $arrival, \DateTimeImmutable $departure): array
+    {
+        if ($configuration->adultWeekdayPrice === null || $configuration->adultWeekendPrice === null) {
+            throw new PersonPricingNotConfigured('A felnőtt hétköznapi és hétvégi személyár még nincs beállítva.');
+        }
+        $childBands = [];
+        foreach ($input->childAges as $age) {
+            if ($age > 17) { throw new \InvalidArgumentException('Children must be aged 0 through 17; adults are 18 or older.'); }
+            $childBands[] = $configuration->bandForAge($age);
+        }
+        $accommodation = 0;
+        $items = [];
+        $applied = [];
+        $nightly = [];
+        for ($day = $arrival; $day < $departure; $day = $day->modify('+1 day')) {
+            $weekend = in_array((int) $day->format('N'), [5, 6], true);
+            $adultRate = $weekend ? $configuration->adultWeekendPrice : $configuration->adultWeekdayPrice;
+            $adultTotal = $this->multiply($this->minor($adultRate), $input->adults);
+            $childrenTotal = 0;
+            $children = [];
+            foreach ($childBands as $index => $band) {
+                $rate = $weekend ? $band->weekendPrice : $band->weekdayPrice;
+                $childrenTotal += $this->minor($rate);
+                $children[] = ['age'=>$input->childAges[$index], 'band'=>$band->snapshot(), 'unit_amount'=>$rate, 'total'=>$rate];
+            }
+            $nightAmount = $adultTotal + $childrenTotal;
+            $date = $day->format('Y-m-d');
+            $items[] = ['type'=>'accommodation', 'description'=>'Személyalapú szállásdíj '.$date,
+                'date'=>$date, 'configuration_version'=>$configuration->version,
+                'quantity'=>1, 'unit_minor'=>$nightAmount, 'total_minor'=>$nightAmount];
+            $seasonalItems = [];
+            $seasonal = array_values(array_filter($active, fn (PricingRule $r): bool => $r->type === 'seasonal' && $this->onDate($r, $day)));
+            if ($seasonal !== []) {
+                $rule = $this->winner($seasonal, 'seasonal adjustment');
+                $adjustment = $this->adjustment($rule, $nightAmount, 1, 1, $input->adults + count($input->childAges), 'per_person_per_night');
+                $item = $this->item('seasonal', $rule, 1, $this->minor($rule->amount), $adjustment);
+                $item['date'] = $date;
+                $items[] = $item;
+                $seasonalItems[] = $this->roundItem($item);
+                $nightAmount += $adjustment;
+                $applied[] = $rule->id;
+            }
+            $accommodation += $nightAmount;
+            $nightly[] = ['date'=>$date, 'weekend'=>$weekend, 'adults'=>$input->adults,
+                'adult_unit_amount'=>$adultRate, 'adult_total'=>$this->huf(intdiv($adultTotal, 100)),
+                'children'=>$children, 'children_total'=>$this->huf(intdiv($childrenTotal, 100)),
+                'seasonal_adjustments'=>$seasonalItems, 'total'=>$this->huf(intdiv($adultTotal + $childrenTotal, 100) + array_sum(array_column($seasonalItems, 'total_huf')))];
+        }
+        return [$accommodation, $items, $applied, [
+            'pricing_mode'=>'person', 'pricing_configuration_version'=>$configuration->version,
+            'adult_weekday_price'=>$configuration->adultWeekdayPrice, 'adult_weekend_price'=>$configuration->adultWeekendPrice,
+            'child_bands'=>array_map(static fn (ChildPriceBand $band): array => $band->snapshot(), $configuration->childBands),
+            'child_ages'=>$input->childAges, 'child_maximum_age'=>17, 'adult_minimum_age'=>18,
+            'weekend_iso_weekdays'=>[5,6], 'nightly_breakdown'=>$nightly,
+            'compatibility'=>['replaced_rule_types'=>['base','stay_length','weekend'], 'retained_rule_types'=>['seasonal','fixed_fee','tourism_tax','exemption']],
+        ]];
     }
 
     /** @return array{\DateTimeImmutable,\DateTimeImmutable,int} */
@@ -177,6 +250,16 @@ final class PricingEngine
     /** @return array<string,mixed> */
     private function item(string $type, PricingRule $r, int $quantity, int $unit, int $total): array { return ['type'=>$type,'description'=>$r->name,'rule_id'=>$r->id,'quantity'=>$quantity,'unit_minor'=>$unit,'total_minor'=>$total]; }
     /** @param array<string,mixed> $item @return array<string,mixed> */
-    private function roundItem(array $item): array { $huf = intdiv((int) $item['total_minor'] + 50, 100); unset($item['unit_minor'], $item['total_minor']); $item['unit_amount'] = number_format(((int) $item['quantity'] === 0 ? 0 : $huf / (int) $item['quantity']), 2, '.', ''); $item['total'] = $this->huf($huf); $item['total_huf'] = $huf; return $item; }
+    private function roundItem(array $item): array
+    {
+        $huf = intdiv((int) $item['total_minor'] + 50, 100);
+        $quantity = (int) $item['quantity'];
+        $unitMinor = $quantity === 0 ? 0 : intdiv($this->multiply($huf, 100) + intdiv($quantity, 2), $quantity);
+        unset($item['unit_minor'], $item['total_minor']);
+        $item['unit_amount'] = intdiv($unitMinor, 100).'.'.str_pad((string) ($unitMinor % 100), 2, '0', STR_PAD_LEFT);
+        $item['total'] = $this->huf($huf);
+        $item['total_huf'] = $huf;
+        return $item;
+    }
     private function huf(int $whole): string { return $whole.'.00'; }
 }

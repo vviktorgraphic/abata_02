@@ -23,7 +23,7 @@ final readonly class PdoExternalCalendarEventRepository implements ExternalCalen
     {
         $statement = $this->pdo->prepare(
             'SELECT id, calendar_source_id, external_uid, summary, description, start_date, end_date,
-                    payload_hash, blocked_period_id, status, last_seen_at, created_at, updated_at
+                    payload_hash, blocked_period_id, status, last_seen_at, missing_since, missing_since_timestamp, created_at, updated_at
              FROM external_calendar_events WHERE calendar_source_id = :source_id AND external_uid = :external_uid'
         );
         $statement->execute(['source_id' => $sourceId, 'external_uid' => $externalUid]);
@@ -47,7 +47,7 @@ final readonly class PdoExternalCalendarEventRepository implements ExternalCalen
              ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id), summary = VALUES(summary), description = VALUES(description),
                 start_date = VALUES(start_date), end_date = VALUES(end_date), payload_hash = VALUES(payload_hash),
                 blocked_period_id = COALESCE(VALUES(blocked_period_id), blocked_period_id), status = VALUES(status),
-                last_seen_at = VALUES(last_seen_at)'
+                last_seen_at = VALUES(last_seen_at), missing_since = NULL, missing_since_timestamp = NULL'
         );
         $statement->execute([
             'source_id' => $sourceId, 'uid' => trim($externalUid),
@@ -82,23 +82,27 @@ final readonly class PdoExternalCalendarEventRepository implements ExternalCalen
             );
             $existing->execute(['source_id' => $sourceId, 'uid' => trim($externalUid)]);
             $row = $existing->fetch(PDO::FETCH_ASSOC);
-            if (!$cancelled && $row !== false && hash_equals((string) $row['payload_hash'], $payloadHash)) {
+            if (!$cancelled && $row !== false && $row['status'] === 'blocked' && hash_equals((string) $row['payload_hash'], $payloadHash)) {
+                $touch = $this->pdo->prepare('UPDATE external_calendar_events SET last_seen_at = :seen, missing_since = NULL, missing_since_timestamp = NULL WHERE id = :id');
+                $touch->execute(['seen' => $seenAt->setTimezone(new DateTimeZone('Europe/Budapest'))->format('Y-m-d H:i:s'), 'id' => (int) $row['id']]);
                 $this->pdo->commit();
                 return new ImportedEventPersistenceResult(ImportedEventPersistenceResult::DUPLICATE, (int) $row['id'], $row['blocked_period_id'] === null ? null : (int) $row['blocked_period_id']);
             }
 
             $dates = ['start_date' => $startDate->format('Y-m-d'), 'end_date' => $endDate->format('Y-m-d')];
             if ($cancelled) {
+                $inactivated = false;
                 if ($row !== false && $row['blocked_period_id'] !== null) {
                     $inactive = $this->pdo->prepare(
                         'UPDATE blocked_periods SET is_active = FALSE, removed_at = COALESCE(removed_at, CURRENT_TIMESTAMP)
-                         WHERE id = :id'
+                         WHERE id = :id AND is_active = TRUE'
                     );
                     $inactive->execute(['id' => (int) $row['blocked_period_id']]);
+                    $inactivated = $inactive->rowCount() === 1;
                 }
                 $eventId = $this->upsert($sourceId, $externalUid, $summary, $description, $startDate, $endDate, $payloadHash, 'removed', $seenAt, $row === false || $row['blocked_period_id'] === null ? null : (int) $row['blocked_period_id']);
                 $this->pdo->commit();
-                return new ImportedEventPersistenceResult(ImportedEventPersistenceResult::REMOVED, $eventId, $row === false || $row['blocked_period_id'] === null ? null : (int) $row['blocked_period_id']);
+                return new ImportedEventPersistenceResult(ImportedEventPersistenceResult::REMOVED, $eventId, $row === false || $row['blocked_period_id'] === null ? null : (int) $row['blocked_period_id'], inactivated: $inactivated);
             }
 
             $confirmed = $this->pdo->prepare(
@@ -107,16 +111,18 @@ final readonly class PdoExternalCalendarEventRepository implements ExternalCalen
             );
             $confirmed->execute($dates);
             if ($confirmed->fetchColumn() !== false) {
+                $inactivated = false;
                 if ($row !== false && $row['blocked_period_id'] !== null) {
                     $inactive = $this->pdo->prepare(
                         'UPDATE blocked_periods SET is_active = FALSE, removed_at = COALESCE(removed_at, CURRENT_TIMESTAMP)
-                         WHERE id = :id'
+                         WHERE id = :id AND is_active = TRUE'
                     );
                     $inactive->execute(['id' => (int) $row['blocked_period_id']]);
+                    $inactivated = $inactive->rowCount() === 1;
                 }
                 $eventId = $this->upsert($sourceId, $externalUid, $summary, $description, $startDate, $endDate, $payloadHash, 'conflict', $seenAt);
                 $this->pdo->commit();
-                return new ImportedEventPersistenceResult(ImportedEventPersistenceResult::CONFLICT, $eventId, null);
+                return new ImportedEventPersistenceResult(ImportedEventPersistenceResult::CONFLICT, $eventId, null, inactivated: $inactivated);
             }
 
             $reason = 'Külső naptár';
@@ -137,7 +143,7 @@ final readonly class PdoExternalCalendarEventRepository implements ExternalCalen
                 ]);
                 $eventId = $this->upsert($sourceId, $externalUid, $summary, $description, $startDate, $endDate, $payloadHash, 'blocked', $seenAt, $blockedPeriodId);
                 $this->pdo->commit();
-                return new ImportedEventPersistenceResult(ImportedEventPersistenceResult::BLOCKED, $eventId, $blockedPeriodId);
+                return new ImportedEventPersistenceResult(ImportedEventPersistenceResult::BLOCKED, $eventId, $blockedPeriodId, true);
             }
             $blocked = $this->pdo->prepare(
                 'INSERT INTO blocked_periods (start_date, end_date, reason, internal_note, is_active)
@@ -151,6 +157,47 @@ final readonly class PdoExternalCalendarEventRepository implements ExternalCalen
             $eventId = $this->upsert($sourceId, $externalUid, $summary, $description, $startDate, $endDate, $payloadHash, 'blocked', $seenAt, $blockedPeriodId);
             $this->pdo->commit();
             return new ImportedEventPersistenceResult(ImportedEventPersistenceResult::BLOCKED, $eventId, $blockedPeriodId);
+        } catch (Throwable $error) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $error;
+        }
+    }
+
+    public function reconcile(int $sourceId, array $seenUids, DateTimeImmutable $now, int $graceSeconds): int
+    {
+        if ($graceSeconds < 86400 || $this->pdo->inTransaction()) {
+            throw new \LogicException('Invalid reconciliation context.');
+        }
+        $now = $now->setTimezone(new DateTimeZone('Europe/Budapest'));
+        $cutoff = $now->getTimestamp() - $graceSeconds;
+        $seen = array_fill_keys($seenUids, true);
+        $this->pdo->beginTransaction();
+        try {
+            $this->pdo->query('SELECT id FROM booking_inventory_locks WHERE id = 1 FOR UPDATE')->fetchColumn();
+            $query = $this->pdo->prepare("SELECT id, external_uid, blocked_period_id, missing_since_timestamp FROM external_calendar_events WHERE calendar_source_id = :source AND status <> 'removed' FOR UPDATE");
+            $query->execute(['source' => $sourceId]);
+            $mark = $this->pdo->prepare('UPDATE external_calendar_events SET missing_since = :at, missing_since_timestamp = :instant WHERE id = :id');
+            $remove = $this->pdo->prepare("UPDATE external_calendar_events SET status = 'removed' WHERE id = :id");
+            $block = $this->pdo->prepare('UPDATE blocked_periods SET is_active = FALSE, removed_at = :at WHERE id = :id AND is_active = TRUE');
+            $count = 0;
+            foreach ($query->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                if (isset($seen[$row['external_uid']])) {
+                    continue;
+                }
+                if ($row['missing_since_timestamp'] === null) {
+                    $mark->execute(['at' => $now->format('Y-m-d H:i:s'), 'instant' => $now->getTimestamp(), 'id' => $row['id']]);
+                } elseif ((int) $row['missing_since_timestamp'] <= $cutoff) {
+                    if ($row['blocked_period_id'] !== null) {
+                        $block->execute(['at' => $now->format('Y-m-d H:i:s'), 'id' => $row['blocked_period_id']]);
+                        $count += $block->rowCount();
+                    }
+                    $remove->execute(['id' => $row['id']]);
+                }
+            }
+            $this->pdo->commit();
+            return $count;
         } catch (Throwable $error) {
             if ($this->pdo->inTransaction()) {
                 $this->pdo->rollBack();

@@ -6,6 +6,11 @@ namespace App\Application\Calendar;
 
 interface CalendarSyncLogRepository
 {
+    public function recoverInterrupted(int $sourceId, \DateTimeImmutable $at): int;
+
+    /** @param array<string,int> $metrics */
+    public function metrics(int $id, array $metrics): void;
+
     public function start(int $sourceId, \DateTimeImmutable $startedAt): int;
 
     /** @param list<string> $warnings @param list<string> $errors */

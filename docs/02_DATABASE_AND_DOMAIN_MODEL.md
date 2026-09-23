@@ -286,3 +286,10 @@ Az egy tranzakción belüli invariáns szerint booking nem maradhat status histo
 ## Sprint 5 admin modell – IMPLEMENTED
 
 Átmenetek: `pending -> confirmed|rejected|invalidated`, `confirmed -> cancelled|invalidated`. A booking, history, audit és státusz-outbox egy tranzakció. A single-property inventory lock szerializálja a create/confirm/blocked create készletellenőrzését. A `012_add_blocked_period_management.sql` auditálható, aktív jelzős soft delete-et vezet be.
+## Sprint 10 séma – IMPLEMENTED
+
+A `017_add_ical_automation.sql` az external eventhez `missing_since`, a sync loghoz updated/duplicate/inactive/grace/retry/recovered számlálókat ad. A `019_add_ical_missing_instant.sql` az abszolút `missing_since_timestamp` epoch értékkel teszi DST-biztossá a legalább 24 órás grace-t; a helyi DATETIME csak üzemeltetői megjelenítés.
+
+A `018_add_person_pricing.sql` singleton `person_pricing_configuration` rekordot, `pricing_child_bands` és `pricing_child_age_coverage` táblát ad. A default mód `legacy`, ár nincs seedelve. A version optimistic lockingot szolgál; az age coverage elsődleges kulcsa a repository tranzakciójában DB-szinten elutasítja az aktív sávok overlapjét. A DECIMAL mezők kompatibilitás miatt megmaradnak, CHECK korlátozza őket egész, nem negatív HUF-ra.
+
+A booking táblák nem változnak: a v3 pricing JSON a meglévő immutable snapshot mezőbe kerül, így v1/v2 rekord nincs átírva. A migrációk forward-only-k; downgrade esetén legacy mód + cron tiltás + alkalmazáskód rollback, a sémát és snapshotot meg kell őrizni.

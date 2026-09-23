@@ -10,6 +10,8 @@ Az RC1 utáni admin 2FA session redirect hibajavítás gyökérokát, session/co
 
 A kézi Szallas.hu iCal import az explicit `VALUE=DATE` mellett a szolgáltató bare `YYYYMMDD` egész napos eseményeit is támogatja; a pontos formátum- és időzónaszerződés az [iCal dokumentációban](docs/07_ICAL_SYNC.md) található.
 
+**Sprint 10 IMPLEMENTED a feature branch-en:** automatikus, lockolt/retry-zó iCal CLI 24 órás reconciliation grace-szel; explicit legacy/személyalapú pricing mód, gyermek ársávok, v3 immutable snapshot és egységes `20 000 Ft` formázás. Részletes szerződés és cPanel cron: [Sprint 10 dokumentáció](docs/18_SPRINT10_AUTOMATIC_ICAL_AND_PERSON_PRICING.md).
+
 ## Rendszerspecifikáció
 
 Az aktuális implementáció és a tervezett 1.0 célrendszer elsődleges, verziókezelt specifikációja a [docs/README.md](docs/README.md) indexből érhető el. A dokumentáció az **IMPLEMENTED** és **PLANNED** állapotot elkülönítve kezeli; fejlesztés előtt az érintett fejezeteket a kóddal, migrációkkal és tesztekkel együtt kell ellenőrizni.
@@ -124,6 +126,7 @@ A `composer backup:database` webrooton/repositoryn kívüli könyvtárba készí
 - `GET /admin` – minimális, teljes 2FA-val védett dashboard
 - `POST /admin/logout` – CSRF-védett kijelentkezés
 - `GET /admin/pricing` – védett árszabálylista és előnézeti űrlap
+- `GET /admin/pricing/person` és `POST /admin/pricing/person` – verzióvédett személyár- és gyermekársáv-kezelés
 - `GET /admin/pricing/create` – árszabály létrehozása
 - `POST /admin/pricing` – validált, auditált árszabálymentés
 - `GET /admin/pricing/{id}/edit` és `POST /admin/pricing/{id}` – árszabály szerkesztése
@@ -235,7 +238,7 @@ A forrásfájl legyen a repositoryn kívül, a konténerbeli másolat pedig csak
 
 **IMPLEMENTED:** két hónapos publikus naptár, availability, admin-auth alapok és `POST /api/bookings`. Az új publikus igény `pending`; más pending igényt nem blokkol és nem jár le automatikusan, a `confirmed` booking és a blocked period viszont blokkol. A mentés idempotens, tranzakciós, HUF ár-pillanatképet és e-mail outbox rekordot hoz létre; SMTP-hiba nem törli a bookingot.
 
-**IMPLEMENTED:** teljes admin booking workflow, pricing admin CRUD/preview, kötelező és verziózott booking-policy elfogadás, immutable pricing/cancellation snapshot, 7 naptári napos kötbérmentes határ és későbbi 50%-os kötbér, valamint Sprint 7 iCal import/export. **PLANNED:** általános e-mail retry, automatikus iCal cron/retry és online fizetés. A pontos határt a [rendszerspecifikáció](docs/README.md) tartja nyilván.
+**IMPLEMENTED:** teljes admin booking workflow, pricing admin CRUD/preview, kötelező és verziózott booking-policy elfogadás, immutable pricing/cancellation snapshot, 7 naptári napos kötbérmentes határ és későbbi 50%-os kötbér, valamint automatikus iCal import worker. **PLANNED:** általános e-mail retry és online fizetés. A pontos határt a [rendszerspecifikáció](docs/README.md) tartja nyilván.
 
 ## Sprint 4 API smoke PowerShellből
 
@@ -293,7 +296,7 @@ git status
 
 **IMPLEMENTED:** Google Calendar és Szallas.hu iCal import kézi admin szinkronnal, forrás CRUD és szinkronnapló; külső eseményből külön blocked period készül, booking soha nem módosul. A tokenvédett `GET /calendar/export.ics?token=...` feed confirmed bookingokat és aktív blocked periodokat exportál PII nélkül. Pending/rejected/cancelled/invalidated booking nem exportálódik.
 
-**PLANNED:** cron, automatikus retry/backoff, eltűnt esemény grace és tokenrotációs átfedés. Ezekhez nincs feltételezett alapérték.
+**HISTORICAL Sprint 7:** a cron, retry/backoff és eltűnt esemény grace akkor még tervezett volt. **IMPLEMENTED Sprint 10:** forrásonkénti DB-lock, korlátozott retry és legalább 24 órás grace; a tokenrotációs átfedés továbbra is nyitott.
 
 PowerShell ellenőrzés:
 

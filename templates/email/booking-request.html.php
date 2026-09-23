@@ -14,7 +14,7 @@ $ages = $data->childAges === [] ? 'nincs' : implode(', ', $data->childAges) . ' 
 <tr><th align="left">Éjszakák</th><td><?= $data->nights() ?></td></tr>
 <tr><th align="left">Felnőttek</th><td><?= $data->adults ?></td></tr>
 <tr><th align="left">Gyermekek</th><td><?= count($data->childAges) ?> (életkorok: <?= $e($ages) ?>)</td></tr>
-<tr><th align="left">Végösszeg</th><td><strong><?= $e($data->totalAmount) ?> <?= $e($data->currency) ?></strong></td></tr>
+<tr><th align="left">Végösszeg</th><td><strong><?= $e(\App\Presentation\HufFormatter::format($data->totalAmount)) ?></strong></td></tr>
 </table>
 <p style="padding:16px;background:#F0A236;color:#19194B"><strong>Ez még csak foglalási igény, nem visszaigazolt foglalás.</strong> A foglalás az admin jóváhagyása után válik véglegessé.</p>
 </main></body></html>

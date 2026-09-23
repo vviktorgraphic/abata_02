@@ -83,3 +83,11 @@ A lezárt döntések forrása a [tulajdonosi döntési napló](99_OWNER_DECISION
 - Monitoring szolgáltató, elérhetőségi cél és végleges riasztási küszöbök.
 
 **IMPLEMENTED Sprint 9:** cPanel deployment/rollback runbook; Apache HTTPS redirect sablon; production environment mezőleltár; biztonságos backup/restore CLI; DB-readiness health endpoint; monitoring és cron inventory dokumentáció.
+## Sprint 10 után nyitott
+
+- Jóváhagyott production hétköznapi/hétvégi felnőttár, gyermek ársávok és összegek; IFA és jogi mentességi kategóriák.
+- iCal cron tényleges cPanel PHP/release/log útvonala, aktiválása, monitor/SLA/escalation és logretention.
+- Valós Google Calendar/Szallas.hu automatikus worker smoke és cPanel lock/retry futás bizonyítéka.
+- Exporttoken-rotáció átfedési ideje, általános outbox retry/stale reclaim és online fizetés.
+
+**RESOLVED Sprint 10:** worker belépési pont, forrásonkénti MySQL lock, átmeneti retry, legalább 24 órás DST-biztos grace, explicit legacy/person mód, gyermekkorhatár és ársáv-validáció, egész-HUF megjelenítés.

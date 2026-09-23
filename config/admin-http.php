@@ -119,16 +119,13 @@ $statusNotifications = new BookingStatusNotificationDispatcher(
 );
 $calendarSources = new PdoCalendarSourceRepository($pdo);
 $calendarLogs = new PdoCalendarSyncLogRepository($pdo);
-$calendarImporter = new CalendarImportService(
-    $calendarSources,
-    $calendarLogs,
-    new PdoExternalCalendarEventRepository($pdo),
-    new SecureCalendarFeedFetcher(new CurlCalendarFeedHttpClient(), new NativeCalendarHostResolver()),
-    new IcsParser(),
-    new BudapestCalendarSyncClock(),
-);
+$calendarImporter = (require __DIR__ . '/calendar-services.php')($pdo);
 
 return [
+    'person_pricing' => new App\Http\Controller\Admin\PersonPricingAdminController(
+        $workflow, $view, $csrf, $actionGuard,
+        new App\Infrastructure\Persistence\Pricing\PdoPersonPricingRepository($pdo),
+    ),
     'login' => new LoginController($workflow, $view, $csrf),
     'two_factor' => new TwoFactorController($workflow, $view, $csrf),
     'dashboard' => new DashboardController($workflow, $view, $csrf, $queries),

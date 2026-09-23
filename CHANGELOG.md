@@ -4,11 +4,18 @@ A projekt változásai ebben a fájlban követik a release-eket. A formátum a K
 
 ## [Unreleased]
 
+### Added
+
+- Automatikus, forrásonként lockolt iCal CLI worker korlátozott retry/backoff, 24 órás eltűnési grace és bővített sync metrikák mellett.
+- Explicit legacy/személyalapú pricing mód, felnőtt hétköznapi/hétvégi személyár, adminisztrálható gyermek ársávok és teljes v3 immutable snapshot.
+- Egységes, lebegőpontos számítást nem használó HUF formatter az admin, publikus és e-mail felületeken.
+
 ### Fixed
 
 - A Szallas.hu bare `YYYYMMDD` iCal DATE eseményei most szabványos, fél-nyitott Blocked Periodként importálhatók.
 - A sikeres admin 2FA után az azonos másodpercben változatlan MySQL session touch többé nem okoz téves logoutot és login redirectet.
 - Session-létrehozási hiba esetén néma redirect helyett biztonságos felhasználói hiba jelenik meg.
+- A reconciliation 24 órája DST-váltáskor is abszolút eltelt idő, a tényleges blokk-inaktiválási metrika pedig konfliktus és ismételt CANCELLED esetén is pontos.
 
 ### Security
 

@@ -114,6 +114,11 @@ $router->post('/admin/blocked-periods/{id}/remove', static fn (array $_query, ar
     isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
 )->send());
 $router->get('/admin/pricing', static fn () => $admin()['pricing']->index()->send());
+$router->get('/admin/pricing/person', static fn () => $admin()['person_pricing']->index()->send());
+$router->post('/admin/pricing/person', static fn () => $admin()['person_pricing']->save(
+    $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
+    isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
+)->send());
 $router->get('/admin/pricing/create', static fn () => $admin()['pricing']->createForm()->send());
 $router->post('/admin/pricing', static fn () => $admin()['pricing']->create(
     $_POST, $_SERVER['CONTENT_TYPE'] ?? null,

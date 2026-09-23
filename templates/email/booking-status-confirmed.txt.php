@@ -5,6 +5,6 @@ Foglalási referencia: <?= $data->reference ?>
 Távozás: <?= $data->departureDate ?>
 Éjszakák: <?= $data->nights() ?>
 Létszám: <?= $data->adults ?> felnőtt, <?= $data->children ?> gyermek
-Végösszeg: <?= $data->totalAmount ?> <?= $data->currency ?>
+Végösszeg: <?= \App\Presentation\HufFormatter::format($data->totalAmount) ?>
 
 Foglalását megerősítettük.

@@ -11,6 +11,6 @@ Távozás: <?= $data->departureDate ?>
 Éjszakák: <?= $data->nights() ?>
 Felnőttek: <?= $data->adults ?>
 Gyermekek: <?= count($data->childAges) ?> (életkorok: <?= $ages ?>)
-Végösszeg: <?= $data->totalAmount ?> <?= $data->currency ?>
+Végösszeg: <?= \App\Presentation\HufFormatter::format($data->totalAmount) ?>
 
 Ez még csak foglalási igény, nem visszaigazolt foglalás. A foglalás az admin jóváhagyása után válik véglegessé.

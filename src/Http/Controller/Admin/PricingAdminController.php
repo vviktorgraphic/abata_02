@@ -113,7 +113,9 @@ final readonly class PricingAdminController
             $this->audit('pricing.configuration_conflict', $authorization->admin['id']);
             return new HtmlResponse($this->view->render('pricing-preview', [
                 'result' => null, 'input' => $form, 'csrfToken' => $this->csrf->token(),
-                'error' => 'Az árkonfiguráció ellentmondásos; az előnézet nem számítható ki.',
+                'error' => $e instanceof \App\Application\Pricing\MissingChildPriceBandException
+                    ? 'Az egyik gyermek életkorához nincs aktív ársáv. A foglalás előtt állítson be megfelelő ársávot.'
+                    : 'Az árkonfiguráció hiányos vagy ellentmondásos; az előnézet nem számítható ki.',
             ]), 409);
         } catch (\InvalidArgumentException) { return $this->error(422, 'Az előnézet adatai érvénytelenek.'); }
     }
@@ -142,10 +144,14 @@ final readonly class PricingAdminController
         $name = trim($form['name']);
         if ($name === '' || mb_strlen($name) > 190 || !in_array($form['rule_type'], self::TYPES, true)) throw new \InvalidArgumentException();
         $from = $this->date($form['valid_from']); $until = $this->date($form['valid_until']);
-        if ($from >= $until || !preg_match('/^(?:0|[1-9]\d{0,9})\.\d{2}$/', $form['amount'])) throw new \InvalidArgumentException();
+        if ($from >= $until) throw new \InvalidArgumentException();
         $type = $form['rule_type'];
         $base = is_string($form['base_unit'] ?? null) && in_array($form['base_unit'], PricingRule::BASE_UNITS, true) ? $form['base_unit'] : null;
         $mode = is_string($form['adjustment_mode'] ?? null) && in_array($form['adjustment_mode'], PricingRule::ADJUSTMENT_MODES, true) ? $form['adjustment_mode'] : null;
+        $percent = in_array($type, ['seasonal', 'weekend'], true) && $mode === 'percent';
+        $pattern = $percent ? '/^(?:0|[1-9]\d{0,9})(?:\.\d{2})?$/D' : '/^(?:0|[1-9]\d{0,9})(?:\.00)?$/D';
+        if (!preg_match($pattern, $form['amount'])) throw new \InvalidArgumentException();
+        $form['amount'] = str_contains($form['amount'], '.') ? $form['amount'] : $form['amount'] . '.00';
         if (in_array($type, ['base','stay_length','tourism_tax'], true) && $base === null) throw new \InvalidArgumentException();
         if (in_array($type, ['seasonal','weekend'], true) && $mode === null) throw new \InvalidArgumentException();
         $min = $this->optionalInteger($form['minimum_nights'] ?? null, 1, 3650);

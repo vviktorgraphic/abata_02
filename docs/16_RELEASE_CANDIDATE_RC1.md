@@ -4,6 +4,8 @@
 **Dátum:** 2026-07-18
 **Branch:** `release/rc1`
 
+> **Történeti RC1 checklist:** a Sprint 10 feature branch az itt még hiányzó iCal workert már implementálja, de nincs automatikusan az RC1-be merge-elve. A jelenlegi worker/pricing szerződés a [Sprint 10 dokumentumban](18_SPRINT10_AUTOMATIC_ICAL_AND_PERSON_PRICING.md) található; a valós cPanel cron/provider smoke továbbra is PENDING.
+
 Ez a dokumentum végrehajtható staging checklist. A repository tesztjeinek sikere nem jelent automatikus production engedélyt. Minden környezetfüggő lépéshez dátum, végrehajtó, környezet, bizonyíték és PASS/FAIL eredmény szükséges, secret vagy személyes adat rögzítése nélkül.
 
 ## Repository és automatizált release gate
@@ -74,7 +76,7 @@ Elfogadás: tiszta release branch, healthy DB/Mailpit, sikeres build/DB/migráci
 
 ### Cron, backup és monitoring
 
-- [ ] iCal/outbox/cleanup cron nincs felvéve: jelenleg nincs jóváhagyott runnable worker.
+- [ ] iCal cron nincs felvéve: runnable Sprint 10 worker létezik, de ezen a környezeten még nincs kézi/provider/lock smoke és jóváhagyott cron aktiválás. Outbox/cleanup worker továbbra sincs.
 - [ ] Backup könyvtár repositoryn/webrooton kívül, minimális jogosultsággal és tárhelytitkosítással rendelkezik.
 - [ ] Backup checksum-valid, eltérő nevű staging DB-be restore sikeres.
 - [ ] 4 órás RPO és 5 perces RTO mérése dokumentált; retention és ütemezés jóváhagyott.

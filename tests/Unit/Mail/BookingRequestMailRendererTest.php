@@ -25,7 +25,9 @@ final class BookingRequestMailRendererTest extends TestCase
         self::assertStringContainsString('AB-123', $message->textBody);
         self::assertStringContainsString('Éjszakák: 3', $message->textBody);
         self::assertStringContainsString('Gyermekek: 1', $message->textBody);
-        self::assertStringContainsString('45000.00 HUF', $message->textBody);
+        self::assertStringContainsString('45 000 Ft', $message->textBody);
+        self::assertStringContainsString('45 000 Ft', $message->htmlBody);
+        self::assertStringNotContainsString('45000.00', $message->textBody . $message->htmlBody);
         self::assertStringContainsString('nem visszaigazolt foglalás', $message->textBody);
         self::assertStringContainsString('admin jóváhagyása után', $message->htmlBody);
         self::assertStringContainsString('#19194B', $message->htmlBody);

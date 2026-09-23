@@ -28,6 +28,30 @@ final readonly class PdoCalendarSyncLogRepository implements CalendarSyncLogRepo
         return (int) $this->pdo->lastInsertId();
     }
 
+    public function recoverInterrupted(int $sourceId, DateTimeImmutable $at): int
+    {
+        // Called only after owning the source advisory lock. A running row now
+        // belongs to an interrupted connection, never to a live importer.
+        $statement = $this->pdo->prepare("UPDATE calendar_sync_logs SET status = 'failed', finished_at = :at, errors_json = JSON_ARRAY('interrupted_run_recovered') WHERE calendar_source_id = :source AND status = 'running'");
+        $statement->execute(['at' => self::timestamp($at), 'source' => $sourceId]);
+        return $statement->rowCount();
+    }
+
+    public function metrics(int $id, array $metrics): void
+    {
+        $values = ['id' => $id];
+        $sets = [];
+        foreach (['updated_count', 'duplicate_count', 'inactive_count', 'grace_inactive_count', 'retry_count', 'recovered_run_count'] as $key) {
+            $value = $metrics[$key] ?? 0;
+            if (!is_int($value) || $value < 0) {
+                throw new \InvalidArgumentException('Invalid calendar metric.');
+            }
+            $sets[] = $key . ' = :' . $key;
+            $values[$key] = $value;
+        }
+        $this->pdo->prepare('UPDATE calendar_sync_logs SET ' . implode(', ', $sets) . ' WHERE id = :id')->execute($values);
+    }
+
     public function finish(int $id, string $status, DateTimeImmutable $finishedAt, int $imported, int $exported, array $warnings, array $errors): void
     {
         if (!in_array($status, self::STATUSES, true) || $imported < 0 || $exported < 0) {
@@ -50,11 +74,13 @@ final readonly class PdoCalendarSyncLogRepository implements CalendarSyncLogRepo
         if ($sourceId === null) {
             return $this->pdo->query(
                 "SELECT id, calendar_source_id, status, started_at, finished_at, imported_count, exported_count,
+                        updated_count, duplicate_count, inactive_count, grace_inactive_count, retry_count, recovered_run_count,
                         warnings_json, errors_json FROM calendar_sync_logs ORDER BY started_at DESC, id DESC LIMIT {$limit}"
             )->fetchAll(PDO::FETCH_ASSOC);
         }
         $statement = $this->pdo->prepare(
             "SELECT id, calendar_source_id, status, started_at, finished_at, imported_count, exported_count,
+                    updated_count, duplicate_count, inactive_count, grace_inactive_count, retry_count, recovered_run_count,
                     warnings_json, errors_json FROM calendar_sync_logs WHERE calendar_source_id = :source_id
              ORDER BY started_at DESC, id DESC LIMIT {$limit}"
         );

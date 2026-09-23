@@ -40,7 +40,9 @@ final class CurlCalendarFeedHttpClient implements CalendarFeedHttpClient
         ]);
         try {
             if (curl_exec($curl) === false) {
-                throw new CalendarFeedFetchException('Calendar feed request failed: ' . curl_error($curl));
+                $errno = curl_errno($curl);
+                // Never retain cURL text: it may contain the private request URL.
+                throw new CalendarFeedFetchException('Calendar feed transport failed.', in_array($errno, [CURLE_COULDNT_RESOLVE_HOST, CURLE_COULDNT_CONNECT, CURLE_OPERATION_TIMEDOUT, CURLE_RECV_ERROR, CURLE_SEND_ERROR, CURLE_GOT_NOTHING], true), 'transport_' . $errno);
             }
             return new CalendarFeedResponse((int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE), $body);
         } finally {

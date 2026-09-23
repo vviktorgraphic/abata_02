@@ -43,6 +43,8 @@ final class PricingAdminControllerTest extends TestCase
         self::assertStringNotContainsString('<script>alert', $response->body);
         self::assertStringContainsString('/admin/pricing/1/edit', $response->body);
         self::assertStringContainsString('Árkalkuláció előnézet', $response->body);
+        self::assertStringContainsString('10 000 Ft', $response->body);
+        self::assertStringNotContainsString('10000.00 HUF', $response->body);
     }
 
     public function test_create_whitelists_validates_audits_and_uses_prg(): void
@@ -86,9 +88,27 @@ final class PricingAdminControllerTest extends TestCase
     {
         $response=$this->controller()->preview(['_csrf'=>$this->csrf->token(),'arrival_date'=>'2026-08-01','departure_date'=>'2026-08-03','adults'=>'2','child_ages'=>'4, 9','exemption_keys'=>'configured_key'],'application/x-www-form-urlencoded',200);
         self::assertSame(200,$response->status);
-        self::assertStringContainsString('60.00 HUF',$response->body);
+        self::assertStringContainsString('60 Ft',$response->body);
+        self::assertStringContainsString('50 Ft',$response->body);
+        self::assertStringContainsString('10 Ft',$response->body);
+        self::assertStringContainsString('Éjszakánkénti személyárak',$response->body);
+        self::assertStringContainsString('2 fő × 20 000 Ft',$response->body);
+        self::assertStringContainsString('4 éves (3–6 év): 5 000 Ft',$response->body);
+        self::assertStringNotContainsString('60.00',$response->body);
         self::assertSame([4,9],PricingFakePreviewer::$input->childAges);
         self::assertSame('pricing.previewed',end($this->audit->events)->eventType);
+    }
+
+    public function testPercentageRulesAreNotPresentedAsForintsAndIntegerFormHasNoDecimalSuffix(): void
+    {
+        $this->repository->rows[] = $this->rule(['rule_type' => 'weekend', 'adjustment_mode' => 'percent', 'amount' => '12.50']);
+        $html = $this->controller()->index()->body;
+        self::assertStringContainsString('12.50 %', $html);
+        self::assertStringNotContainsString('13 Ft', $html);
+        self::assertStringContainsString('value="12.50"', $this->controller()->editForm('1')->body);
+        $this->repository->rows = [$this->rule()];
+        self::assertStringContainsString('value="10000"', $this->controller()->editForm('1')->body);
+        self::assertStringNotContainsString('value="10000.00"', $this->controller()->editForm('1')->body);
     }
 
     private function controller(?array $admin=['id'=>7,'name'=>'Admin']): PricingAdminController
@@ -106,7 +126,11 @@ final class PricingAuth implements AdminAuthWorkflow { public function __constru
 final class PricingLimiter implements AdminActionRateLimiter { public function allow(int $adminId,string $action):bool{return true;} }
 final class PricingSession implements SessionStorage { private array $data=[]; public function start():void{} public function get(string $key,mixed $default=null):mixed{return $this->data[$key]??$default;} public function set(string $key,mixed $value):void{$this->data[$key]=$value;} public function remove(string $key):void{unset($this->data[$key]);} public function destroy():void{$this->data=[];} }
 final class PricingFakeAudit implements AuditLog { /** @var list<AuditEvent> */ public array $events=[]; public function append(AuditEvent $event):void{$this->events[]=$event;} }
-final class PricingFakePreviewer implements PricingPreviewer { public static PricingInput $input; public function preview(PricingInput $input):PricingResult { self::$input=$input; return new PricingResult('60.00','50.00','10.00','HUF',[['description'=>'Alapár','quantity'=>2,'total'=>'50.00']],[1],[]); } }
+final class PricingFakePreviewer implements PricingPreviewer { public static PricingInput $input; public function preview(PricingInput $input):PricingResult { self::$input=$input; return new PricingResult('60.00','50.00','10.00','HUF',[['description'=>'Alapár','quantity'=>2,'total'=>'50.00']],[1],[
+    'pricing_configuration_version'=>4,
+    'nightly_breakdown'=>[['date'=>'2026-08-01','weekend'=>true,'adults'=>2,'adult_unit_amount'=>'20000.00','adult_total'=>'40000.00',
+        'children'=>[['age'=>4,'band'=>['min_age'=>3,'max_age'=>6],'total'=>'5000.00']], 'children_total'=>'5000.00','total'=>'45000.00']],
+]); } }
 final class PricingFakeRepository implements PricingRuleRepository {
     public array $rows=[]; public array $created=[]; public bool $conflict=false; public bool $active=true;
     public function create(array $values,int $adminId):int{$this->created=$values;return 9;} public function update(int $id,array $values,int $adminId):bool{return $this->find($id)!==null;}

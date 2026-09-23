@@ -40,33 +40,44 @@ final class IcsParser
 
         $events = [];
         $current = null;
+        $components = ['VCALENDAR'];
         foreach (array_slice($lines, 1, -1) as $line) {
-            $upper = strtoupper($line);
-            if ($upper === 'BEGIN:VEVENT') {
-                if ($current !== null) {
-                    throw new IcsParseException('Nested VEVENT components are invalid.');
+            [$name, $params, $value] = $this->property($line);
+            if ($name === 'BEGIN') {
+                $component = strtoupper($value);
+                if ($params !== [] || preg_match('/^[A-Z0-9-]+$/D', $component) !== 1 || $component === 'VCALENDAR') {
+                    throw new IcsParseException('Invalid nested calendar component.');
                 }
-                $current = [];
+                if ($component === 'VEVENT') {
+                    if ($current !== null || end($components) !== 'VCALENDAR') {
+                        throw new IcsParseException('Nested VEVENT components are invalid.');
+                    }
+                    $current = [];
+                }
+                $components[] = $component;
                 continue;
             }
-            if ($upper === 'END:VEVENT') {
-                if ($current === null) {
-                    throw new IcsParseException('Unexpected VEVENT end marker.');
+            if ($name === 'END') {
+                $component = strtoupper($value);
+                if ($params !== [] || count($components) < 2 || end($components) !== $component) {
+                    throw new IcsParseException('Mismatched calendar component end marker.');
                 }
-                $events[] = $this->createEvent($current);
-                $current = null;
-                if (count($events) > $this->maxEvents) {
-                    throw new IcsParseException('The iCalendar feed contains too many events.');
+                array_pop($components);
+                if ($component === 'VEVENT') {
+                    $events[] = $this->createEvent($current);
+                    $current = null;
+                    if (count($events) > $this->maxEvents) {
+                        throw new IcsParseException('The iCalendar feed contains too many events.');
+                    }
                 }
                 continue;
             }
-            if ($current !== null) {
-                [$name, $params, $value] = $this->property($line);
+            if ($current !== null && end($components) === 'VEVENT') {
                 $current[$name][] = ['params' => $params, 'value' => $value];
             }
         }
-        if ($current !== null) {
-            throw new IcsParseException('The VEVENT component is incomplete.');
+        if ($current !== null || $components !== ['VCALENDAR']) {
+            throw new IcsParseException('A calendar component is incomplete.');
         }
 
         return new IcsCalendar($events);

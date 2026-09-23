@@ -6,6 +6,7 @@ namespace Tests\Feature\AdminHttp;
 
 use App\Domain\Booking\CancellationResult;
 use App\Http\Controller\Admin\AdminView;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class AdminBookingUiTest extends TestCase
@@ -37,9 +38,12 @@ final class AdminBookingUiTest extends TestCase
         self::assertStringContainsString('role="region"', $html);
         self::assertStringNotContainsString('<script>', $html);
         self::assertStringNotContainsString('guest@example', $html);
+        self::assertStringContainsString('60 000 Ft', $html);
+        self::assertStringNotContainsString('60000.00', $html);
     }
 
-    public function test_detail_contains_csrf_status_history_pricing_and_email_state(): void
+    #[DataProvider('snapshots')]
+    public function test_detail_contains_csrf_status_history_pricing_and_email_state(array $snapshot): void
     {
         $html = $this->view->render('booking-detail', [
             'csrfToken' => 'safe-token',
@@ -60,7 +64,7 @@ final class AdminBookingUiTest extends TestCase
             'children_ages'=>[],'notes'=>null,'privacy_accepted_at'=>null,'total_amount'=>'40000','currency'=>'HUF',
             'booking_policy_accepted_at'=>'2026-07-16 10:00:00','booking_policy_version'=>'2026-07-16',
             'booking_policy_url'=>'/booking-policy',
-            'pricing_snapshot'=>['pricing_base'=>'person_night'],'status_history'=>[['old_status'=>null,'status'=>'pending','created_at'=>'2026-07-16','admin_note'=>null]],
+            'pricing_snapshot'=>$snapshot,'status_history'=>[['old_status'=>null,'status'=>'pending','created_at'=>'2026-07-16','admin_note'=>null]],
             'email_outbox'=>[['type'=>'booking_request','status'=>'failed','attempts'=>1]],'created_at'=>'2026-07-16','updated_at'=>'2026-07-16',
         ]]);
         self::assertStringContainsString('Ár-pillanatkép', $html);
@@ -71,10 +75,26 @@ final class AdminBookingUiTest extends TestCase
         self::assertStringContainsString('/booking-policy', $html);
         self::assertStringContainsString('Díjmentes lemondás határideje', $html);
         self::assertStringContainsString('2026-07-25', $html);
-        self::assertStringContainsString('20000.00 HUF', $html);
-        self::assertStringContainsString('40000.00 HUF', $html);
+        self::assertStringContainsString('20 000 Ft', $html);
+        self::assertStringContainsString('40 000 Ft', $html);
+        self::assertStringNotContainsString('40000.00', $html);
+        if (isset($snapshot['line_items'])) {
+            self::assertStringContainsString('Rögzített ártételek', $html);
+            self::assertStringContainsString('10 000 Ft', $html);
+            self::assertStringContainsString('Felnőtt', $html);
+        }
         self::assertSame(3, substr_count($html, 'name="_csrf"'));
         self::assertStringContainsString('maxlength="500"', $html);
+    }
+
+    public static function snapshots(): iterable
+    {
+        yield 'legacy snapshot' => [['pricing_base' => 'person_night', 'unit_price' => '40000.00']];
+        yield 'itemized person snapshot' => [[
+            'version' => 3,
+            'line_items' => [['type' => 'accommodation', 'description' => 'Felnőtt', 'quantity' => 4, 'unit_amount' => '10000.00', 'total' => '40000.00']],
+            'accommodation_fee' => '40000.00',
+        ]];
     }
 
     public function test_blocked_period_page_explains_half_open_dates_and_has_no_get_mutation(): void

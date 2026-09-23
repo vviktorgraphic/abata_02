@@ -39,6 +39,8 @@
 - **RESOLVED:** az exporttoken query paraméterben van: `/calendar/export.ics?token=...`.
 - **RESOLVED:** Sprint 7-ben kézi sync van; cron/retry/grace nincs feltételezve.
 
+**RESOLVED Sprint 10 végrehajtási specifikáció:** a worker alapértelmezett javaslata 15 perc, a retry legfeljebb két újrapróbálkozás 1/2 másodperces backoffal, az eltűnési grace legalább 24 óra. A konkrét production cron aktiválása, monitor/SLA és útvonal deployment döntés.
+
 ## Backup
 
 - **RESOLVED:** RPO 4 óra.
@@ -100,3 +102,10 @@
 - **IMPLEMENTED:** adatbázis-readiness health endpoint és monitoring/alerting runbook.
 - **OPEN / OWNER-OPERATIONS:** backup gyakoriság és retention; monitoring szolgáltató/SLA/riasztási küszöb; iCal/outbox/cleanup worker szabályai és ütemezése.
 - **OPEN / ENVIRONMENT:** HTTPS, SMTP, restore és RPO/RTO staging smoke; ezek dokumentációja nem bizonyítja a környezetbeli teljesülést.
+## Sprint 10 pricing és iCal
+
+- **RESOLVED:** explicit legacy/person kompatibilitási mód; migráció után legacy marad aktív.
+- **RESOLVED:** gyermek 0–17, felnőtt 18+, inkluzív nem átfedő sávok; hiányzó sáv fail-closed.
+- **RESOLVED:** péntek és szombat éjszaka hétvégi; person módban base/stay-length/weekend helyett személyár, seasonal/fixed/IFA/exemption megmarad.
+- **OPEN:** production felnőtt- és gyermekárak, IFA és jogi exemption értékek; a rendszer ezeket nem találja ki.
+- **RESOLVED:** iCal minimum 24 órás elapsed grace, retry/lock és 15 perces ajánlott gyakoriság; tényleges cron/monitor környezetfüggő.

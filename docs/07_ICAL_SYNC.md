@@ -11,7 +11,7 @@ Az export URL `GET /calendar/export.ics?token=...`. Csak `confirmed` booking és
 
 Az import kézzel indítható. Azonos `(source_id, UID)` és változatlan payload idempotens; confirmed bookinggal való átfedés figyelmeztetésként naplózódik és nem hoz létre duplikált blocked periodot. A napló a kezdést/befejezést, import/export darabszámot, figyelmeztetéseket és hibákat tárolja. Minden üzleti nap `Europe/Budapest` szerint, a távozási nap exkluzívan értendő.
 
-**PLANNED:** cron/automatikus időzítés, retry/backoff, eltűnt események türelmi ideje, manuális konfliktusfeloldás és export-token rotációs grace period. Ezekhez nincs elfogadott üzleti szabály, ezért a Sprint 7 nem talál ki alapértéket.
+**HISTORICAL Sprint 7:** cron/retry/grace akkor még nem volt implementált. **IMPLEMENTED Sprint 10:** CLI worker, forrásonkénti MySQL lock, korlátozott retry/backoff, legalább 24 órás eltűnési grace és futásmetrikák. Manuális konfliktusfeloldás és export-token rotációs grace továbbra is PLANNED.
 
 **IMPLEMENTED:** Az 1.0 alaphatókör külső RFC 5545 naptárakból kézi indítással foglaltságot importál, és tokennel védett, személyes adatot nem tartalmazó export feedet ad. A sync **nem valós idejű**, ezért mentéskor a belső foglalhatóságot mindig újra kell ellenőrizni. **PLANNED:** automatikus időzítés. A domainmodell részletei: [adatbázis- és domainmodell](02_DATABASE_AND_DOMAIN_MODEL.md), a kapcsolódó fenyegetések: [biztonság](09_SECURITY.md).
 
@@ -198,3 +198,8 @@ Az iCal modul csak akkor tekinthető elkészültnek, ha:
 - [Biztonság](09_SECURITY.md)
 - [Tesztelés és üzemeltetés](10_TESTING_AND_OPERATIONS.md)
 - [Roadmap és döntési napló](11_ROADMAP_AND_DECISIONS.md)
+## Sprint 10 automatikus import – IMPLEMENTED
+
+`php bin/ical-sync.php` / `composer ical:sync` kizárólag aktív import/bidirectional forrásokat jár be, hibát forrásonként izolál, secretmentes JSON sorokat és dokumentált exit kódot ad. A CLI a process environmentet örökli; dotenv betöltés nincs. Retry: timeout/átmeneti DNS, 429 és 5xx; parse, SSRF és végleges 4xx nem retry-zik.
+
+Duplicate is frissíti a `last_seen_at` értéket. Reconciliation csak teljes, eseményszintű hiba nélküli feed után fut. Az eltűnés epoch instantja legalább 86 400 elapsed másodperc után okoz soft inaktiválást; `STATUS:CANCELLED` azonnali. A részletes lock-, cron-, monitoring- és downgrade szerződés: [Sprint 10](18_SPRINT10_AUTOMATIC_ICAL_AND_PERSON_PRICING.md).

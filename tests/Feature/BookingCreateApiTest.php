@@ -44,6 +44,7 @@ final class BookingCreateApiTest extends TestCase
         self::assertSame('pending', $response->payload['status']);
         self::assertSame('AB-TEST-123', $response->payload['reference']);
         self::assertSame('36000.00', $response->payload['total_amount']);
+        self::assertSame('36 000 Ft', $response->payload['formatted_total_amount']);
         self::assertSame('HUF', $response->payload['currency']);
         self::assertSame('sent', $response->payload['email_status']);
         self::assertArrayNotHasKey('booking_id', $response->payload);
@@ -207,6 +208,21 @@ final class BookingCreateApiTest extends TestCase
         $serialized = json_encode($audit->events[0]->metadata->values, JSON_THROW_ON_ERROR);
         self::assertStringNotContainsString('guest@example.test', $serialized);
         self::assertStringNotContainsString('secret-host', $serialized);
+    }
+
+    public function testMissingChildBandIsExplainedWithoutExposingConfigurationDetails(): void
+    {
+        $workflow = new class implements BookingCreateWorkflow {
+            public function create(BookingCreateRequest $request): BookingCreateOutcome
+            {
+                throw new \App\Application\Pricing\MissingChildPriceBandException('secret-host');
+            }
+        };
+        $response = $this->controller($workflow)->create($this->json(), ['content-type' => 'application/json'], '192.0.2.10');
+        self::assertSame(503, $response->status);
+        self::assertSame('CHILD_PRICE_BAND_MISSING', $response->payload['code']);
+        self::assertStringContainsString('gyermek életkorához nincs beállított ár', $response->payload['error']);
+        self::assertStringNotContainsString('secret-host', json_encode($response->payload, JSON_THROW_ON_ERROR));
     }
 
     #[DataProvider('workflowErrorProvider')]

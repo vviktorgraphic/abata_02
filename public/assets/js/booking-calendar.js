@@ -205,7 +205,7 @@
             if ((response.status === 200 || response.status === 201) && result.status === 'pending') {
                 state.bookingSaved = true;
                 const reference = result.reference ? ` Hivatkozás: ${result.reference}.` : '';
-                const total = result.total_amount != null ? ` Végösszeg: ${result.total_amount} ${result.currency || 'HUF'}.` : '';
+                const total = result.formatted_total_amount ? ` Végösszeg: ${result.formatted_total_amount}.` : '';
                 if (result.email_status === 'failed') {
                     setMessage(`A foglalási igényt rögzítettük.${reference}${total} A visszaigazoló e-mailt most nem sikerült elküldeni; az igény ettől még megmaradt, ne küldd el újra.`, 'warning');
                 } else {

@@ -288,7 +288,7 @@ Invoke-WebRequest -Uri ("http://localhost:8080/calendar/export.ics?token=" + [ur
 
 ### Admin iCal HTML route-ok – IMPLEMENTED
 
-A hitelesített admin GET route-ok: `/admin/calendar`, `/admin/calendar/sources`, `/admin/calendar/sources/create`, `/admin/calendar/sources/{id}/edit` és `/admin/calendar/log`. A CSRF- és action-guard védelemmel ellátott POST route-ok: létrehozás/módosítás, `enable`, `disable`, `delete`, `sync`, valamint `/admin/calendar/token/rotate`. Google Calendar és Szallas.hu forrás iránya `import`, `export` vagy `bidirectional`. Engedélyezett importforráson kézi sync indítható. Automatikus cron nincs implementálva. A tokenrotáció új plaintext tokenje egyszer, kizárólag a védett admin HTML-válaszban látható; listából és naplóból nem olvasható vissza.
+A hitelesített admin GET route-ok: `/admin/calendar`, `/admin/calendar/sources`, `/admin/calendar/sources/create`, `/admin/calendar/sources/{id}/edit` és `/admin/calendar/log`. A CSRF- és action-guard védelemmel ellátott POST route-ok: létrehozás/módosítás, `enable`, `disable`, `delete`, `sync`, valamint `/admin/calendar/token/rotate`. Google Calendar és Szallas.hu forrás iránya `import`, `export` vagy `bidirectional`. Engedélyezett importforráson kézi sync indítható; Sprint 10-ben ugyanazt a use case-t az automatikus CLI is futtatja. A tokenrotáció új plaintext tokenje egyszer, kizárólag a védett admin HTML-válaszban látható; listából és naplóból nem olvasható vissza.
 
 ### JSON iCal admin API és haladó sync – PLANNED
 
@@ -318,3 +318,8 @@ A hitelesített admin GET route-ok: `/admin/calendar`, `/admin/calendar/sources`
 ## Admin booking route-ok – IMPLEMENTED Sprint 5
 
 `GET /admin/bookings`, `GET /admin/bookings/{reference-or-id}`, `POST /admin/bookings/{reference}/confirm|reject|cancel|invalidate`, `POST /admin/bookings/{reference}/retry-email`, `GET|POST /admin/blocked-periods`, `POST /admin/blocked-periods/{id}/remove`. Mind hitelesített és no-store; POST esetén CSRF kötelező, konfliktus `409`, hiányzó erőforrás `404`.
+### Személyár admin HTML és booking válasz – IMPLEMENTED Sprint 10
+
+`GET /admin/pricing/person` megjeleníti a versionölt legacy/person konfigurációt és gyermek ársávokat. `POST /admin/pricing/person` `action=settings|band` formot fogad teljes admin/CSRF/action-guard védelemmel; sikerre PRG redirect, stale verzióra `409`, hibás/hiányzó egész HUF vagy overlap esetén `422`.
+
+A publikus `POST /api/bookings` sikeres válasza a kanonikus `total_amount` mellett `formatted_total_amount` mezőt ad (például `20 000 Ft`). Person módban hiányzó gyermek ársáv `503` / `CHILD_PRICE_BAND_MISSING`, és nincs booking/outbox/idempotency maradvány.

@@ -35,7 +35,7 @@ templates/booking/           publikus szerveroldali HTML template
 tests/                       unit, feature és integration tesztek
 ```
 
-**IMPLEMENTED:** a booking, közös pricing engine/admin CRUD, admin-auth, SMTP és kézi iCal import/export modulok követik ezt a réteghatárt. Az automatikus iCal worker továbbra is **PLANNED**.
+**IMPLEMENTED:** a booking, közös pricing engine/admin CRUD, admin-auth, SMTP és iCal import/export modulok követik ezt a réteghatárt. A Sprint 10 CLI worker ugyanazt az import use case-t composition root factoryn keresztül futtatja.
 
 ## Webes request flow
 
@@ -168,7 +168,7 @@ sequenceDiagram
     UC-->>Cron: összegzés, napló és riasztási állapot
 ```
 
-Szövegesen: a biztonságos HTTPS fetch, parser, kézi admin sync, UID/forrás alapú idempotens persistence, konfliktusjelzés és sync log **IMPLEMENTED**. A külső esemény nem belső booking, hanem külön blocked periodhoz kapcsolódik. **PLANNED/DEFERRED:** automatikus cron, globális worker lock, retry/backoff és eltűnési grace; ezért a diagram `Cron` résztvevője célállapot, jelenleg a kézi admin művelet indítja a use case-t. Az iCal nem valós idejű. Részletek: [iCal szinkron](07_ICAL_SYNC.md).
+Szövegesen: a biztonságos HTTPS fetch, parser, kézi és automatikus sync, UID/forrás alapú idempotens persistence, konfliktusjelzés, sync log, source lock, retry és eltűnési grace **IMPLEMENTED**. A külső esemény nem belső booking, hanem külön blocked periodhoz kapcsolódik. A cron tényleges production aktiválása deployment PENDING; az iCal nem valós idejű. Részletek: [iCal szinkron](07_ICAL_SYNC.md).
 
 ## Konfigurációkezelés
 
@@ -251,7 +251,13 @@ Infrastructure --+  (Application portok implementációja)
 | Admin auth | `Application/Authentication`, `Application/TwoFactor`, session szabályok | PDO session/code repo, password verifier | login/2FA/logout controller | **IMPLEMENTED** |
 | Pricing | `Application/Pricing`, `Domain/Pricing` közös engine | rule/snapshot repo | publikus create, admin CRUD/preview | **IMPLEMENTED** |
 | E-mail | booking-request renderer és mail port | SMTP adapter, atomi outbox claim | commit utáni egyszeri küldés **IMPLEMENTED**; retry/admin resend **PLANNED** |
-| iCal | import/export use case és ICS modell | HTTP kliens, parser, PDO adapter | kézi import és tokenes feed **IMPLEMENTED**; cron **PLANNED** |
+| iCal | import/export use case, worker és ICS modell | HTTP kliens, parser, PDO adapter, MySQL advisory lock | kézi és automatikus import, tokenes feed **IMPLEMENTED** |
+
+## Sprint 10 architektúra – IMPLEMENTED
+
+Az iCal worker forrásonként külön alkalmazási futás: source repository → tartós MySQL advisory lock → biztonságos fetch/retry → teljes ICS parse → eseményenként tranzakciós persistence → sikeres teljes feed után reconciliation → strukturált sync log. Egy forrás hibája nem állítja meg a többit.
+
+A pricing boundary változatlanul egyetlen `PricingEngine`. A PDO adapter ugyanabból a verziózott `person_pricing_configuration` és gyermek-sáv állapotból szolgálja ki az admin preview-t és a booking tranzakciót. A v3 snapshot a konfigurációt és éjszakánkénti döntéseket másolja, így a későbbi konfigurációváltás nem írja át a bookingot. Részletek: [Sprint 10](18_SPRINT10_AUTOMATIC_ICAL_AND_PERSON_PRICING.md).
 | Audit | közös audit esemény port | append-only PDO adapter | admin read-only lista | Port/írás **IMPLEMENTED**; lista **PLANNED** |
 
 ## Architekturális kockázatok és technikai adósság

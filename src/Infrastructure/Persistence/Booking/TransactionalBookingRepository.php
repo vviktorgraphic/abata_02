@@ -257,7 +257,7 @@ final class TransactionalBookingRepository
             'departure_date' => (string) $booking['departure_date'],
             'adults' => (int) $booking['adults'],
             'children' => (int) $booking['children'],
-            'total' => number_format((float) $booking['total_amount'], 2, '.', ''),
+            'total' => (string) $booking['total_amount'],
             'currency' => (string) $booking['currency'],
             ...($cancellation === null ? [] : [
                 'cancellation_accommodation_fee' => $cancellation->snapshot['accommodation_fee'],
@@ -482,7 +482,7 @@ final class TransactionalBookingRepository
             (int) $row['id'],
             (string) $row['reference'],
             (string) $row['status'],
-            number_format((float) $row['total_amount'], 2, '.', ''),
+            (string) $row['total_amount'],
             (string) $row['currency'],
             true,
         );

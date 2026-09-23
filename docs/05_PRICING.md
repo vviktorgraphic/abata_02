@@ -181,3 +181,10 @@ A Sprint 4 történeti implementációja kizárólag konfigurált `person_night`
 Hiányzó szabály vagy azonos nyertes prioritás konfigurációs hiba; booking nem jön létre hamis `0.00` árral. Az immutable snapshot tartalmazza a számítás időpontját, intervallumot, éjszakaszámot, vendégadatokat, szabályazonosítókat, a három támogatott alapegység egyikét, line itemeket, accommodation fee/tax/total értéket és `HUF` pénznemet.
 
 **OPEN / PLANNED, döntés szükséges:** gyermekár/kedvezmény, konkrét production IFA és jogi mentességek, konkrét hétvégi/szezonális/fix díj értékek, kedvezmény és admin ár-felülírás. A konfigurálható IFA/exemption, hétvégi/szezonális adjustment és fix díj számítási mechanizmusa IMPLEMENTED, de a kód nem talál ki production üzleti értéket. A demo seed kizárólag szemléltető fejlesztési adat.
+## Sprint 10 személyalapú mód – IMPLEMENTED
+
+Az admin explicit választ a változatlan `legacy` és az új `person` mód között; a migráció minden meglévő rendszert legacy állapotban hagy. Person módban egy éjszaka díja `adult_count × adult_rate + Σ child_band_rate(age)`. Péntek és szombat hétvégi; gyermek 0–17, felnőtt legalább 18. Az aktív inkluzív ársávok nem fedhetik egymást, hiányzó sáv fail-closed.
+
+A legacy `base`, `stay_length` és `weekend` komponens person módban nem kerül kétszer felszámításra. A seasonal adjustment, fix díj, IFA és exemption megmarad. Fix díj és IFA nem része az immutable `accommodation_fee` értéknek, ezért a 7 napos/50%-os lemondási alapba sem kerül.
+
+A v3 snapshot tartalmazza a configuration verziót, felnőttárakat, sávokat, gyermekéletkorokat, éjszakánkénti bontást és a tényleges ancillary szabályparamétereket. A v1/v2 snapshotok változatlanok. A HUF adat DECIMAL-string marad, új személyár csak egész forint lehet; százalékos adjustment lehet tört. Megjelenítés mindenhol közös `20 000 Ft` formátum. Teljes szerződés: [Sprint 10](18_SPRINT10_AUTOMATIC_ICAL_AND_PERSON_PRICING.md).

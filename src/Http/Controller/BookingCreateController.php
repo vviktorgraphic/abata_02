@@ -11,10 +11,12 @@ use App\Application\Booking\BookingConflict;
 use App\Application\Booking\BookingCreateWorkflow;
 use App\Application\Booking\IdempotencyConflict;
 use App\Application\Pricing\PricingConfigurationException;
+use App\Application\Pricing\MissingChildPriceBandException;
 use App\Domain\Booking\BookingCreateRequestValidator;
 use App\Domain\Booking\BookingValidationFailed;
 use App\Http\BookingApiResponse;
 use App\Http\BookingRequestRateLimiter;
+use App\Presentation\HufFormatter;
 use JsonException;
 use Throwable;
 
@@ -68,6 +70,12 @@ final readonly class BookingCreateController
             return $this->error(409, 'A kiválasztott időszak már nem foglalható.');
         } catch (IdempotencyConflict) {
             return $this->error(409, 'Ez a kérésazonosító már más adatokkal felhasználásra került.');
+        } catch (MissingChildPriceBandException) {
+            $this->auditPricingFailure();
+            return new BookingApiResponse([
+                'code' => 'CHILD_PRICE_BAND_MISSING',
+                'error' => 'Az egyik gyermek életkorához nincs beállított ár. Kérjük, egyeztessen a szálláshellyel.',
+            ], 503);
         } catch (PricingConfigurationException) {
             $this->auditPricingFailure();
             return $this->error(503, 'A foglalási ár jelenleg nem számítható ki. Kérjük, próbálja újra később.');
@@ -79,6 +87,7 @@ final readonly class BookingCreateController
             'reference' => $outcome->reference,
             'status' => $outcome->status,
             'total_amount' => $outcome->totalAmount,
+            'formatted_total_amount' => HufFormatter::format($outcome->totalAmount),
             'currency' => $outcome->currency,
             'email_status' => $outcome->emailStatus,
             'next_step' => 'A foglalás az adminisztrátori jóváhagyás után válik véglegessé.',
