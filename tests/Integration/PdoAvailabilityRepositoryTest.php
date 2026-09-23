@@ -36,6 +36,10 @@ final class PdoAvailabilityRepositoryTest extends TestCase
 
     public function testOnlyConfirmedDatabaseBookingBlocksApiCalendar(): void
     {
+        $this->pdo->exec(
+            "UPDATE blocked_periods SET is_active = FALSE
+             WHERE is_active = TRUE AND start_date < '2027-01-23' AND end_date > '2027-01-09'"
+        );
         $statement = $this->pdo->prepare(
             'INSERT INTO bookings
                 (reference, status, arrival_date, departure_date, guest_name, guest_email, adults, children)

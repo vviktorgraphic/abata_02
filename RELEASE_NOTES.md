@@ -5,6 +5,8 @@
 
 > **RC1 hotfix:** a sikeres admin 2FA utáni same-second session touch téves logoutját a `fix/admin-2fa-session-redirect` branch javítja. A javítás részletei: [docs/17_ADMIN_2FA_SESSION_REDIRECT_FIX.md](docs/17_ADMIN_2FA_SESSION_REDIRECT_FIX.md).
 
+> **iCal hotfix:** a Szallas.hu paraméter nélküli `YYYYMMDD` DATE eseményei időzónaeltolás nélkül, exkluzív `DTEND` végponttal importálhatók; az idempotencia, availability és export-loop védelem regressziós teszttel igazolt.
+
 ## Fő funkciók
 
 - publikus availability naptár és tranzakciós, idempotens booking request;

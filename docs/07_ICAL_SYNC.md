@@ -51,7 +51,11 @@ END:VCALENDAR
 - `STATUS:CANCELLED`: az ismert `UID` törlésjelzése; nem aktív foglaltság, de az eseményt audit célból meg kell őrizni.
 - `SUMMARY`: exportban általános szöveg, például `Foglalt`; vendégnév, e-mail, telefonszám, ár és admin megjegyzés tilos.
 
-**IMPLEMENTED validáció:** teljes, szabályosan lezárt `VCALENDAR`/`VEVENT`, érvényes `DTSTART < DTEND`, CRLF/LF sortörés, line folding, escape-elés, feed-/esemény-/sorhosszlimit. A parser a `DATE` mellett `DATE-TIME` értéket is elfogad; UTC vagy `TZID` alapján `Europe/Budapest` időre váltja, az import pedig minden érintett helyi naptári napot blokkol.
+**IMPLEMENTED validáció:** teljes, szabályosan lezárt `VCALENDAR`/`VEVENT`, érvényes `DTSTART < DTEND`, CRLF/LF sortörés, line folding, escape-elés, feed-/esemény-/sorhosszlimit. A parser az explicit `DTSTART;VALUE=DATE:YYYYMMDD` és a Szallas.hu által küldött bare `DTSTART:YYYYMMDD` egész napos formátumot is elfogadja. A DATE érték pontos feed-dátum marad, időzónaeltolás nélkül, a `DTEND` pedig exkluzív. Hibás hossz, nem létező dátum, DATE melletti `TZID`, eltérő kezdő/végpont típus és nem növekvő intervallum kontrollált parse-hiba.
+
+**IMPLEMENTED DATE-TIME kezelés:** a `...Z` érték UTC pillanatként, a `TZID` paraméteres érték a megadott IANA időzónában, a timezone nélküli floating érték pedig `Europe/Budapest` helyi időként értelmeződik. Ezután a rendszer Budapest-naptári napokra normalizál: a kezdőnap inkluzív, a nem éjfélre eső végpont által érintett nap is blokkolt. Ismeretlen `TZID` kontrollált hibát és failed Sync Log futást eredményez; a DST-konverzió az időzóna alkalmazása előtt nem csonkol dátumra.
+
+**Hibajavítási gyökérok (2026-07-18):** a property parser korábban megőrizte a paramétereket, de az egész napos típust kizárólag a `VALUE=DATE` paraméter jelenlétéből állapította meg. Emiatt a bare nyolcjegyű Szallas.hu DATE értéket DATE-TIME-ként validálta, és `invalid DATE-TIME value` hibával a teljes feed parse-át megszakította. A típusfelismerés most explicit `VALUE` és szigorú nyolcjegyű értékalak alapján történik; a tényleges dátumvalidáció változatlanul round-trip ellenőrzött.
 
 > **RESOLVED SPECIFICATION DIFFERENCE:** a korábbi terv a `DATE-TIME` csendes naposítását tiltotta; a Sprint 7 elfogadott kompatibilitási szabálya Budapest-napokra alakítja. A kód szerinti viselkedés itt explicit dokumentált; további szolgáltatóspecifikus kivételhez új tulajdonosi döntés szükséges.
 
@@ -75,7 +79,7 @@ Minden sémabővítéshez új verziózott migráció és automatikus teszt köte
 3. Feltételes HTTP-kérés használható `ETag`/`If-Modified-Since` alapján. A hitelesítési adat és teljes feed URL nem kerülhet naplóba.
 4. Sikertelen hálózati kérés vagy parse esetén az előző sikeres állapot változatlan marad; részleges feed nem írhatja felül.
 5. Sikeres parse után az esemény kulcsa `(source_id, UID)`. A kanonizált releváns mezőkből `raw_hash` készül, így változatlan esemény újrafuttatása nem okoz írást vagy sequence-növelést.
-6. Minden látott esemény `last_seen_at` értéke frissül. Új vagy módosult eseménynél újra lefut a dátum- és konfliktusellenőrzés.
+6. Új vagy módosult eseménynél a `last_seen_at` frissül és újra lefut a dátum- és konfliktusellenőrzés. Változatlan duplikátumnál a jelenlegi implementáció nem ír adatbázist; a későbbi eltűnés-reconciliation előtt ennek frissítési szerződését külön rendezni kell.
 7. `STATUS:CANCELLED` esetén az ismert rekord törölt állapotot kap; fizikailag nem törlődik azonnal. Ismeretlen cancelled UID naplózható, de foglaltságot nem hoz létre.
 8. Csak a teljes forrás sikeres feldolgozása után rögzíthető az utolsó sikeres szinkron és az eltűnt események vizsgálata.
 

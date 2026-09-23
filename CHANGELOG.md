@@ -6,6 +6,7 @@ A projekt változásai ebben a fájlban követik a release-eket. A formátum a K
 
 ### Fixed
 
+- A Szallas.hu bare `YYYYMMDD` iCal DATE eseményei most szabványos, fél-nyitott Blocked Periodként importálhatók.
 - A sikeres admin 2FA után az azonos másodpercben változatlan MySQL session touch többé nem okoz téves logoutot és login redirectet.
 - Session-létrehozási hiba esetén néma redirect helyett biztonságos felhasználói hiba jelenik meg.
 

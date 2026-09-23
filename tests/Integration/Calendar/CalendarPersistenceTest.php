@@ -4,8 +4,19 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Calendar;
 
+use App\Application\Availability\GetAvailabilityHandler;
+use App\Application\Calendar\CalendarFeedHttpClient;
+use App\Application\Calendar\CalendarFeedResponse;
+use App\Application\Calendar\CalendarHostResolver;
+use App\Application\Calendar\CalendarImportService;
+use App\Application\Calendar\CalendarSyncClock;
+use App\Application\Calendar\IcsParser;
+use App\Application\Calendar\SecureCalendarFeedFetcher;
 use App\Application\Calendar\ImportedEventPersistenceResult;
 use App\Infrastructure\Database\ConnectionFactory;
+use App\Infrastructure\Persistence\PdoBlockedPeriodReadRepository;
+use App\Infrastructure\Persistence\PdoBookingReadRepository;
+use App\Infrastructure\Persistence\Calendar\PdoCalendarExportFeedRepository;
 use App\Infrastructure\Persistence\Calendar\PdoCalendarExportTokenRepository;
 use App\Infrastructure\Persistence\Calendar\PdoCalendarSourceRepository;
 use App\Infrastructure\Persistence\Calendar\PdoCalendarSyncLogRepository;
@@ -153,6 +164,91 @@ final class CalendarPersistenceTest extends TestCase
         $repository->finish($id, 'failed', $this->now(), 0, 0, [], ['https://secret.invalid/feed.ics']);
     }
 
+    public function testSzallasHuBareDateFixtureCreatesThreeIdempotentNonExportedAvailabilityBlocks(): void
+    {
+        $sourceId = $this->source();
+        $contents = file_get_contents(dirname(__DIR__, 2) . '/Fixtures/Calendar/szallas-hu-all-day.ics');
+        self::assertIsString($contents);
+        $sources = new PdoCalendarSourceRepository($this->pdo);
+        $logs = new PdoCalendarSyncLogRepository($this->pdo);
+        $events = new PdoExternalCalendarEventRepository($this->pdo);
+        $service = new CalendarImportService(
+            $sources,
+            $logs,
+            $events,
+            new SecureCalendarFeedFetcher(new FixtureCalendarHttpClient($contents), new PublicFixtureHostResolver()),
+            new IcsParser(),
+            new FixedCalendarSyncClock(),
+        );
+
+        $first = $service->import($sourceId);
+        self::assertSame('success', $first->status);
+        self::assertSame(3, $first->imported);
+        self::assertSame(0, $first->duplicates);
+
+        $statement = $this->pdo->prepare(
+            'SELECT e.external_uid, e.blocked_period_id, bp.start_date, bp.end_date, bp.is_active
+             FROM external_calendar_events e
+             INNER JOIN blocked_periods bp ON bp.id = e.blocked_period_id
+             WHERE e.calendar_source_id = :source_id ORDER BY bp.start_date'
+        );
+        $statement->execute(['source_id' => $sourceId]);
+        $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+        self::assertCount(3, $rows);
+        self::assertSame([
+            ['2026-08-07', '2026-08-09'],
+            ['2026-08-24', '2026-08-26'],
+            ['2027-01-01', '2027-12-01'],
+        ], array_map(static fn (array $row): array => [$row['start_date'], $row['end_date']], $rows));
+        foreach ($rows as $row) {
+            self::assertStringContainsString('@szallas.example', $row['external_uid']);
+            self::assertSame(1, (int) $row['is_active']);
+            $this->blockedPeriodIds[] = (int) $row['blocked_period_id'];
+        }
+
+        $second = $service->import($sourceId);
+        self::assertSame('success', $second->status);
+        self::assertSame(0, $second->imported);
+        self::assertSame(3, $second->duplicates);
+        $statement->execute(['source_id' => $sourceId]);
+        self::assertCount(3, $statement->fetchAll());
+
+        $latestLogs = $logs->recent($sourceId, 2);
+        self::assertSame('success', $latestLogs[1]['status']);
+        self::assertSame(3, (int) $latestLogs[1]['imported_count']);
+        self::assertSame([], json_decode($latestLogs[1]['warnings_json'], true, flags: JSON_THROW_ON_ERROR));
+        self::assertSame([], json_decode($latestLogs[1]['errors_json'], true, flags: JSON_THROW_ON_ERROR));
+
+        $availability = (new GetAvailabilityHandler(
+            new PdoBookingReadRepository($this->pdo, ['confirmed']),
+            new PdoBlockedPeriodReadRepository($this->pdo),
+            today: $this->date('2026-07-18'),
+        ))->handle('2026-08-07', '2026-08-10');
+        $statuses = array_column($availability['days'], 'status', 'date');
+        self::assertSame('blocked', $statuses['2026-08-07']);
+        self::assertSame('blocked', $statuses['2026-08-08']);
+        self::assertSame('available', $statuses['2026-08-09']);
+
+        $exportedStarts = array_map(
+            static fn ($event): string => $event->startDate->format('Y-m-d'),
+            (new PdoCalendarExportFeedRepository($this->pdo))->exportableEvents(),
+        );
+        self::assertNotContains('2026-08-07', $exportedStarts);
+        self::assertNotContains('2026-08-24', $exportedStarts);
+        self::assertNotContains('2027-01-01', $exportedStarts);
+
+        $failed = (new CalendarImportService(
+            $sources,
+            $logs,
+            $events,
+            new SecureCalendarFeedFetcher(new FixtureCalendarHttpClient('invalid feed'), new PublicFixtureHostResolver()),
+            new IcsParser(),
+            new FixedCalendarSyncClock(),
+        ))->import($sourceId);
+        self::assertSame('failed', $failed->status);
+        self::assertSame('failed', $logs->recent($sourceId, 1)[0]['status']);
+    }
+
     public function testExportTokenVerificationUsesHashAndRotationInvalidatesOldToken(): void
     {
         $repository = new PdoCalendarExportTokenRepository($this->pdo);
@@ -184,5 +280,27 @@ final class CalendarPersistenceTest extends TestCase
     private function now(): DateTimeImmutable
     {
         return new DateTimeImmutable('2027-01-01 12:00:00', new DateTimeZone('Europe/Budapest'));
+    }
+}
+
+final readonly class FixtureCalendarHttpClient implements CalendarFeedHttpClient
+{
+    public function __construct(private string $contents) {}
+    public function get(string $url, string $resolvedIp, int $timeoutSeconds, int $maxBytes): CalendarFeedResponse
+    {
+        return new CalendarFeedResponse(200, $this->contents);
+    }
+}
+
+final class PublicFixtureHostResolver implements CalendarHostResolver
+{
+    public function resolve(string $host): array { return ['93.184.216.34']; }
+}
+
+final class FixedCalendarSyncClock implements CalendarSyncClock
+{
+    public function now(): DateTimeImmutable
+    {
+        return new DateTimeImmutable('2026-07-18 16:30:00', new DateTimeZone('Europe/Budapest'));
     }
 }
