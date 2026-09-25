@@ -20,7 +20,7 @@ final readonly class PdoPersonPricingRepository implements PersonPricingReposito
         $rows = $this->pdo->query('SELECT c.version, c.pricing_mode, c.adult_weekday_price, c.adult_weekend_price,
             b.id, b.min_age, b.max_age, b.weekday_price, b.weekend_price, b.is_active, b.sort_order
             FROM person_pricing_configuration c LEFT JOIN pricing_child_bands b ON 1 = 1
-            WHERE c.id = 1 ORDER BY b.sort_order, b.id')->fetchAll(PDO::FETCH_ASSOC);
+            WHERE c.id = 1 ORDER BY b.min_age, b.max_age, b.id')->fetchAll(PDO::FETCH_ASSOC);
         if ($rows === []) { throw new \RuntimeException('Person pricing configuration is missing.'); }
         $bands = [];
         foreach ($rows as $row) {
@@ -88,6 +88,60 @@ final readonly class PdoPersonPricingRepository implements PersonPricingReposito
             return $result;
         } catch (\Throwable $error) {
             if ($this->pdo->inTransaction()) { $this->pdo->rollBack(); }
+            throw $error;
+        }
+    }
+
+    public function deleteBand(int $bandId, int $expectedVersion, int $adminId): PersonPricingConfiguration
+    {
+        if ($bandId < 1) {
+            throw new \InvalidArgumentException('Unknown child price band.');
+        }
+        if ($this->pdo->inTransaction()) {
+            throw new \LogicException('Person pricing delete owns its transaction.');
+        }
+
+        $this->pdo->beginTransaction();
+        try {
+            $version = (int) $this->pdo->query('SELECT version FROM person_pricing_configuration WHERE id = 1 FOR UPDATE')->fetchColumn();
+            if ($version !== $expectedVersion) {
+                throw new PricingVersionConflict('Az árképzést másik admin módosította. Frissítse az oldalt.');
+            }
+            $lookup = $this->pdo->prepare('SELECT id FROM pricing_child_bands WHERE id = :id FOR UPDATE');
+            $lookup->execute(['id' => $bandId]);
+            if ($lookup->fetchColumn() === false) {
+                throw new \InvalidArgumentException('Unknown child price band.');
+            }
+
+            // Historical bookings contain immutable copied snapshots and have no FK to a band.
+            // The only FK is current age coverage, which deliberately cascades on delete.
+            $delete = $this->pdo->prepare('DELETE FROM pricing_child_bands WHERE id = :id');
+            $delete->execute(['id' => $bandId]);
+            $now = new \DateTimeImmutable('now', new \DateTimeZone('Europe/Budapest'));
+            $this->pdo->prepare('UPDATE person_pricing_configuration SET version=version+1,
+                updated_by_admin_id=:admin, updated_at=:now WHERE id=1')->execute([
+                    'admin' => $adminId,
+                    'now' => $now->format('Y-m-d H:i:s'),
+                ]);
+            $result = $this->get();
+            (new \App\Infrastructure\Persistence\Auth\PdoAuditLog($this->pdo))->append(new \App\Application\Audit\AuditEvent(
+                'person_pricing.band_deleted',
+                'success',
+                $now,
+                new \App\Application\Audit\AuditMetadata([
+                    'target_type' => 'pricing_child_band',
+                    'target_id' => (string) $bandId,
+                    'previous_version' => $version,
+                    'version' => $result->version,
+                ]),
+                $adminId,
+            ));
+            $this->pdo->commit();
+            return $result;
+        } catch (\Throwable $error) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
             throw $error;
         }
     }

@@ -19,8 +19,16 @@ final readonly class AdminView
         }
 
         extract($data, EXTR_SKIP);
+        $initialBufferLevel = ob_get_level();
         ob_start();
-        require $path;
-        return (string) ob_get_clean();
+        try {
+            require $path;
+            return (string) ob_get_clean();
+        } catch (\Throwable $error) {
+            while (ob_get_level() > $initialBufferLevel) {
+                ob_end_clean();
+            }
+            throw $error;
+        }
     }
 }

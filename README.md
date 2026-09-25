@@ -125,12 +125,9 @@ A `composer backup:database` webrooton/repositoryn kívüli könyvtárba készí
 - `POST /admin/2fa/resend` – új kód kérése resend limittel
 - `GET /admin` – minimális, teljes 2FA-val védett dashboard
 - `POST /admin/logout` – CSRF-védett kijelentkezés
-- `GET /admin/pricing` – védett árszabálylista és előnézeti űrlap
-- `GET /admin/pricing/person` és `POST /admin/pricing/person` – verzióvédett személyár- és gyermekársáv-kezelés
-- `GET /admin/pricing/create` – árszabály létrehozása
-- `POST /admin/pricing` – validált, auditált árszabálymentés
-- `GET /admin/pricing/{id}/edit` és `POST /admin/pricing/{id}` – árszabály szerkesztése
-- `POST /admin/pricing/{id}/activate` és `/deactivate` – aktiválás/inaktiválás
+- `GET /admin/pricing` – védett, egyszerű tulajdonosi felnőttár-, gyermekársáv- és előnézeti oldal
+- `POST /admin/pricing` – verzióvédett felnőttár-mentés, gyermekársáv létrehozás/szerkesztés/törlés
+- `POST /admin/pricing/preview` – üzleti nyelvű ár-előnézet; a `/admin/pricing/person` kompatibilitási útvonal a főoldalra irányít
 
 ## Sprint 2 indítása PowerShellből
 

@@ -57,7 +57,8 @@ final class PdoPricingRuleRepository implements PricingRuleRepository
     public function find(int $id): ?array
     {
         $statement = $this->pdo->prepare(
-            'SELECT * FROM pricing_rules WHERE id = :id AND deleted_at IS NULL'
+            'SELECT pricing_rules.*, COALESCE(amount, nightly_price) AS amount
+             FROM pricing_rules WHERE id = :id AND deleted_at IS NULL'
         );
         $statement->execute(['id' => $id]);
         $row = $statement->fetch();
@@ -67,7 +68,8 @@ final class PdoPricingRuleRepository implements PricingRuleRepository
 
     public function listAll(bool $includeInactive = true): array
     {
-        $sql = 'SELECT * FROM pricing_rules WHERE deleted_at IS NULL';
+        $sql = 'SELECT pricing_rules.*, COALESCE(amount, nightly_price) AS amount
+                FROM pricing_rules WHERE deleted_at IS NULL';
         if (!$includeInactive) {
             $sql .= ' AND is_active = 1';
         }
@@ -92,7 +94,7 @@ final class PdoPricingRuleRepository implements PricingRuleRepository
     public function findApplicable(string $type, string $arrivalDate, string $departureDate, int $nights): array
     {
         $statement = $this->pdo->prepare(
-            'SELECT * FROM pricing_rules
+            'SELECT pricing_rules.*, COALESCE(amount, nightly_price) AS amount FROM pricing_rules
              WHERE deleted_at IS NULL AND is_active = 1 AND rule_type = :type
                AND valid_from < :departure AND valid_until > :arrival
                AND minimum_nights <= :nights
@@ -141,6 +143,11 @@ final class PdoPricingRuleRepository implements PricingRuleRepository
     /** @param array<string, mixed> $values @return array<string, mixed> */
     private function whitelist(array $values): array
     {
-        return array_intersect_key($values, array_flip(self::FIELDS));
+        $values = array_intersect_key($values, array_flip(self::FIELDS));
+        if ((!array_key_exists('amount', $values) || $values['amount'] === null)
+            && (is_string($values['nightly_price'] ?? null) || is_int($values['nightly_price'] ?? null))) {
+            $values['amount'] = $values['nightly_price'];
+        }
+        return $values;
     }
 }

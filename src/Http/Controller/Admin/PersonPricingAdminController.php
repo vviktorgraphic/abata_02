@@ -26,8 +26,23 @@ final readonly class PersonPricingAdminController
         if ($this->auth->currentAdmin() === null) {
             return new RedirectResponse('/admin/login');
         }
+        $configuration = $this->repository->get();
+        $coveredAges = [];
+        foreach ($configuration->childBands as $band) {
+            if (!$band->active) {
+                continue;
+            }
+            foreach (range($band->minAge, $band->maxAge) as $age) {
+                $coveredAges[$age] = true;
+            }
+        }
         return new HtmlResponse($this->view->render('person-pricing', [
-            'configuration' => $this->repository->get(),
+            'configuration' => $configuration,
+            'visibleBands' => array_values(array_filter(
+                $configuration->childBands,
+                static fn (ChildPriceBand $band): bool => $band->active,
+            )),
+            'hasMissingChildAgeCoverage' => count($coveredAges) !== 18,
             'csrfToken' => $this->csrf->token(),
             'error' => $error,
         ]), $status);
@@ -48,19 +63,12 @@ final readonly class PersonPricingAdminController
             }
             $bands = $current->childBands;
             if (($form['action'] ?? null) === 'settings') {
-                $mode = $form['mode'] ?? null;
-                if (!is_string($mode) || !in_array($mode, ['legacy', 'person'], true)) {
-                    throw new \InvalidArgumentException();
-                }
                 $configuration = new PersonPricingConfiguration(
-                    $version, $mode,
-                    $this->amount($form['adult_weekday_price'] ?? null, true),
-                    $this->amount($form['adult_weekend_price'] ?? null, true),
+                    $version, 'person',
+                    $this->amount($form['adult_weekday_price'] ?? null),
+                    $this->amount($form['adult_weekend_price'] ?? null),
                     $bands,
                 );
-                if ($mode === 'person' && ($configuration->adultWeekdayPrice === null || $configuration->adultWeekendPrice === null)) {
-                    throw new \InvalidArgumentException();
-                }
             } elseif (($form['action'] ?? null) === 'band') {
                 $id = $this->integer($form['band_id'] ?? '0', 0, PHP_INT_MAX);
                 $band = new ChildPriceBand(
@@ -68,8 +76,8 @@ final readonly class PersonPricingAdminController
                     $this->integer($form['max_age'] ?? null, 0, 17),
                     $this->amount($form['weekday_price'] ?? null),
                     $this->amount($form['weekend_price'] ?? null),
-                    isset($form['active']),
-                    $this->integer($form['sort_order'] ?? null, 0, 32767),
+                    true,
+                    $this->integer($form['min_age'] ?? null, 0, 17),
                     $id,
                 );
                 $found = false;
@@ -88,15 +96,22 @@ final readonly class PersonPricingAdminController
                 $configuration = new PersonPricingConfiguration(
                     $version, $current->mode, $current->adultWeekdayPrice, $current->adultWeekendPrice, $bands,
                 );
+            } elseif (($form['action'] ?? null) === 'delete') {
+                $this->repository->deleteBand(
+                    $this->integer($form['band_id'] ?? null, 1, PHP_INT_MAX),
+                    $version,
+                    $authorization->admin['id'],
+                );
+                return new RedirectResponse('/admin/pricing?deleted=1');
             } else {
                 throw new \InvalidArgumentException();
             }
             $this->repository->save($configuration, $version, $authorization->admin['id']);
-            return new RedirectResponse('/admin/pricing/person?saved=1');
+            return new RedirectResponse('/admin/pricing?saved=1');
         } catch (PricingVersionConflict) {
             return $this->index('Az árakat közben módosították. Ellenőrizze az aktuális adatokat, majd mentse újra.', 409);
         } catch (PricingConfigurationError|\InvalidArgumentException) {
-            return $this->index('Nem menthető: egész, nem negatív forintárak, 0–17 év közötti rendezett korhatárok és egymást nem fedő aktív ársávok szükségesek. Személyalapú módhoz mindkét felnőttár kötelező.', 422);
+            return $this->index('Nem menthető: egész, nem negatív forintárak, 0–17 év közötti rendezett korhatárok és egymást nem fedő ársávok szükségesek.', 422);
         }
     }
 

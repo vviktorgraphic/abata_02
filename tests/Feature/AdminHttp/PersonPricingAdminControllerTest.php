@@ -44,39 +44,47 @@ final class PersonPricingAdminControllerTest extends TestCase
         self::assertSame(0, $this->repository->writes);
     }
 
-    public function testSavesExplicitModeAndWholeAdultRatesWithPrg(): void
+    public function testSavesWholeAdultRatesEnablesPersonPricingWithPrg(): void
     {
         $response = $this->submit([
-            'action' => 'settings', 'mode' => 'person',
+            'action' => 'settings',
             'adult_weekday_price' => '20000', 'adult_weekend_price' => '25000',
         ]);
-        self::assertSame('/admin/pricing/person?saved=1', $response->location);
+        self::assertSame('/admin/pricing?saved=1', $response->location);
         self::assertSame('person', $this->repository->configuration->mode);
         self::assertSame('20000.00', $this->repository->configuration->adultWeekdayPrice);
         self::assertStringContainsString('Felnőtt', $this->controller->index()->body);
         self::assertStringContainsString('value="20000"', $this->controller->index()->body);
         self::assertStringNotContainsString('20000.00', $this->controller->index()->body);
+        self::assertStringContainsString('A péntek és szombat éjszaka hétvégi árnak számít.', $this->controller->index()->body);
+        self::assertStringNotContainsString('Árazási mód', $this->controller->index()->body);
     }
 
-    public function testAddsEditsAndDeactivatesAgeBandWithoutDeletingIt(): void
+    public function testAddsEditsAndDeletesAgeBand(): void
     {
         $form = ['action' => 'band', 'band_id' => '0', 'min_age' => '0', 'max_age' => '2',
-            'weekday_price' => '0', 'weekend_price' => '0', 'sort_order' => '1', 'active' => '1'];
-        self::assertSame('/admin/pricing/person?saved=1', $this->submit($form)->location);
+            'weekday_price' => '0', 'weekend_price' => '0'];
+        self::assertSame('/admin/pricing?saved=1', $this->submit($form)->location);
         self::assertCount(1, $this->repository->configuration->childBands);
         $form['band_id'] = '1';
         $form['max_age'] = '3';
-        unset($form['active']);
-        self::assertSame('/admin/pricing/person?saved=1', $this->submit($form)->location);
+        self::assertSame('/admin/pricing?saved=1', $this->submit($form)->location);
         self::assertCount(1, $this->repository->configuration->childBands);
-        self::assertFalse($this->repository->configuration->childBands[0]->active);
+        self::assertTrue($this->repository->configuration->childBands[0]->active);
         self::assertSame(3, $this->repository->configuration->childBands[0]->maxAge);
+        $html = $this->controller->index()->body;
+        self::assertStringContainsString('data-confirm="Biztosan törli ezt a gyermek ársávot?"', $html);
+        self::assertStringNotContainsString('Sorrend', $html);
+        self::assertStringNotContainsString('name="active"', $html);
+        self::assertSame('/admin/pricing?deleted=1', $this->submit(['action'=>'delete','band_id'=>'1'])->location);
+        self::assertCount(0, $this->repository->configuration->childBands);
+        self::assertStringContainsString('Nincs minden gyermek életkorhoz ár beállítva. Az érintett életkorral foglalás addig nem küldhető be.', $this->controller->index()->body);
     }
 
     public function testCannotEnablePersonModeWithEitherAdultRateMissing(): void
     {
         foreach ([['', '10000'], ['10000', ''], ['', '']] as [$weekday, $weekend]) {
-            self::assertSame(422, $this->submit(['action' => 'settings', 'mode' => 'person',
+            self::assertSame(422, $this->submit(['action' => 'settings',
                 'adult_weekday_price' => $weekday, 'adult_weekend_price' => $weekend])->status);
         }
         self::assertSame(0, $this->repository->writes);
@@ -86,12 +94,12 @@ final class PersonPricingAdminControllerTest extends TestCase
     public function testRejectsStaleVersionOverlapAndFractionalOrNegativePrice(): void
     {
         self::assertSame(409, $this->submit(['version' => '99', 'action' => 'settings'])->status);
-        $settings = ['action' => 'settings', 'mode' => 'person', 'adult_weekday_price' => '100.50', 'adult_weekend_price' => '100'];
+        $settings = ['action' => 'settings', 'adult_weekday_price' => '100.50', 'adult_weekend_price' => '100'];
         self::assertSame(422, $this->submit($settings)->status);
         $settings['adult_weekday_price'] = '-1';
         self::assertSame(422, $this->submit($settings)->status);
         $band = ['action' => 'band', 'band_id' => '0', 'min_age' => '0', 'max_age' => '6',
-            'weekday_price' => '5000', 'weekend_price' => '6000', 'sort_order' => '0', 'active' => '1'];
+            'weekday_price' => '5000', 'weekend_price' => '6000'];
         $this->submit($band);
         $band['min_age'] = '6';
         $band['max_age'] = '10';
@@ -139,5 +147,23 @@ final class PersonUiRepository implements PersonPricingRepository
         ), $configuration->childBands);
         return $this->configuration = new PersonPricingConfiguration($expectedVersion + 1,
             $configuration->mode, $configuration->adultWeekdayPrice, $configuration->adultWeekendPrice, $bands);
+    }
+    public function deleteBand(int $bandId, int $expectedVersion, int $adminId): PersonPricingConfiguration
+    {
+        ++$this->writes;
+        $bands = array_values(array_filter(
+            $this->configuration->childBands,
+            static fn (ChildPriceBand $band): bool => $band->id !== $bandId,
+        ));
+        if (count($bands) === count($this->configuration->childBands)) {
+            throw new \InvalidArgumentException();
+        }
+        return $this->configuration = new PersonPricingConfiguration(
+            $expectedVersion + 1,
+            $this->configuration->mode,
+            $this->configuration->adultWeekdayPrice,
+            $this->configuration->adultWeekendPrice,
+            $bands,
+        );
     }
 }

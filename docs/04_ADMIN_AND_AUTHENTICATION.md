@@ -155,8 +155,8 @@ Az admin/auth sprint csak akkor fogadható el, ha:
 ## Booking management – IMPLEMENTED Sprint 5
 
 A 2FA-val hitelesített admin lista-, részlet- és blocked-period oldalt kap. Minden válasz no-store; a POST-ok form Content-Type-, 8 KiB body-, CSRF-, admin/action rate-limit-, mező-whitelist- és 500 karakteres note ellenőrzést használnak, PRG redirecttel.
-## Sprint 10 pricing admin – IMPLEMENTED
+## Sprint 10 pricing admin + tulajdonosi UX-javítás – IMPLEMENTED
 
-A teljes 2FA-val védett `GET /admin/pricing/person` oldal megjeleníti az explicit legacy/személy módot, a hétköznapi és hétvégi felnőttárat, valamint az egyedileg hozzáadható/szerkeszthető/inaktiválható gyermek ársávokat. A `POST /admin/pricing/person` mentés CSRF-, Content-Type-, body-size-, rate-limit- és optimistic-version védelemmel fut. Személy mód hiányzó felnőttárral, tört/negatív HUF-fal, fordított vagy átfedő aktív sávval nem menthető.
+A teljes 2FA-val védett `GET /admin/pricing` az egyetlen normál árkezelési oldal. Kizárólag a hétköznapi/hétvégi felnőttárat, a minimum életkor szerint rendezett gyermek ársávokat és az üzleti nyelvű előnézetet mutatja; a legacy/person mód, rule type, sorrend, aktív jelző, rule ID és konfigurációverzió nem része a tulajdonosi felületnek. A felnőttár mentése explicit person módra vált; addig a korábbi árak maradnak érvényben.
 
-Az árkonfiguráció, coverage és `person_pricing.updated` audit egy tranzakció. Az audit verziót és módot rögzít, árat vagy secretet nem. A preview és a booking detail a v3 snapshot éjszakánkénti felnőtt-, gyermek- és sávbontását mutatja.
+A `POST /admin/pricing` `settings|band|delete` művelete CSRF-, Content-Type-, body-size-, rate-limit- és optimistic-version védelemmel fut. A létrehozás/szerkesztés/törlés tranzakciósan frissíti a konfigurációt és coverage-et. A fizikai ársávtörlés biztonságos, mert a bookingok immutable JSON másolatot tartanak és nincs band FK-juk; a coverage FK `ON DELETE CASCADE`. A törlés `person_pricing.band_deleted` audittal jár, és hiányos 0–17 lefedettségnél a UI fail-closed figyelmeztetést mutat. Tört/negatív HUF, fordított vagy átfedő sáv nem menthető.

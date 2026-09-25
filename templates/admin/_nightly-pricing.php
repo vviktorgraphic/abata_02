@@ -1,7 +1,6 @@
 <?php declare(strict_types=1); ?>
 <?php if (!empty($snapshot['nightly_breakdown'])): ?>
 <h2>Éjszakánkénti személyárak</h2>
-<p>Árkonfiguráció verziója: <?= $e($snapshot['pricing_configuration_version'] ?? '') ?></p>
 <div class="table-scroll" tabindex="0" role="region" aria-label="Éjszakánkénti árbontás">
 <table><thead><tr><th>Éjszaka</th><th>Felnőttek díja</th><th>Gyermekek díja</th><th>Szállásdíj</th></tr></thead><tbody>
 <?php foreach ($snapshot['nightly_breakdown'] as $night): ?>

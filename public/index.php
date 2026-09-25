@@ -37,6 +37,11 @@ use App\Security\RateLimit\RateLimitPolicy;
 require dirname(__DIR__) . '/vendor/autoload.php';
 
 date_default_timezone_set($_ENV['APP_TIMEZONE'] ?? getenv('APP_TIMEZONE') ?: 'Europe/Budapest');
+$environment = getenv('APP_ENV') ?: ($_ENV['APP_ENV'] ?? 'production');
+if ($environment === 'production') {
+    ini_set('display_errors', '0');
+    ini_set('display_startup_errors', '0');
+}
 
 $httpSecurity = require dirname(__DIR__) . '/config/http-security.php';
 $transportSecurity = new App\Http\RequestTransportSecurity($httpSecurity['trusted_proxy_ips']);
@@ -113,32 +118,18 @@ $router->post('/admin/blocked-periods/{id}/remove', static fn (array $_query, ar
     $params['id'], $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
     isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
 )->send());
-$router->get('/admin/pricing', static fn () => $admin()['pricing']->index()->send());
-$router->get('/admin/pricing/person', static fn () => $admin()['person_pricing']->index()->send());
+$router->get('/admin/pricing', static fn () => $admin()['person_pricing']->index()->send());
+$router->get('/admin/pricing/person', static fn () => (new App\Http\Controller\Admin\RedirectResponse('/admin/pricing'))->send());
 $router->post('/admin/pricing/person', static fn () => $admin()['person_pricing']->save(
     $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
     isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
 )->send());
-$router->get('/admin/pricing/create', static fn () => $admin()['pricing']->createForm()->send());
-$router->post('/admin/pricing', static fn () => $admin()['pricing']->create(
+$router->post('/admin/pricing', static fn () => $admin()['person_pricing']->save(
     $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
     isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
 )->send());
 $router->post('/admin/pricing/preview', static fn () => $admin()['pricing']->preview(
     $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
-    isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
-)->send());
-$router->get('/admin/pricing/{id}/edit', static fn (array $_query, array $params) => $admin()['pricing']->editForm($params['id'])->send());
-$router->post('/admin/pricing/{id}', static fn (array $_query, array $params) => $admin()['pricing']->update(
-    $params['id'], $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
-    isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
-)->send());
-$router->post('/admin/pricing/{id}/activate', static fn (array $_query, array $params) => $admin()['pricing']->activate(
-    $params['id'], $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
-    isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
-)->send());
-$router->post('/admin/pricing/{id}/deactivate', static fn (array $_query, array $params) => $admin()['pricing']->deactivate(
-    $params['id'], $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
     isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
 )->send());
 $router->get('/admin/calendar', static fn () => $admin()['calendar']->dashboard()->send());
@@ -283,4 +274,9 @@ $router->post('/api/bookings', static function () use ($bookingPolicy, $privacyP
     }
 });
 
-$router->dispatch($_SERVER['REQUEST_METHOD'] ?? 'GET', parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/');
+try {
+    $router->dispatch($_SERVER['REQUEST_METHOD'] ?? 'GET', parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/');
+} catch (Throwable $error) {
+    error_log(sprintf('Unhandled HTTP error [%s].', $error::class));
+    App\Http\Controller\Admin\UnexpectedHttpErrorResponse::create()->send();
+}

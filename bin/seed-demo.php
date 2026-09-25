@@ -41,9 +41,9 @@ $insertBlock = $pdo->prepare(
 $deleteDemoPrice = $pdo->prepare('DELETE FROM pricing_rules WHERE name = :name');
 $insertDemoPrice = $pdo->prepare(
     'INSERT INTO pricing_rules
-        (name, valid_from, valid_until, nightly_price, base_unit, currency, minimum_nights, priority, is_active)
+        (name, valid_from, valid_until, nightly_price, amount, base_unit, currency, minimum_nights, priority, is_active)
      VALUES
-        (:name, :valid_from, :valid_until, :nightly_price, :base_unit, :currency, 1, 0, 1)'
+        (:name, :valid_from, :valid_until, :nightly_price, :amount, :base_unit, :currency, 1, 0, 1)'
 );
 
 $pdo->beginTransaction();
@@ -70,6 +70,7 @@ try {
         'valid_from' => $date(0),
         'valid_until' => $date(730),
         'nightly_price' => '10000.00',
+        'amount' => '10000.00',
         'base_unit' => 'per_person_per_night',
         'currency' => 'HUF',
     ]);

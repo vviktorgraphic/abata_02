@@ -55,7 +55,7 @@ adult_count × adult_rate + Σ child_band_rate(child_age)
 
 Péntek (ISO 5) és szombat (ISO 6) éjszaka hétvégi. `person` módban a legacy `base`, `stay_length` és `weekend` szabálytípusok helyét a személyár veszi át. A `seasonal`, `fixed_fee`, `tourism_tax` és `exemption` logika megmarad; fix díj és IFA nem olvad a lemondási `accommodation_fee` alapba. A legacy mód változatlanul olvassa a korábbi konfigurációt.
 
-Az admin `/admin/pricing/person` oldalon külön menthető a mód/felnőttár és egy gyermek ársáv hozzáadása vagy szerkesztése. Sáv nem hard delete-tel, hanem inaktiválással kerül ki a számításból. Minden mentés CSRF-, auth-, rate-limit- és version-védett, egy tranzakcióban frissíti a konfigurációt, a coverage táblát és a `person_pricing.updated` auditot.
+Az UX-javítás után az admin kanonikus `/admin/pricing` oldala a technikai módválasztás nélkül kezeli a felnőttárakat és a gyermek ársávok létrehozását, szerkesztését, illetve megerősített törlését. A felnőttár mentése person módra vált. A történeti booking snapshotnak nincs band FK-ja, ezért az ársáv fizikai törlése biztonságos; a coverage rekordok kaszkádolnak, a konfigurációverzió nő és `person_pricing.band_deleted` audit készül. Hiányos lefedettség megengedett konfigurációs állapot, de preview/booking fail-closed és az admin pontos figyelmeztetést kap.
 
 ## Snapshot, HUF és kompatibilitás
 
@@ -70,8 +70,9 @@ A lemondási szabály változatlan: legalább hét Budapest-naptári nappal érk
 - `017_add_ical_automation.sql`: missing marker és sync metrikák.
 - `018_add_person_pricing.sql`: konfiguráció, gyermek ársáv és age coverage.
 - `019_add_ical_missing_instant.sql`: DST-biztos elapsed-time marker.
+- `020_backfill_legacy_pricing_amount.sql`: korábbi hibás writer által `amount=NULL` értékkel hagyott pricing sorok adatjavítása a változatlan `nightly_price` alapján.
 
-A DDL forward-only. Rollback előtt le kell tiltani az iCal cront, a pricing módot `legacy` értékre kell visszaállítani még az új kóddal, backupot kell készíteni, majd az előző release-re váltani. A 017–019 táblákat/oszlopokat kézzel törölni tilos: a régi kód figyelmen kívül hagyja őket, a v3 snapshotok megőrzendő üzleti bizonyítékok. Inkompatibilis helyzetben maintenance + restore vagy forward-fix szükséges.
+A migrációk forward-only-k. Rollback előtt le kell tiltani az iCal cront, a pricing módot `legacy` értékre kell visszaállítani még az új kóddal, backupot kell készíteni, majd az előző release-re váltani. A 017–020 változásait kézzel visszafordítani tilos: a v3 snapshotok megőrzendő üzleti bizonyítékok, a 020 pedig csak a már létező kanonikus ármezőt tölti vissza. Inkompatibilis helyzetben maintenance + restore vagy forward-fix szükséges.
 
 ## Nyitott deployment döntések
 

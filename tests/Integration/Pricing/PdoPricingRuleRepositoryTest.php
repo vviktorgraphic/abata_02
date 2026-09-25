@@ -77,6 +77,17 @@ final class PdoPricingRuleRepositoryTest extends TestCase
         self::assertFalse($repository->hasEqualPriorityConflict('base', '2040-06-30', '2040-07-02', 50, $id));
     }
 
+    public function testLegacyWriterInputBackfillsAmountFromDecimalNightlyPrice(): void
+    {
+        $repository = new PdoPricingRuleRepository($this->pdo);
+        $values = $this->values('Legacy writer', 70);
+        unset($values['amount']);
+        $id = $repository->create($values, $this->adminId);
+        $this->ruleIds[] = $id;
+
+        self::assertSame('10000.00', $repository->find($id)['amount']);
+    }
+
     /** @return array<string, mixed> */
     private function values(string $name, int $priority): array
     {

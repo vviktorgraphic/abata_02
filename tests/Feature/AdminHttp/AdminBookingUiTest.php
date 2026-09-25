@@ -83,17 +83,31 @@ final class AdminBookingUiTest extends TestCase
             self::assertStringContainsString('10 000 Ft', $html);
             self::assertStringContainsString('Felnőtt', $html);
         }
+        if (isset($snapshot['nightly_breakdown'])) {
+            self::assertStringContainsString('Éjszakánkénti személyárak', $html);
+            self::assertStringContainsString('2 fő × 10 000 Ft', $html);
+            self::assertStringNotContainsString('Árkonfiguráció verziója', $html);
+        }
         self::assertSame(3, substr_count($html, 'name="_csrf"'));
         self::assertStringContainsString('maxlength="500"', $html);
     }
 
     public static function snapshots(): iterable
     {
-        yield 'legacy snapshot' => [['pricing_base' => 'person_night', 'unit_price' => '40000.00']];
-        yield 'itemized person snapshot' => [[
+        yield 'v1 whole integer snapshot' => [['version' => 1, 'pricing_base' => 'person_night', 'unit_price' => 40000, 'total' => 40000]];
+        yield 'v2 decimal itemized snapshot' => [[
+            'version' => 2,
+            'line_items' => [['type' => 'accommodation', 'description' => 'Felnőtt', 'quantity' => 4, 'unit_amount' => '10000.00', 'total' => '40000.00']],
+            'accommodation_fee' => '40000.00',
+        ]];
+        yield 'v3 nightly person snapshot' => [[
             'version' => 3,
             'line_items' => [['type' => 'accommodation', 'description' => 'Felnőtt', 'quantity' => 4, 'unit_amount' => '10000.00', 'total' => '40000.00']],
             'accommodation_fee' => '40000.00',
+            'nightly_breakdown' => [[
+                'date'=>'2026-08-01','weekend'=>true,'adults'=>2,'adult_unit_amount'=>'10000.00','adult_total'=>'20000.00',
+                'children'=>[],'children_total'=>'0.00','total'=>'20000.00',
+            ]],
         ]];
     }
 
