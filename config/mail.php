@@ -20,6 +20,10 @@ $portValue = $value('MAIL_PORT', '1025');
 if (filter_var($portValue, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 65535]]) === false) {
     throw new RuntimeException('MAIL_PORT must be an integer between 1 and 65535.');
 }
+$timeoutValue = $value('MAIL_TIMEOUT_SECONDS', '10');
+if (filter_var($timeoutValue, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 300]]) === false) {
+    throw new RuntimeException('MAIL_TIMEOUT_SECONDS must be an integer between 1 and 300.');
+}
 $encryption = strtolower($value('MAIL_ENCRYPTION', 'none'));
 $username = $production ? $value('MAIL_USERNAME') : (getenv('MAIL_USERNAME') === false ? '' : trim((string) getenv('MAIL_USERNAME')));
 $password = $production ? $value('MAIL_PASSWORD') : (getenv('MAIL_PASSWORD') === false ? '' : (string) getenv('MAIL_PASSWORD'));
@@ -42,6 +46,7 @@ if (preg_match('/[\r\n]/', $fromName) === 1 || mb_strlen($fromName) > 120) {
 return [
     'host' => $host,
     'port' => (int) $portValue,
+    'timeout_seconds' => (int) $timeoutValue,
     'encryption' => $encryption,
     'username' => $username,
     'password' => $password,

@@ -91,7 +91,11 @@ final readonly class CalendarAdminController
         $authorization=$this->guard->authorizeForm('calendar_source.update',$form,$contentType,$contentLength);
         if(!$authorization->allowed()) return $authorization->rejection;
         $source=$this->lookup($id); if($source===null)return $this->error(404,'A naptárforrás nem található.');
-        try { $v=$this->validated($form); $this->sources->update((int)$id,$v['name'],$v['provider'],$v['url'],$v['direction'],$v['enabled'],$v['sync_token']);
+        try {
+            if (trim((string)($form['url'] ?? '')) === '') {
+                $form['url'] = (string)$source['url'];
+            }
+            $v=$this->validated($form); $this->sources->update((int)$id,$v['name'],$v['provider'],$v['url'],$v['direction'],$v['enabled'],$v['sync_token']);
             $this->audit('calendar_source.updated',$authorization->admin['id'],(int)$id); return new RedirectResponse('/admin/calendar/sources?updated=1');
         } catch (\InvalidArgumentException) { return $this->error(422,'A naptárforrás adatai érvénytelenek.'); }
     }

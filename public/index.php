@@ -220,6 +220,7 @@ $router->post('/api/bookings', static function () use ($bookingPolicy, $privacyP
             $mail['encryption'],
             $mail['username'] !== '' ? $mail['username'] : null,
             $mail['password'] !== '' ? $mail['password'] : null,
+            $mail['timeout_seconds'],
             production: $mail['production'],
         ));
         $outbox = new BookingOutboxDispatcher(new BookingRequestOutboxDispatcher(

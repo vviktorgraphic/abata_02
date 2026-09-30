@@ -1,5 +1,7 @@
 # Architektúra
 
+> **RC2 státusz:** az RC2 integráció a Sprint 10 iCal/pricing változásait és a Sprint 11 release hardeninget tartalmazza. A cPanel/provider kapuk a [pending döntéslistában](OWNER_DECISIONS_PENDING.md) vannak.
+
 **Állapot:** IMPLEMENTED architektúra-leltár és PLANNED 1.0 célarchitektúra
 **Utolsó ellenőrzés:** 2026-07-18, `release/rc1` munkafa (commit előtt)
 

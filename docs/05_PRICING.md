@@ -1,5 +1,7 @@
 # Árképzés
 
+> **RC2 státusz:** a Sprint 6 közös engine és Sprint 10 személy/gyermekáras konfiguráció IMPLEMENTED; production árérték owner döntés.
+
 **Állapot:** Sprint 6 közös pricing engine, admin CRUD/preview és immutable snapshot IMPLEMENTED; konkrét production értékek és opcionális kedvezmények OPEN/PLANNED
 **Utolsó ellenőrzés:** 2026-07-18, `release/rc1` munkafa (commit előtt)
 

@@ -62,6 +62,8 @@ final class CalendarAdminControllerTest extends TestCase
         $edit = $this->controller()->editForm('1');
         self::assertStringContainsString('type="password" name="sync_token"', $edit->body);
         self::assertStringNotContainsString('source-secret', $edit->body);
+        self::assertStringNotContainsString('private/feed.ics?token=url-secret', $edit->body);
+        self::assertStringContainsString('jelenlegi URL marad meg', $edit->body);
         self::assertStringContainsString('nem olvasható vissza', $edit->body);
 
         $updated = $this->controller()->update('1', $this->form(['name'=>'Módosított','sync_token'=>''])+['_csrf'=>$this->csrf->token()], 'application/x-www-form-urlencoded', 400);

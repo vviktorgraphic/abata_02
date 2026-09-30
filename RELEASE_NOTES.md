@@ -1,4 +1,11 @@
-# A Bata 1.0.0-rc1 release notes
+# A Bata 1.0.0-rc2 release notes
+
+## RC2 Sprint 11 hardening
+
+- RC2 integration branch created without merging to `main`.
+- SMTP timeout is environment-configurable; PDO MySQL is declared as a runtime extension.
+- iCal private URLs are no longer rendered in admin edit forms; session strict mode is enforced.
+- Production GO remains blocked on owner/provider decisions and cPanel/browser/restore smoke evidence.
 
 **Állapot:** release candidate forráskód; production kiadásra jelenleg **NO-GO**
 **Dátum:** 2026-07-18

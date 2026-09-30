@@ -46,6 +46,8 @@ Javasolt, deployment során pontosítandó cPanel bejegyzés:
 
 A workerben tartós, forrásonkénti MySQL advisory lock van; átfedő futás nem duplikál importot. Az environmentet a védett CLI wrapper/hosting mechanizmus biztosítsa, nem dotenv és nem parancssori credential.
 
+A cPanel PHP CLI útvonalát telepítéskor kell felderíteni: `command -v php` vagy `php -r "echo PHP_BINARY, PHP_EOL;"`. A cronban csak az ellenőrzött abszolút útvonal szerepelhet.
+
 ### PLANNED/BLOCKED jobok
 
 | Job | Állapot | Blokkoló feltétel |

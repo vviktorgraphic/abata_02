@@ -1,5 +1,7 @@
 # Publikus foglalási folyamat
 
+> **RC2 státusz:** a tranzakciós foglalás, ársnapshot, policy-elfogadás és outbox IMPLEMENTED; production provider- és jogi értékek továbbra is pending.
+
 **Állapot:** IMPLEMENTED és PLANNED részekre bontva
 **Utolsó ellenőrzés:** 2026-07-18, `release/rc1` munkafa (commit előtt)
 

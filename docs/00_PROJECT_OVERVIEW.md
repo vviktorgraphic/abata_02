@@ -1,5 +1,7 @@
 # Projektáttekintés
 
+> **RC2 státusz (2026-09-30):** ezt a dokumentumot az `release/rc2` kód, tesztek és a [Sprint 11 hardening jelentés](20_SPRINT11_RC2_RELEASE_HARDENING.md) alapján kell értelmezni; a korábbi RC1 dátumok történeti ellenőrzések.
+
 **Állapot:** IMPLEMENTED állapotfelmérés és PLANNED 1.0 rendszerterv
 **Utolsó ellenőrzés:** 2026-07-18, `release/rc1` munkafa (commit előtt)
 

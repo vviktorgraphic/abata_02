@@ -4,6 +4,10 @@ A projekt változásai ebben a fájlban követik a release-eket. A formátum a K
 
 ## [Unreleased]
 
+### RC2 hardening
+
+- Added configurable SMTP timeout, PDO MySQL dependency declaration, strict session mode enforcement and masked iCal edit URLs.
+
 ### Added
 
 - Automatikus, forrásonként lockolt iCal CLI worker korlátozott retry/backoff, 24 órás eltűnési grace és bővített sync metrikák mellett.

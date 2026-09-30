@@ -60,7 +60,7 @@ Ellenőrizd továbbá a `nosniff`, frame/CSP, referrer és admin `no-store` head
 
 ## Production SMTP
 
-Productionben `MAIL_HOST`, `MAIL_PORT`, `MAIL_ENCRYPTION=tls|ssl`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_EMAIL` és `MAIL_FROM_NAME` kötelező; hitelesítés nélküli vagy plaintext transport fail-fast hibát ad. A portot és titkosítási módot kizárólag a szolgáltató dokumentációja alapján válaszd, credentialt ne adj parancssori argumentumban és ne naplózz.
+Productionben `MAIL_HOST`, `MAIL_PORT`, `MAIL_TIMEOUT_SECONDS`, `MAIL_ENCRYPTION=tls|ssl`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_EMAIL` és `MAIL_FROM_NAME` kötelező; hitelesítés nélküli vagy plaintext transport fail-fast hibát ad. A portot, timeoutot és titkosítási módot kizárólag a szolgáltató dokumentációja alapján válaszd, credentialt ne adj parancssori argumentumban és ne naplózz.
 
 Az SMTP/levelezési szolgáltatónál:
 

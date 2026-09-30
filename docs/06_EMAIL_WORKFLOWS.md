@@ -19,7 +19,7 @@ Ez a dokumentum az 1.0 tranzakciós e-mail folyamatait tervezi. Kapcsolódó dok
 
 ## Production SMTP runbook – IMPLEMENTED configuration guard, OPEN owner values
 
-**IMPLEMENTED:** `APP_ENV=production` esetén az alkalmazás induláskor elutasítja a hiányos levelezési konfigurációt. Kötelező az érvényes `MAIL_HOST`, `MAIL_PORT`, `MAIL_FROM_EMAIL`, `MAIL_FROM_NAME`, továbbá az együtt megadott `MAIL_USERNAME` és `MAIL_PASSWORD`. A transport csak `MAIL_ENCRYPTION=tls` (STARTTLS) vagy `MAIL_ENCRYPTION=ssl` lehet. A TLS peer- és hostnév-ellenőrzés, illetve az önaláírt tanúsítvány tiltása kódszintű, nem kapcsolható ki environment változóval. Developmentben a Compose/Mailpit `none`, credential nélküli beállítása továbbra is támogatott.
+**IMPLEMENTED:** `APP_ENV=production` esetén az alkalmazás induláskor elutasítja a hiányos levelezési konfigurációt. Kötelező az érvényes `MAIL_HOST`, `MAIL_PORT`, `MAIL_TIMEOUT_SECONDS`, `MAIL_FROM_EMAIL`, `MAIL_FROM_NAME`, továbbá az együtt megadott `MAIL_USERNAME` és `MAIL_PASSWORD`. A transport csak `MAIL_ENCRYPTION=tls` (STARTTLS) vagy `MAIL_ENCRYPTION=ssl` lehet. A TLS peer- és hostnév-ellenőrzés, illetve az önaláírt tanúsítvány tiltása kódszintű, nem kapcsolható ki environment változóval. Developmentben a Compose/Mailpit `none`, credential nélküli beállítása továbbra is támogatott.
 
 **OPEN – owner/deployment:** a production SMTP-szolgáltató, host, port, titkosítási mód, feladó domain/név és credential konkrét értékei. A secretet a cPanel/hosting titkos environment-kezelésében kell beállítani; tilos Gitbe, webrootba, shell argumentumba, képernyőképbe vagy deployment naplóba írni.
 

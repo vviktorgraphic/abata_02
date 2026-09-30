@@ -2,9 +2,9 @@
 
 Frameworkfüggetlen, PHP 8.2+ és MySQL 8 alapú foglalási rendszer egyetlen szálláshelyhez. A rendszer tartalmazza a publikus naptárt, admin-hitelesítést és foglaláskezelést, tranzakciós publikus foglalásmentést, közös szerveroldali pricing engine-t és admin pricing CRUD/preview felületet, policy-elfogadási snapshotot, valamint a 7 napos/50%-os lemondási szabályt és kapcsolódó outbox e-maileket.
 
-## Release Candidate RC1
+## Release Candidate RC2
 
-Az `release/rc1` forrás release candidate állapotú. A funkciók és ismert korlátozások a [release notes](RELEASE_NOTES.md), a változások a [changelog](CHANGELOG.md), a végrehajtható repository- és staging gate pedig az [RC1 validációs checklist](docs/16_RELEASE_CANDIDATE_RC1.md) része. Az RC1 staging validációra kész, de a nyitott owner/legal és valós cPanel/HTTPS/SMTP/restore kapuk miatt productionre jelenleg **NO-GO**.
+Az `release/rc2` forrás release candidate állapotú. A funkciók és ismert korlátozások a [release notes](RELEASE_NOTES.md), a változások a [changelog](CHANGELOG.md), a hardening és végrehajtási bizonyíték pedig a [Sprint 11 RC2 dokumentumban](docs/20_SPRINT11_RC2_RELEASE_HARDENING.md) található. A nyitott owner/legal és valós cPanel/HTTPS/SMTP/restore kapuk miatt productionre jelenleg **NO-GO**.
 
 Az RC1 utáni admin 2FA session redirect hibajavítás gyökérokát, session/cookie invariánsait és ellenőrzését a [2FA session fix dokumentum](docs/17_ADMIN_2FA_SESSION_REDIRECT_FIX.md) rögzíti.
 

@@ -1,5 +1,7 @@
 # Adminfelület és hitelesítés
 
+> **RC2 státusz:** az e-mailes 2FA és session strict mode enforcement IMPLEMENTED; valós SMTP/cPanel smoke production gate.
+
 **Állapot:** auth, booking management, pricing és iCal adminfelület IMPLEMENTED; kézi booking, settings és kereshető audit UI PLANNED
 **Utolsó ellenőrzés:** 2026-07-18, `release/rc1` munkafa (commit előtt)
 

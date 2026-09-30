@@ -22,6 +22,9 @@ final class NativeSessionStorage implements SessionStorage
             throw new RuntimeException('The session cannot be started after response headers were sent.');
         }
 
+        if (ini_set('session.use_strict_mode', '1') === false || ini_get('session.use_strict_mode') !== '1') {
+            throw new RuntimeException('session.use_strict_mode must be enabled.');
+        }
         session_set_cookie_params($this->cookieOptions->toPhpOptions());
         if (!session_start()) {
             throw new RuntimeException('The session could not be started.');

@@ -34,6 +34,7 @@ final class MailConfigurationTest extends TestCase
 
         self::assertSame('mailpit', $configuration['host']);
         self::assertSame(1025, $configuration['port']);
+        self::assertSame(10, $configuration['timeout_seconds']);
         self::assertSame('none', $configuration['encryption']);
         self::assertFalse($configuration['production']);
     }
@@ -62,6 +63,7 @@ final class MailConfigurationTest extends TestCase
         putenv('APP_ENV=production');
         putenv('MAIL_HOST=smtp.example.test');
         putenv('MAIL_PORT=587');
+        putenv('MAIL_TIMEOUT_SECONDS=25');
         putenv('MAIL_ENCRYPTION=tls');
         putenv('MAIL_USERNAME=deployment-user');
         putenv('MAIL_PASSWORD=deployment-secret');
@@ -73,13 +75,14 @@ final class MailConfigurationTest extends TestCase
         self::assertTrue($configuration['production']);
         self::assertSame('tls', $configuration['encryption']);
         self::assertSame('smtp.example.test', $configuration['host']);
+        self::assertSame(25, $configuration['timeout_seconds']);
     }
 
     /** @return list<string> */
     private function variableNames(): array
     {
         return [
-            'APP_ENV', 'MAIL_HOST', 'MAIL_PORT', 'MAIL_ENCRYPTION', 'MAIL_USERNAME',
+            'APP_ENV', 'MAIL_HOST', 'MAIL_PORT', 'MAIL_TIMEOUT_SECONDS', 'MAIL_ENCRYPTION', 'MAIL_USERNAME',
             'MAIL_PASSWORD', 'MAIL_FROM_EMAIL', 'MAIL_FROM_NAME',
         ];
     }

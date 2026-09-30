@@ -1,6 +1,7 @@
 # iCal szinkron
 
-**Állapot:** Sprint 7 alaphatókör IMPLEMENTED; az ütemezett és haladó reconciliation funkciók PLANNED
+**Állapot:** Sprint 7 alaphatókör és Sprint 10 automatikus worker IMPLEMENTED; éles cron aktiválás DEPLOYMENT PENDING
+**RC2 megjegyzés:** a dokumentum későbbi PLANNED mondatai a Sprint 7 történeti állapotát jelölik; a Sprint 10 worker lock/retry/grace szerződése az aktuális mérvadó.
 **Utolsó felülvizsgálat:** 2026-07-18, `release/rc1` munkafa (commit előtt)
 
 ## Hatókör és alapelv
