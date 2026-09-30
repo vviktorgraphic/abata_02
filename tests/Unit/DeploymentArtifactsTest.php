@@ -43,12 +43,13 @@ final class DeploymentArtifactsTest extends TestCase
 
         self::assertStringContainsString('kizárólag a release `public/` könyvtára', $contents);
         self::assertStringContainsString('nem kell írhatónak lennie', $contents);
-        self::assertStringContainsString('webrooton kívüli, jogosultságszűkített wrapperből', $contents);
+        self::assertStringContainsString('normál CLI használathoz nem kell', $contents);
         self::assertStringContainsString('forward-only', $contents);
         self::assertStringContainsString('SPF', $contents);
         self::assertStringContainsString('DKIM', $contents);
         self::assertStringContainsString('DMARC', $contents);
-        self::assertStringContainsString('nem tölt be `.env` fájlt', $contents);
+        self::assertStringContainsString('közös environment bootstrapet tölti be', $contents);
+        self::assertStringContainsString('nem kell `source .env`', $contents);
     }
 
     private function read(string $relativePath): string

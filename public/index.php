@@ -34,7 +34,9 @@ use App\Security\RateLimit\RateLimitClock;
 use App\Security\RateLimit\RateLimiter;
 use App\Security\RateLimit\RateLimitPolicy;
 
-require dirname(__DIR__) . '/vendor/autoload.php';
+$root = dirname(__DIR__);
+require $root . '/vendor/autoload.php';
+App\Bootstrap\EnvironmentBootstrap::load($root);
 
 date_default_timezone_set($_ENV['APP_TIMEZONE'] ?? getenv('APP_TIMEZONE') ?: 'Europe/Budapest');
 $environment = getenv('APP_ENV') ?: ($_ENV['APP_ENV'] ?? 'production');
@@ -43,7 +45,7 @@ if ($environment === 'production') {
     ini_set('display_startup_errors', '0');
 }
 
-$httpSecurity = require dirname(__DIR__) . '/config/http-security.php';
+$httpSecurity = require $root . '/config/http-security.php';
 $transportSecurity = new App\Http\RequestTransportSecurity($httpSecurity['trusted_proxy_ips']);
 foreach (App\Http\Controller\Admin\SecurityHeaders::common() as $name => $value) {
     header($name . ': ' . $value);

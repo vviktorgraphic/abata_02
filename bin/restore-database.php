@@ -6,6 +6,10 @@ declare(strict_types=1);
  * Explicit, checksum-verified restore. Never invoke from an unattended cron job.
  */
 
+$root = dirname(__DIR__);
+require $root . '/vendor/autoload.php';
+App\Bootstrap\EnvironmentBootstrap::load($root);
+
 $required = static function (string $name): string {
     $value = getenv($name);
     if (!is_string($value) || trim($value) === '') {

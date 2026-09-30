@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 use App\Infrastructure\Database\ConnectionFactory;
 
-require dirname(__DIR__) . '/vendor/autoload.php';
+$root = dirname(__DIR__);
+require $root . '/vendor/autoload.php';
+App\Bootstrap\EnvironmentBootstrap::load($root);
 
 $email = trim((string) (getenv('ADMIN_CREATE_EMAIL') ?: ''));
 $passwordFile = (string) (getenv('ADMIN_CREATE_PASSWORD_FILE') ?: '');
@@ -27,7 +29,7 @@ if (strlen($password) < 12) {
     exit(1);
 }
 
-$pdo = ConnectionFactory::create(require dirname(__DIR__) . '/config/database.php');
+$pdo = ConnectionFactory::create(require $root . '/config/database.php');
 $statement = $pdo->prepare('INSERT INTO admins (email, password_hash, name, is_active) VALUES (:email, :password_hash, :name, TRUE)');
 try {
     $statement->execute([

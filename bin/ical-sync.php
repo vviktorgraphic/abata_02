@@ -16,6 +16,7 @@ $emit = static function (array $record): void {
 };
 try {
     require $root . '/vendor/autoload.php';
+    App\Bootstrap\EnvironmentBootstrap::load($root);
     $pdo = ConnectionFactory::create(require $root . '/config/database.php');
     $factory = require $root . '/config/calendar-services.php';
     exit((new CalendarSyncWorker(new PdoCalendarSourceRepository($pdo), $factory($pdo)))->run($emit));

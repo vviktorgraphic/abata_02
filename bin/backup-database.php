@@ -8,6 +8,8 @@ declare(strict_types=1);
  */
 
 $root = dirname(__DIR__);
+require $root . '/vendor/autoload.php';
+App\Bootstrap\EnvironmentBootstrap::load($root);
 
 $required = static function (string $name): string {
     $value = getenv($name);

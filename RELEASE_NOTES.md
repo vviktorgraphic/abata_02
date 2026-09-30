@@ -5,6 +5,7 @@
 - RC2 integration branch created without merging to `main`.
 - SMTP timeout is environment-configurable; PDO MySQL is declared as a runtime extension.
 - iCal private URLs are no longer rendered in admin edit forms; session strict mode is enforced.
+- Web and CLI entry points now share a CRLF-safe `.env` bootstrap; process environment variables retain precedence.
 - Production GO remains blocked on owner/provider decisions and cPanel/browser/restore smoke evidence.
 
 **Állapot:** release candidate forráskód; production kiadásra jelenleg **NO-GO**

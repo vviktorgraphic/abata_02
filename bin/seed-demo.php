@@ -7,6 +7,7 @@ use App\Infrastructure\Database\ConnectionFactory;
 require dirname(__DIR__) . '/vendor/autoload.php';
 
 $root = dirname(__DIR__);
+App\Bootstrap\EnvironmentBootstrap::load($root);
 $environment = getenv('APP_ENV') ?: ($_ENV['APP_ENV'] ?? 'production');
 if (!in_array($environment, ['development', 'testing', 'local'], true)) {
     fwrite(STDERR, "Demo data can only be seeded in a development or testing environment.\n");
