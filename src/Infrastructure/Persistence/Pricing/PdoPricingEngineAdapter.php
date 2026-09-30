@@ -49,7 +49,11 @@ final readonly class PdoPricingEngineAdapter implements BookingPricingProvider, 
         try {
             $rows = (new PdoPricingRuleRepository($pdo))->listAll(false);
 
-            return $this->engine->calculate($input, array_map($this->mapRule(...), $rows));
+            return $this->engine->calculate($input, array_map($this->mapRule(...), $rows), null, (new PdoPersonPricingRepository($pdo))->get());
+        } catch (\App\Domain\Pricing\MissingChildPriceBand $error) {
+            throw new \App\Application\Pricing\MissingChildPriceBandException('A megadott gyermekéletkorhoz nincs aktív ársáv.', 0, $error);
+        } catch (\App\Domain\Pricing\PersonPricingNotConfigured $error) {
+            throw new \App\Application\Pricing\PersonPricingNotConfiguredException('A személyalapú árak még nincsenek beállítva.', 0, $error);
         } catch (PricingConfigurationError|JsonException|\InvalidArgumentException $error) {
             throw new PricingConfigurationException('The persisted pricing configuration is invalid.', 0, $error);
         }
@@ -80,7 +84,7 @@ final readonly class PdoPricingEngineAdapter implements BookingPricingProvider, 
             (string) $row['valid_from'],
             $row['valid_until'] !== null ? (string) $row['valid_until'] : null,
             (int) $row['priority'],
-            number_format((float) $amount, 2, '.', ''),
+            (string) $amount,
             $row['base_unit'] !== null ? (string) $row['base_unit'] : null,
             $row['adjustment_mode'] !== null ? (string) $row['adjustment_mode'] : null,
             $row['minimum_nights'] !== null ? (int) $row['minimum_nights'] : null,

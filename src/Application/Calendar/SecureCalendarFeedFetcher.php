@@ -31,7 +31,7 @@ final readonly class SecureCalendarFeedFetcher
 
         $ips = filter_var($host, FILTER_VALIDATE_IP) !== false ? [$host] : $this->resolver->resolve($host);
         if ($ips === []) {
-            throw new CalendarFeedFetchException('Calendar feed host cannot be resolved.');
+            throw new CalendarFeedFetchException('Calendar feed host cannot be resolved.', true, 'dns_failure');
         }
         foreach ($ips as $ip) {
             if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
@@ -42,7 +42,7 @@ final readonly class SecureCalendarFeedFetcher
         // Pin the request to an address we validated. This closes the DNS-rebinding gap.
         $response = $this->client->get($url, $ips[0], $this->timeoutSeconds, $this->maxBytes);
         if ($response->statusCode < 200 || $response->statusCode >= 300) {
-            throw new CalendarFeedFetchException('Calendar feed returned HTTP status ' . $response->statusCode . '.');
+            throw new CalendarFeedFetchException('Calendar feed returned HTTP status ' . $response->statusCode . '.', $response->statusCode === 429 || $response->statusCode >= 500, 'http_' . $response->statusCode);
         }
         if (strlen($response->body) > $this->maxBytes) {
             throw new CalendarFeedFetchException('Calendar feed exceeds the response size limit.');

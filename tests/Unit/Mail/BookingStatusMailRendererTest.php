@@ -35,9 +35,11 @@ final class BookingStatusMailRendererTest extends TestCase
     {
         $message = $this->renderer()->render($this->data('confirmed'));
 
-        foreach (['2026-08-10', '2026-08-13', '2 felnőtt', '1 gyermek', '90000.00 HUF'] as $value) {
+        foreach (['2026-08-10', '2026-08-13', '2 felnőtt', '1 gyermek', '90 000 Ft'] as $value) {
             self::assertStringContainsString($value, $message->textBody);
         }
+        self::assertStringContainsString('90 000 Ft', $message->htmlBody);
+        self::assertStringNotContainsString('90000.00', $message->textBody . $message->htmlBody);
     }
 
     public function testRejectedDoesNotContainInternalNoteOrUnneededBookingDetails(): void
@@ -54,7 +56,10 @@ final class BookingStatusMailRendererTest extends TestCase
 
         self::assertStringContainsString('2026-08-10', $message->textBody);
         self::assertStringContainsString('2026-08-13', $message->textBody);
-        self::assertStringContainsString('Lemondási kötbér: 45000.00 HUF', $message->textBody);
+        self::assertStringContainsString('Lemondási kötbér: 45 000 Ft', $message->textBody);
+        self::assertStringContainsString('45 000 Ft', $message->htmlBody);
+        self::assertStringContainsString('90 000 Ft', $message->htmlBody);
+        self::assertStringNotContainsString('45000.00', $message->textBody . $message->htmlBody);
         self::assertStringContainsString('automatikus terhelés nem történt', $message->textBody);
     }
 

@@ -1,6 +1,6 @@
 # Production monitoring és cron runbook
 
-**Állapot:** IMPLEMENTED health/readiness alap; PLANNED/BLOCKED automatikus alkalmazásjobok
+**Állapot:** IMPLEMENTED health/readiness és automatikus iCal worker; PLANNED/BLOCKED outbox/cleanup jobok
 
 ## Health és külső probe
 
@@ -36,13 +36,21 @@ A cron minden esetben abszolút PHP- és scriptútvonalat használjon. Secret ne
 
 ### IMPLEMENTED, ütemezhető parancsok
 
-Jelenleg nincs productionre ütemezhető iCal, outbox vagy cleanup CLI worker. A meglévő `bin/migrate.php`, `bin/db-check.php`, `bin/admin-create.php` és `bin/seed-demo.php` nem periodikus production cron feladat. A migráció kontrollált deployment lépés; az admin-create kézi bootstrap; a seed productionben tilos.
+Az iCal worker `php bin/ical-sync.php` vagy `composer ical:sync`. Process environmentet örököl, secretmentes JSON outputot és 0/1/2 exit kódot ad. A `bin/migrate.php`, `bin/db-check.php`, `bin/admin-create.php` és `bin/seed-demo.php` nem periodikus production cron feladat.
+
+Javasolt, deployment során pontosítandó cPanel bejegyzés:
+
+```text
+*/15 * * * * cd /home/<account>/apps/foglalo/current && /usr/local/bin/php bin/ical-sync.php >> /home/<account>/logs/foglalo/ical-sync.log 2>&1
+```
+
+A workerben tartós, forrásonkénti MySQL advisory lock van; átfedő futás nem duplikál importot. Az environmentet a védett CLI wrapper/hosting mechanizmus biztosítsa, nem dotenv és nem parancssori credential.
 
 ### PLANNED/BLOCKED jobok
 
 | Job | Állapot | Blokkoló feltétel |
 |---|---|---|
-| iCal import sync | **PLANNED/BLOCKED** | nincs CLI entrypoint, globális lock, jóváhagyott gyakoriság, retry/backoff és eltűnési grace |
+| iCal import sync | **IMPLEMENTED; DEPLOYMENT PENDING** | worker/lock/retry/grace kész; pontos útvonal, cron aktiválás, monitor és provider smoke szükséges |
 | E-mail outbox retry | **PLANNED/BLOCKED** | nincs worker; maximum attempts, backoff és stale `processing` reclaim nincs jóváhagyva |
 | Adat/log cleanup | **PLANNED/BLOCKED** | nincs worker és jóváhagyott retention; booking-idempotencia időalapú törlése kifejezetten tilos új owner döntés nélkül |
 
@@ -54,4 +62,4 @@ Ezért production crontab/cPanel Cron Jobs felületére ezekhez **nem adható fu
 2. Állíts be külső HTTPS probe-ot és külön 5xx/tárhely/backup riasztást.
 3. Ellenőrizd a naplókönyvtár webes elérhetetlenségét, jogosultságát, redakcióját és rotációját.
 4. Rögzítsd az ügyeleti tulajdonost, escalation csatornát és jóváhagyott küszöböket.
-5. Ne hozz létre iCal/outbox/cleanup cron sort addig, amíg a megfelelő worker és üzleti döntések hiányoznak.
+5. Az iCal cron csak a Sprint 10 worker kézi, ismételt és lock smoke-ja után aktiválható; outbox/cleanup cron továbbra sem hozható létre worker és üzleti döntések nélkül.

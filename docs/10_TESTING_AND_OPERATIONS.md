@@ -147,7 +147,13 @@ Migrációt nem szabad automatikusan minden webkéréskor vagy app induláskor f
 /usr/local/bin/php /home/CPANEL_USER/app/bin/ical-sync.php
 ```
 
-Ugyanez a minta alkalmazandó e-mail retry és más ütemezett job belépési pontjára. A pontos PHP útvonalat a tárhelyszolgáltató/cPanel adja. Secret nem lehet parancssori argumentum; nem nulla exit code és strukturált, rotált napló szükséges. A példa iCal script **PLANNED**, jelenleg nem létezik.
+Ugyanez a minta alkalmazandó e-mail retry és más ütemezett job belépési pontjára. A pontos PHP útvonalat a tárhelyszolgáltató/cPanel adja. Secret nem lehet parancssori argumentum; nem nulla exit code és strukturált, rotált napló szükséges. Az iCal script Sprint 10-ben **IMPLEMENTED**: `php bin/ical-sync.php`.
+
+## Sprint 10 operations ellenőrzés
+
+Migráció után a worker kézzel futtatandó, majd ugyanazzal a source állapottal ismét: a második futás nem hozhat létre duplikált blokkot. A tesztcsomag külön ellenőrzi a retry/non-retry osztályozást, lockversenyt, megszakadt kapcsolat lockfelszabadítását, partial-feed reconciliation tiltását, 24 órás és DST grace-t, valamint az új pricing repository/booking/cancellation láncot.
+
+Production cron felvétele külön deployment művelet; a repository csak a 15 perces javaslatot adja. A pontos environment wrapper, PHP útvonal, logrotáció, alert és provider/cPanel smoke bizonyítéka kötelező.
 
 ## Backup és restore
 

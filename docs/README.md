@@ -36,6 +36,8 @@ A jelölések jelentése:
 | [15 – Production deployment](15_DEPLOYMENT.md) | cPanel release, HTTPS, proxy, session és SMTP runbook |
 | [16 – Release Candidate RC1](16_RELEASE_CANDIDATE_RC1.md) | Funkcionális bizonyíték, staging checklist, E2E és release gate |
 | [17 – Admin 2FA session redirect fix](17_ADMIN_2FA_SESSION_REDIRECT_FIX.md) | Bizonyított same-second touch gyökérok, biztonságos session fix és regressziós bizonyíték |
+| [18 – Automatikus iCal és személyár](18_SPRINT10_AUTOMATIC_ICAL_AND_PERSON_PRICING.md) | Lockolt worker, reconciliation és személyalapú pricing szerződés |
+| [19 – Pricing admin UX fix](19_PRICING_ADMIN_UX_FIX.md) | Tulajdonosi árkezelés, ársávtörlés, HUF runtime és reszponzív javítás |
 | [98 – Nyitott döntések](98_OPEN_DECISIONS.md) | Prioritásos, még tulajdonosi vagy architekturális döntést igénylő kérdések |
 | [99 – Tulajdonosi döntések](99_OWNER_DECISIONS.md) | Dátummal rögzített, lezárt tulajdonosi döntések |
 
@@ -58,7 +60,9 @@ A jelölések jelentése:
 
 **IMPLEMENTED:** tranzakciós `POST /api/bookings`, confirmed/blocked mentéskori újraellenőrzés, egymást nem blokkoló `pending` igények, bookinghoz kötött idempotencia, gyermekéletkor-tárolás, közös összetett HUF pricing engine, immutable JSON snapshot, valamint ugyanabban a tranzakcióban létrejövő booking-request outbox. A commit után indított SMTP-kísérlet hibája a bookingot nem törli.
 
-**IMPLEMENTED:** admin jóváhagyás és booking CRUD, pricing admin CRUD/preview és összetett pricing komponensek, továbbá Sprint 7 iCal parser/exporter, Google Calendar és Szallas.hu kézi import, forrás/sync-log persistence és tokenvédett export. **PLANNED:** automatikus outbox retry és stale `processing` helyreállítás, iCal cron/retry/grace és online fizetés.
+**IMPLEMENTED:** admin jóváhagyás és booking CRUD, legacy és személyalapú pricing admin/preview, továbbá iCal parser/exporter, kézi import és a Sprint 10 automatikus lock/retry/grace worker. **PLANNED:** automatikus outbox retry és stale `processing` helyreállítás, online fizetés.
+
+- [18 – Sprint 10: automatikus iCal és személyalapú árképzés](18_SPRINT10_AUTOMATIC_ICAL_AND_PERSON_PRICING.md)
 
 ## Frissítési szabály
 

@@ -53,6 +53,19 @@ final class IcsParserTest extends TestCase
         self::assertSame('Long text, with; escapes\\ok', $calendar->events[0]->summary);
     }
 
+    public function testAcceptsTimezoneAndNestedAlarmComponentsWithoutTreatingThemAsEvents(): void
+    {
+        $feed = "BEGIN:VCALENDAR\nBEGIN:VTIMEZONE\nTZID:Europe/Budapest\nEND:VTIMEZONE\n"
+            . "BEGIN:VEVENT\nUID:with-alarm\nDTSTART:20260807\nDTEND:20260808\n"
+            . "BEGIN:VALARM\nACTION:DISPLAY\nDESCRIPTION:Reminder\nEND:VALARM\nEND:VEVENT\nEND:VCALENDAR";
+
+        $calendar = (new IcsParser())->parse($feed);
+
+        self::assertCount(1, $calendar->events);
+        self::assertSame('with-alarm', $calendar->events[0]->uid);
+        self::assertSame('', $calendar->events[0]->description);
+    }
+
     public function testConvertsUtcAndTzidDateTimesToBudapest(): void
     {
         $calendar = (new IcsParser())->parse("BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:timed\nDTSTART:20261025T003000Z\nDTEND;TZID=Europe/London:20261025T023000\nEND:VEVENT\nEND:VCALENDAR");
@@ -101,6 +114,9 @@ final class IcsParserTest extends TestCase
             'unknown tzid' => [self::feed("UID:u\nDTSTART;TZID=Invalid/Zone:20260101T120000\nDTEND;TZID=Invalid/Zone:20260101T130000")],
             'bad sequence' => [self::feed("UID:u\nDTSTART;VALUE=DATE:20260101\nDTEND;VALUE=DATE:20260102\nSEQUENCE:-1")],
             'duplicate uid' => [self::feed("UID:u\nUID:v\nDTSTART;VALUE=DATE:20260101\nDTEND;VALUE=DATE:20260102")],
+            'unclosed todo' => ["BEGIN:VCALENDAR\nBEGIN:VTODO\nEND:VCALENDAR"],
+            'mismatched component end' => ["BEGIN:VCALENDAR\nBEGIN:VTIMEZONE\nEND:VEVENT\nEND:VCALENDAR"],
+            'nested calendar' => ["BEGIN:VCALENDAR\nBEGIN:VCALENDAR\nEND:VCALENDAR\nEND:VCALENDAR"],
         ];
     }
 

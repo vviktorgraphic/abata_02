@@ -15,6 +15,8 @@ final readonly class ImportedEventPersistenceResult
         public string $outcome,
         public int $eventId,
         public ?int $blockedPeriodId,
+        public bool $updated = false,
+        public bool $inactivated = false,
     ) {
         if (!in_array($outcome, [self::BLOCKED, self::DUPLICATE, self::CONFLICT, self::REMOVED], true)) {
             throw new \InvalidArgumentException('Invalid imported event persistence outcome.');

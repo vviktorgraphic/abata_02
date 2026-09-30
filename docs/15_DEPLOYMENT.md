@@ -83,6 +83,14 @@ Staging smoke:
 
 Release előtt: tiszta commit/tag, review, teljes tesztcsomag, dependency audit, migrációlista, backup igazolás, jogi release-kapuk, HTTPS/SMTP smoke és cPanel document-root ellenőrzés szükséges.
 
+### Sprint 10 migráció és cron
+
+Backup után sorrendben futtasd a 017, 018, 019 és 020 migrációkat a normál `php bin/migrate.php` belépési ponttal. A 020 csak a meglévő `nightly_price` értékből javítja a hiányzó legacy `amount` mezőt; nem seedel production árat. A deploy után az egyetlen `/admin/pricing` oldalon kizárólag tulajdonos által jóváhagyott felnőttárakat és teljes gyermeklefedettséget ments.
+
+Az iCal workert először kézzel, kétszer egymás után futtasd ugyanabban a védett CLI environmentben. Ellenőrizd a JSON outputot, exit kódot, duplikációmentességet és admin sync metrikákat; csak ezután vedd fel a [monitoring runbook](14_MONITORING_AND_CRON.md) helyőrzős 15 perces cronját. A PHP- és release-útvonalat a hosting adja.
+
+Rollback előtt tiltsd le az új cront, az új kóddal állítsd a pricing módot legacyra, majd válts az előző release-re. A forward-only 017–020 változásokat és v3 snapshotokat ne töröld; maintenance + restore vagy forward-fix szükséges, ha az előző kód mégsem kompatibilis.
+
 Alkalmazáskód rollbackhez állítsd vissza a document rootot/symlinket az előző ellenőrzött release-re, majd ismételd meg a health és HTTPS smoke-ot. Az adatbázismigrációk forward-only-k: SQL-t kézzel visszavonni tilos. Inkompatibilis migráció esetén állítsd maintenance módba a forgalmat, őrizd meg a hibás állapot bizonyítékát, és kizárólag jóváhagyott restore/forward-fix eljárást használj. A rollback után az új release-ből elindult cronokat kapcsold ki, ellenőrizd az outbox/idempotencia állapotot, és dokumentáld az incidenst.
 
 ## Nyitott release-kapuk

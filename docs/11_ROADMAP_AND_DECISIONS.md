@@ -6,7 +6,7 @@
 ## Kiindulási helyzet
 
 **IMPLEMENTED:** technikai alap, MySQL séma, migrációfuttató, publikus két hónapos naptár, read-only availability API, mentés nélküli booking-validáció és demo seeder.
-**IMPLEMENTED:** admin authentication/2FA, admin booking management, tranzakciós booking persistence, közös pricing engine, immutable pricing/policy/privacy/cancellation snapshot, booking és státusz outbox/e-mail, kézi iCal import és tokenes export, továbbá az alkalmazási hardening, a cPanel deployment runbook, a backup/restore eszközök és a DB-readiness health endpoint. **PLANNED / RELEASE GATE:** jóváhagyott jogi tartalom, környezetben végrehajtott production/staging smoke, automatikus e-mail retry és iCal cron/retry/grace.
+**IMPLEMENTED:** admin authentication/2FA, admin booking management, tranzakciós booking persistence, legacy és személyalapú közös pricing engine, immutable snapshotok, booking/státusz outbox, kézi és automatikus lock/retry/grace iCal import és tokenes export, továbbá production runbookok. **PLANNED / RELEASE GATE:** jóváhagyott jogi/production pricing tartalom, környezetben végrehajtott production/staging smoke és automatikus e-mail retry.
 
 ## Tervezett sprintek
 
@@ -83,7 +83,7 @@ Tulajdonosi döntés után ebben a fájlban dátummal, indoklással és érintet
 
 Az admin authentication foundation komponensei **IMPLEMENTED** állapotúak: credential check, e-mailes 2FA, session/CSRF, rate limiting, audit persistence, mailer/SMTP, migráció és minimális auth UI. A végleges elfogadás feltétele a composition root bekötése, friss adatbázisos migráció, teljes teszt és Mailpit/browser smoke.
 
-Az admin booking CRUD, az összetett pricing admin/engine és a kézi iCal import/tokenes export **IMPLEMENTED**. Az automatikus iCal cron/retry/grace és az általános automatikus e-mail retry rendszer továbbra is **PLANNED**.
+Az admin booking CRUD, a legacy/person pricing admin/engine, valamint a kézi és automatikus iCal import/tokenes export **IMPLEMENTED**. Az általános automatikus e-mail retry rendszer továbbra is **PLANNED**; a production iCal cron aktiválása környezeti lépés.
 
 Nyitott kapuk: abszolút session maximum; production SMTP port/TLS/auth/feladó; végleges rate-limit küszöbök és retention.
 
@@ -91,11 +91,11 @@ Nyitott kapuk: abszolút session maximum; production SMTP port/TLS/auth/feladó;
 
 **IMPLEMENTED Sprint 4 történeti alap:** `POST /api/bookings`, tranzakciós készletzár, pending overlap, idempotencia, gyermekéletkorok és immutable snapshot/outbox. A Sprint 6 ezt közös összetett HUF pricing engine-re bővítette.
 
-**IMPLEMENTED a későbbi sprintekben:** admin approval/list/detail, pricing admin CRUD/összetett komponensmodell és kézi iCal import/tokenes export. **PLANNED:** production pricing értékek, outbox retry/stale claim recovery, automatikus iCal jobok és online fizetés.
+**IMPLEMENTED a későbbi sprintekben:** admin approval/list/detail, legacy/person pricing és kézi/automatikus iCal import/tokenes export. **PLANNED:** production pricing értékek, outbox retry/stale claim recovery és online fizetés.
 
 ## Sprint 5 teljesítési állapot
 
-**IMPLEMENTED:** admin lista/részlet, explicit state machine, tranzakciós státuszváltás/history/audit/outbox, concurrency lock, blocked-period kezelés, státusz-email és security guard. A Pricing Administration Sprint 6-ban, a kézi iCal import/tokenes export Sprint 7-ben elkészült. **PLANNED:** automatikus outbox retry/stale reclaim, automatikus iCal jobok és payment.
+**IMPLEMENTED:** admin lista/részlet, explicit state machine, tranzakciós státuszváltás/history/audit/outbox, concurrency lock, blocked-period kezelés, státusz-email és security guard. A pricing és a kézi/automatikus iCal folyamat későbbi sprintben elkészült. **PLANNED:** automatikus outbox retry/stale reclaim és payment.
 
 ## Sprint 6 teljesítési állapot
 
@@ -107,4 +107,7 @@ Nyitott kapuk: abszolút session maximum; production SMTP port/TLS/auth/feladó;
 
 ## Sprint 9 teljesítési állapot
 
-**IMPLEMENTED:** cPanel/Apache deployment runbook és HTTPS-sablon; placeholder-only production environment leltár; authenticated SMTP, SPF/DKIM/DMARC és staging smoke eljárás; checksumolt, céladatbázishoz kötött backup/restore CLI; RPO/RTO mérési útmutató; adatbázis-readiness `/health`; monitoring, logolás és alerting runbook. **PLANNED / BLOCKED:** az iCal, outbox retry és cleanup cronhoz nincs futtatható worker vagy jóváhagyott ütemezési/retention szabály, ezért production cront nem találunk ki. A környezetfüggő staging/production smoke és az owner/legal kapuk továbbra is nyitottak.
+**IMPLEMENTED:** cPanel/Apache deployment runbook, backup/restore, `/health`, monitoring és a Sprint 10 iCal worker. **PLANNED / BLOCKED:** outbox retry és cleanup worker; az iCal production cron aktiválása környezeti smoke/monitor döntés. A staging/production és owner/legal kapuk továbbra is nyitottak.
+## Sprint 10 teljesítési állapot
+
+**IMPLEMENTED:** automatikus iCal CLI, source lock, átmeneti hibák korlátozott retry-ja, teljes-feed reconciliation és DST-biztos minimum 24 órás grace; egységes HUF formatter; explicit legacy/person pricing, gyermek ársávok, optimistic admin mentés, v3 éjszakánkénti snapshot és cancellation regresszió. **DEPLOYMENT PENDING:** valós cPanel cron, provider smoke és tulajdonos által jóváhagyott production árkonfiguráció. **PLANNED:** outbox retry, tokenrotációs átfedés és online fizetés.

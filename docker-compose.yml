@@ -41,6 +41,10 @@ services:
       BOOKING_POLICY_VERSION: ${BOOKING_POLICY_VERSION:-development-v1}
       PRIVACY_POLICY_URL: ${PRIVACY_POLICY_URL:-/adatkezelesi_tajekoztato}
       PRIVACY_POLICY_VERSION: ${PRIVACY_POLICY_VERSION:-development-pending-legal-approval}
+      ICAL_TIMEOUT_SECONDS: ${ICAL_TIMEOUT_SECONDS:-10}
+      ICAL_MAX_RETRIES: ${ICAL_MAX_RETRIES:-2}
+      ICAL_BACKOFF_SECONDS: ${ICAL_BACKOFF_SECONDS:-1}
+      ICAL_MISSING_GRACE_SECONDS: ${ICAL_MISSING_GRACE_SECONDS:-86400}
     depends_on:
       db:
         condition: service_healthy

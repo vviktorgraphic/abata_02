@@ -20,10 +20,29 @@ final readonly class CalendarImportService
         private SecureCalendarFeedFetcher $fetcher,
         private IcsParser $parser,
         private CalendarSyncClock $clock,
+        private ?CalendarSyncLock $lock = null,
+        private CalendarRetryPolicy $retry = new CalendarRetryPolicy(),
+        private ?CalendarSleeper $sleeper = null,
+        private int $graceSeconds = 86400,
     ) {
+        if ($graceSeconds < 86400) {
+            throw new \InvalidArgumentException('Calendar grace must be at least 24 hours.');
+        }
     }
 
     public function import(int $sourceId): CalendarImportResult
+    {
+        if ($this->lock !== null && !$this->lock->acquire($sourceId)) {
+            return new CalendarImportResult('locked', 0, 0, ['source_lock_busy'], []);
+        }
+        try {
+            return $this->importLocked($sourceId);
+        } finally {
+            $this->lock?->release($sourceId);
+        }
+    }
+
+    private function importLocked(int $sourceId): CalendarImportResult
     {
         $source = $this->sources->find($sourceId);
         if ($source === null) {
@@ -40,13 +59,28 @@ final readonly class CalendarImportService
         }
 
         $startedAt = $this->clock->now();
+        $recovered = $this->lock === null ? 0 : $this->logs->recoverInterrupted($sourceId, $startedAt);
         $logId = $this->logs->start($sourceId, $startedAt);
         $imported = 0;
         $duplicates = 0;
         $warnings = [];
         $errors = [];
+        $updated = $inactivated = $graceInactivated = $retries = 0;
+        $seenUids = [];
         try {
-            $calendar = $this->parser->parse($this->fetcher->fetch((string) $source['url']));
+            while (true) {
+                try {
+                    $body = $this->fetcher->fetch((string) $source['url']);
+                    break;
+                } catch (CalendarFeedFetchException $error) {
+                    if (!$error->retryable || $retries >= $this->retry->maxRetries) {
+                        throw $error;
+                    }
+                    ++$retries;
+                    $this->sleeper?->sleep($this->retry->delay($retries));
+                }
+            }
+            $calendar = $this->parser->parse($body);
             foreach ($calendar->events as $event) {
                 try {
                     [$start, $end] = $this->calendarDates($event);
@@ -62,30 +96,39 @@ final readonly class CalendarImportService
                         $event->status === 'CANCELLED',
                     );
                     if ($result->outcome === ImportedEventPersistenceResult::BLOCKED) {
-                        ++$imported;
+                        $result->updated ? ++$updated : ++$imported;
                     } elseif ($result->outcome === ImportedEventPersistenceResult::DUPLICATE) {
                         ++$duplicates;
                     } elseif ($result->outcome === ImportedEventPersistenceResult::CONFLICT) {
                         $warnings[] = sprintf('External event [%s] overlaps a confirmed booking; no blocked period was created.', $this->fingerprint($event->uid));
                     }
+                    $inactivated += $result->inactivated ? 1 : 0;
+                    $seenUids[] = $event->uid;
                 } catch (Throwable $error) {
-                    $safeError = str_replace($event->uid, '[redacted UID]', $error->getMessage());
-                    $errors[] = sprintf('External event [%s] could not be imported: %s', $this->fingerprint($event->uid), $safeError);
+                    $errors[] = 'event_persistence_failed';
                 }
             }
+            if ($errors === []) {
+                $graceInactivated = $this->events->reconcile($sourceId, $seenUids, $this->clock->now(), $this->graceSeconds);
+                $inactivated += $graceInactivated;
+            }
         } catch (Throwable $error) {
-            $errors[] = $error->getMessage();
+            $errors[] = $error instanceof CalendarFeedFetchException ? $error->category : 'feed_parse_or_persistence_failed';
         }
 
         $status = $errors !== [] ? 'failed' : ($warnings !== [] ? 'warning' : 'success');
         $finishedAt = $this->clock->now();
         $this->logs->finish($logId, $status, $finishedAt, $imported, 0, $warnings, $errors);
+        $this->logs->metrics($logId, [
+            'updated_count' => $updated, 'duplicate_count' => $duplicates, 'inactive_count' => $inactivated,
+            'grace_inactive_count' => $graceInactivated, 'retry_count' => $retries, 'recovered_run_count' => $recovered,
+        ]);
         if ($errors === []) {
             $this->sources->markSuccess($sourceId, $finishedAt);
         } else {
             $this->sources->markError($sourceId, $finishedAt);
         }
-        return new CalendarImportResult($status, $imported, $duplicates, $warnings, $errors);
+        return new CalendarImportResult($status, $imported, $duplicates, $warnings, $errors, $updated, $inactivated, $graceInactivated, $retries, $recovered);
     }
 
     private function fingerprint(string $uid): string

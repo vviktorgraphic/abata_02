@@ -13,6 +13,11 @@ final readonly class CalendarImportResult
         public int $duplicates,
         public array $warnings,
         public array $errors,
+        public int $updated = 0,
+        public int $inactivated = 0,
+        public int $graceInactivated = 0,
+        public int $retries = 0,
+        public int $recoveredRuns = 0,
     ) {
     }
 }

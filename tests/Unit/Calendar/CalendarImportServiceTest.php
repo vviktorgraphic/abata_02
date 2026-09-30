@@ -149,6 +149,8 @@ final class FakeImportSources implements CalendarSourceRepository
 
 final class FakeImportLogs implements CalendarSyncLogRepository
 {
+    public function recoverInterrupted(int $sourceId, DateTimeImmutable $at): int { return 0; }
+    public function metrics(int $id, array $metrics): void {}
     public array $finished = [];
     public function start(int $sourceId, DateTimeImmutable $startedAt): int { return 8; }
     public function finish(int $id,string $status,DateTimeImmutable $finishedAt,int $imported,int $exported,array $warnings,array $errors): void { $this->finished = compact('status','imported','exported','warnings','errors'); }
@@ -157,6 +159,7 @@ final class FakeImportLogs implements CalendarSyncLogRepository
 
 final class FakeImportEvents implements ExternalCalendarEventRepository
 {
+    public function reconcile(int $sourceId, array $seenUids, DateTimeImmutable $now, int $graceSeconds): int { return 0; }
     public array $calls = [];
     public function __construct(private array $outcomes) {}
     public function findBySourceAndUid(int $sourceId,string $externalUid): ?array { return null; }

@@ -33,7 +33,8 @@ final readonly class PricingAdminController
     {
         if ($this->auth->currentAdmin() === null) return new RedirectResponse('/admin/login');
         return new HtmlResponse($this->view->render('pricing', [
-            'rules' => $this->rules->listAll(), 'csrfToken' => $this->csrf->token(),
+            'rules' => array_map($this->normalizeLegacyRule(...), $this->rules->listAll()),
+            'csrfToken' => $this->csrf->token(),
         ]));
     }
 
@@ -107,15 +108,56 @@ final readonly class PricingAdminController
             $result = $this->previewer->preview(new PricingInput($form['arrival_date'], $form['departure_date'], $adults, $ages, $keys));
             $this->audit('pricing.previewed', $authorization->admin['id']);
             return new HtmlResponse($this->view->render('pricing-preview', [
-                'result' => $result, 'input' => $form, 'csrfToken' => $this->csrf->token(), 'error' => null,
+                'result' => $result, 'input' => $form, 'summary' => $this->previewSummary($result, $adults, $ages),
+                'csrfToken' => $this->csrf->token(), 'error' => null,
             ]));
         } catch (PricingConfigurationError|PricingConfigurationException $e) {
             $this->audit('pricing.configuration_conflict', $authorization->admin['id']);
             return new HtmlResponse($this->view->render('pricing-preview', [
-                'result' => null, 'input' => $form, 'csrfToken' => $this->csrf->token(),
-                'error' => 'Az árkonfiguráció ellentmondásos; az előnézet nem számítható ki.',
+                'result' => null, 'input' => $form, 'summary' => null, 'csrfToken' => $this->csrf->token(),
+                'error' => $e instanceof \App\Application\Pricing\MissingChildPriceBandException
+                    ? 'Az egyik gyermek életkorához nincs aktív ársáv. A foglalás előtt állítson be megfelelő ársávot.'
+                    : 'Az árkonfiguráció hiányos vagy ellentmondásos; az előnézet nem számítható ki.',
             ]), 409);
         } catch (\InvalidArgumentException) { return $this->error(422, 'Az előnézet adatai érvénytelenek.'); }
+    }
+
+    /** @param list<int> $ages @return array{nights:int,adults:int,child_ages:list<int>,adult_fee:?string,child_fee:?string} */
+    private function previewSummary(\App\Domain\Pricing\PricingResult $result, int $adults, array $ages): array
+    {
+        $nightly = $result->snapshot['nightly_breakdown'] ?? [];
+        $hasNightlyPersonBreakdown = is_array($nightly) && $nightly !== [];
+        $adultFee = $hasNightlyPersonBreakdown ? 0 : null;
+        $childFee = $hasNightlyPersonBreakdown ? 0 : null;
+        if ($hasNightlyPersonBreakdown) {
+            foreach ($nightly as $night) {
+                if (!is_array($night)) {
+                    continue;
+                }
+                $adultFee += $this->wholeHuf($night['adult_total'] ?? '0');
+                $childFee += $this->wholeHuf($night['children_total'] ?? '0');
+            }
+        }
+        return [
+            'nights' => $hasNightlyPersonBreakdown ? count($nightly) : (int) ($result->snapshot['nights'] ?? 0),
+            'adults' => $adults,
+            'child_ages' => $ages,
+            'adult_fee' => $adultFee === null ? null : $adultFee . '.00',
+            'child_fee' => $childFee === null ? null : $childFee . '.00',
+        ];
+    }
+
+    private function wholeHuf(mixed $amount): int
+    {
+        if (!is_string($amount) && !is_int($amount)) {
+            throw new \InvalidArgumentException();
+        }
+        if (preg_match('/\A(0|[1-9][0-9]*)(?:\.0+)?\z/D', (string) $amount, $match) !== 1
+            || strlen($match[1]) > strlen((string) PHP_INT_MAX)
+            || (strlen($match[1]) === strlen((string) PHP_INT_MAX) && strcmp($match[1], (string) PHP_INT_MAX) > 0)) {
+            throw new \InvalidArgumentException();
+        }
+        return (int) $match[1];
     }
 
     /** @param array<string,mixed> $form */
@@ -142,10 +184,14 @@ final readonly class PricingAdminController
         $name = trim($form['name']);
         if ($name === '' || mb_strlen($name) > 190 || !in_array($form['rule_type'], self::TYPES, true)) throw new \InvalidArgumentException();
         $from = $this->date($form['valid_from']); $until = $this->date($form['valid_until']);
-        if ($from >= $until || !preg_match('/^(?:0|[1-9]\d{0,9})\.\d{2}$/', $form['amount'])) throw new \InvalidArgumentException();
+        if ($from >= $until) throw new \InvalidArgumentException();
         $type = $form['rule_type'];
         $base = is_string($form['base_unit'] ?? null) && in_array($form['base_unit'], PricingRule::BASE_UNITS, true) ? $form['base_unit'] : null;
         $mode = is_string($form['adjustment_mode'] ?? null) && in_array($form['adjustment_mode'], PricingRule::ADJUSTMENT_MODES, true) ? $form['adjustment_mode'] : null;
+        $percent = in_array($type, ['seasonal', 'weekend'], true) && $mode === 'percent';
+        $pattern = $percent ? '/^(?:0|[1-9]\d{0,9})(?:\.\d{2})?$/D' : '/^(?:0|[1-9]\d{0,9})(?:\.00)?$/D';
+        if (!preg_match($pattern, $form['amount'])) throw new \InvalidArgumentException();
+        $form['amount'] = str_contains($form['amount'], '.') ? $form['amount'] : $form['amount'] . '.00';
         if (in_array($type, ['base','stay_length','tourism_tax'], true) && $base === null) throw new \InvalidArgumentException();
         if (in_array($type, ['seasonal','weekend'], true) && $mode === null) throw new \InvalidArgumentException();
         $min = $this->optionalInteger($form['minimum_nights'] ?? null, 1, 3650);
@@ -166,7 +212,24 @@ final readonly class PricingAdminController
     { return $this->rules->hasEqualPriorityConflict((string)$values['rule_type'], (string)$values['valid_from'], (string)$values['valid_until'], (int)$values['priority'], $exceptId); }
     private function conflict(int $adminId, ?int $id = null): HtmlResponse { $this->audit('pricing.configuration_conflict', $adminId, $id); return $this->error(409, 'Azonos prioritású, átfedő aktív árszabály már létezik.'); }
     /** @return array<string,mixed>|null */
-    private function lookup(string $id): ?array { return ctype_digit($id) && (int)$id > 0 ? $this->rules->find((int)$id) : null; }
+    private function lookup(string $id): ?array
+    {
+        if (!ctype_digit($id) || (int) $id < 1) {
+            return null;
+        }
+        $rule = $this->rules->find((int) $id);
+        return $rule === null ? null : $this->normalizeLegacyRule($rule);
+    }
+    /** @param array<string,mixed> $rule @return array<string,mixed> */
+    private function normalizeLegacyRule(array $rule): array
+    {
+        $amount = $rule['amount'] ?? $rule['nightly_price'] ?? null;
+        $rule['amount'] = (is_string($amount) || is_int($amount))
+            && preg_match('/\A-?[0-9]+(?:\.[0-9]+)?\z/D', (string) $amount) === 1
+                ? $amount
+                : null;
+        return $rule;
+    }
     private function date(string $value): string { $d=\DateTimeImmutable::createFromFormat('!Y-m-d',$value,new \DateTimeZone('Europe/Budapest')); if (!$d || $d->format('Y-m-d')!==$value) throw new \InvalidArgumentException(); return $value; }
     private function integer(string $value, int $min, int $max): int { if (!preg_match('/^(?:0|[1-9]\d*)$/',$value)) throw new \InvalidArgumentException(); $n=(int)$value; if ($n<$min||$n>$max) throw new \InvalidArgumentException(); return $n; }
     private function optionalInteger(mixed $value,int $min,int $max): ?int { return $value === null || $value === '' ? null : (is_string($value) ? $this->integer($value,$min,$max) : throw new \InvalidArgumentException()); }

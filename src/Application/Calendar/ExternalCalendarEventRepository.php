@@ -6,6 +6,9 @@ namespace App\Application\Calendar;
 
 interface ExternalCalendarEventRepository
 {
+    /** @param list<string> $seenUids Returns the number inactivated after grace. */
+    public function reconcile(int $sourceId, array $seenUids, \DateTimeImmutable $now, int $graceSeconds): int;
+
     /** @return array<string, mixed>|null */
     public function findBySourceAndUid(int $sourceId, string $externalUid): ?array;
 

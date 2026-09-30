@@ -157,3 +157,8 @@ A publikus foglalás létrehozásához az adatkezelési elfogadástól külön `
 A sikeres booking tranzakcióban rögzül a Budapest-idő szerinti `booking_policy_accepted_at`, továbbá a változatlan `BOOKING_POLICY_VERSION` és `BOOKING_POLICY_URL`. A URL relatív vagy HTTPS lehet; HTTP csak development/local/testing környezetben. Ezek a mezők az elfogadott szabályzat verziósnapshotjai, későbbi konfigurációváltozás nem írja át őket.
 
 Ugyanebben a tranzakcióban rögzül a külön privacy elfogadás `privacy_accepted_at`, `PRIVACY_POLICY_VERSION` és `PRIVACY_POLICY_URL` snapshotja, valamint a `privacy_policy.accepted` audit esemény. A két elfogadás időpontja ugyanaz a Budapest-idő szerinti szerveridő. A régi bookingok `NULL` privacy snapshotja „nem bizonyítható”, nem pedig automatikus elfogadást jelent.
+## Sprint 10 személyár és HUF válasz – IMPLEMENTED
+
+A publikus booking továbbra is csak a kapcsolattartót, a felnőttek számát és a gyermekek egész életkorát tárolja. `person` pricing módban a közös engine éjszakánként alkalmazza a hétköznapi/hétvégi felnőttárat és a gyermek aktív ársávját. Nem lefedett gyermekéletkor esetén a mentés teljes tranzakciója visszagördül, az API `CHILD_PRICE_BAND_MISSING` konfigurációs hibát ad; nincs ingyenes vagy felnőttár fallback.
+
+A sikeres válasz `formatted_total_amount` mezője ugyanazt a szerveroldali HUF formattert használja, mint az admin és az e-mail. A kanonikus összeg és a v3 immutable snapshot továbbra is ugyanabban a booking tranzakcióban kerül mentésre. Lásd [Sprint 10](18_SPRINT10_AUTOMATIC_ICAL_AND_PERSON_PRICING.md).

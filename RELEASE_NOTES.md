@@ -7,6 +7,10 @@
 
 > **iCal hotfix:** a Szallas.hu paraméter nélküli `YYYYMMDD` DATE eseményei időzónaeltolás nélkül, exkluzív `DTEND` végponttal importálhatók; az idempotencia, availability és export-loop védelem regressziós teszttel igazolt.
 
+> **Sprint 10 feature branch:** elkészült az automatikus iCal worker, a személyalapú/gyermek ársávos árképzés és az egységes egész-HUF megjelenítés. Ez még nincs automatikusan merge-elve az RC1-be; részletek: [Sprint 10](docs/18_SPRINT10_AUTOMATIC_ICAL_AND_PERSON_PRICING.md).
+
+> **Pricing admin UX-javítás:** az egyetlen `Árképzés` oldal tulajdonosi nyelven kezeli a felnőtt- és gyermekárakat, támogatja az auditált ársávtörlést, javítja a legacy HUF runtime hibát és a keskeny nézetek horizontális túlcsordulását. Részletek: [árképzési admin javítás](docs/19_PRICING_ADMIN_UX_FIX.md).
+
 ## Fő funkciók
 
 - publikus availability naptár és tranzakciós, idempotens booking request;
@@ -22,7 +26,8 @@
 ## Ismert korlátozások
 
 - Nincs automatikus outbox retry/stale-claim worker.
-- Nincs automatikus iCal cron, retry/backoff vagy eltűnési grace.
+- Az iCal worker futtatható, de production cPanel cronja és provider smoke-ja még nincs környezetben igazolva.
+- Production személyárak és gyermek ársávok nincsenek feltételezve vagy seedelve; owner konfiguráció szükséges.
 - Nincs jóváhagyott cleanup/retention worker; booking-idempotencia időalapú törlése tilos.
 - Nincs online fizetés vagy automatikus kötbérbeszedés.
 - A jogi oldalak fejlesztői `noindex` placeholderek.
