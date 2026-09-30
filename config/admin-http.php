@@ -60,6 +60,10 @@ use App\Infrastructure\Persistence\Calendar\PdoCalendarExportTokenRepository;
 use App\Infrastructure\Persistence\Calendar\PdoCalendarSourceRepository;
 use App\Infrastructure\Persistence\Calendar\PdoCalendarSyncLogRepository;
 use App\Infrastructure\Persistence\Calendar\PdoExternalCalendarEventRepository;
+use App\Http\Controller\Admin\LegacyBookingImportController;
+use App\Application\LegacyImport\LegacyImportCsvParser;
+use App\Application\LegacyImport\LegacyImportService;
+use App\Infrastructure\Persistence\Booking\PdoLegacyImportProvenanceRepository;
 
 $root = dirname(__DIR__);
 $authConfig = require $root . '/config/auth.php';
@@ -130,6 +134,11 @@ return [
     'two_factor' => new TwoFactorController($workflow, $view, $csrf),
     'dashboard' => new DashboardController($workflow, $view, $csrf, $queries),
     'bookings' => new BookingManagementController($workflow, $view, $csrf, $actionGuard, $queries, $transitions, $statusNotifications),
+    'legacy_import' => new LegacyBookingImportController(
+        $workflow, $view, $csrf, $actionGuard, $storage,
+        new LegacyImportService($pdo, new PdoLegacyImportProvenanceRepository($pdo), new LegacyImportCsvParser()),
+        $audit,
+    ),
     'blocked_periods' => new BlockedPeriodController($workflow, $view, $csrf, $actionGuard, new BlockedPeriodService($blockedRepository), $blockedRepository),
     'pricing' => new PricingAdminController(
         $workflow,

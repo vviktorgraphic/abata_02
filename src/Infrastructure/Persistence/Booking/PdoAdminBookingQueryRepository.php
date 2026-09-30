@@ -22,8 +22,11 @@ final class PdoAdminBookingQueryRepository
         $statement = $this->pdo->prepare(
             'SELECT b.reference, b.guest_name AS contact_name, b.arrival_date, b.departure_date,
                     DATEDIFF(b.departure_date, b.arrival_date) AS nights,
-                    b.adults, b.children, b.total_amount, b.currency, b.status, b.created_at
-             FROM bookings b' . $where . '
+                    b.adults, b.children, b.total_amount, b.currency, b.status, b.created_at,
+                    li.source_system AS legacy_source_system, li.source_booking_id AS legacy_source_booking_id,
+                    li.source_status AS legacy_source_status, li.imported_at AS legacy_imported_at,
+                    li.pricing_unavailable AS legacy_pricing_unavailable
+             FROM bookings b LEFT JOIN legacy_booking_imports li ON li.booking_id = b.id' . $where . '
              ORDER BY b.created_at DESC, b.id DESC
              LIMIT :limit OFFSET :offset'
         );
@@ -47,13 +50,16 @@ final class PdoAdminBookingQueryRepository
             'currency' => (string) $row['currency'],
             'status' => (string) $row['status'],
             'created_at' => (string) $row['created_at'],
+            'legacy_source_system' => $row['legacy_source_system'] !== null ? (string) $row['legacy_source_system'] : null,
+            'legacy_source_booking_id' => $row['legacy_source_booking_id'] !== null ? (string) $row['legacy_source_booking_id'] : null,
+            'legacy_pricing_unavailable' => (int) ($row['legacy_pricing_unavailable'] ?? 0) === 1,
         ], $statement->fetchAll());
     }
 
     public function countBookings(AdminBookingListQuery $query): int
     {
         [$where, $parameters] = $this->filters($query);
-        $statement = $this->pdo->prepare('SELECT COUNT(*) FROM bookings b' . $where);
+        $statement = $this->pdo->prepare('SELECT COUNT(*) FROM bookings b LEFT JOIN legacy_booking_imports li ON li.booking_id = b.id' . $where);
         $statement->execute($parameters);
 
         return (int) $statement->fetchColumn();
@@ -72,8 +78,11 @@ final class PdoAdminBookingQueryRepository
                     b.booking_policy_accepted_at, b.booking_policy_version, b.booking_policy_url,
                     b.cancelled_at, b.cancellation_penalty_rate, b.cancellation_penalty_amount,
                     b.cancellation_currency, b.cancellation_rule_version, b.cancellation_calculation_snapshot,
-                    b.created_at, b.updated_at
-             FROM bookings b
+                    b.created_at, b.updated_at,
+                    li.source_system AS legacy_source_system, li.source_booking_id AS legacy_source_booking_id,
+                    li.source_status AS legacy_source_status, li.imported_at AS legacy_imported_at,
+                    li.pricing_unavailable AS legacy_pricing_unavailable
+             FROM bookings b LEFT JOIN legacy_booking_imports li ON li.booking_id = b.id
              WHERE b.reference = :reference OR b.id = :id
              LIMIT 1'
         );
@@ -128,6 +137,11 @@ final class PdoAdminBookingQueryRepository
             'emailOutbox' => $emails,
             'created_at' => (string) $row['created_at'],
             'updated_at' => (string) $row['updated_at'],
+            'legacy_source_system' => $row['legacy_source_system'] !== null ? (string) $row['legacy_source_system'] : null,
+            'legacy_source_booking_id' => $row['legacy_source_booking_id'] !== null ? (string) $row['legacy_source_booking_id'] : null,
+            'legacy_source_status' => $row['legacy_source_status'] !== null ? (string) $row['legacy_source_status'] : null,
+            'legacy_imported_at' => $row['legacy_imported_at'] !== null ? (string) $row['legacy_imported_at'] : null,
+            'legacy_pricing_unavailable' => (int) ($row['legacy_pricing_unavailable'] ?? 0) === 1,
         ];
     }
 
@@ -149,12 +163,13 @@ final class PdoAdminBookingQueryRepository
             }
         }
         if ($query->search !== null) {
-            $conditions[] = '(b.reference LIKE :search_reference OR b.guest_name LIKE :search_name OR b.guest_email LIKE :search_email OR b.guest_phone LIKE :search_phone)';
+            $conditions[] = '(b.reference LIKE :search_reference OR b.guest_name LIKE :search_name OR b.guest_email LIKE :search_email OR b.guest_phone LIKE :search_phone OR li.source_booking_id LIKE :search_legacy_id)';
             $pattern = '%' . $query->search . '%';
             $parameters['search_reference'] = $pattern;
             $parameters['search_name'] = $pattern;
             $parameters['search_email'] = $pattern;
             $parameters['search_phone'] = $pattern;
+            $parameters['search_legacy_id'] = $pattern;
         }
 
         return [$conditions === [] ? '' : ' WHERE ' . implode(' AND ', $conditions), $parameters];

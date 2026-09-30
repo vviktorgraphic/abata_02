@@ -83,6 +83,27 @@ php /home/CPANEL_USER/application/bin/migrate.php
 
 A `RESTORE_CONFIRM` eltérő adatbázisnévnél az eszköz a MySQL kliens elindítása előtt leáll. Hibás vagy hiányzó checksum esetén szintén nincs restore. A mentés nem használ `--databases` módot, ezért nem írja felül a céladatbázis kiválasztását `CREATE DATABASE` vagy `USE` utasítással; a MySQL kliens az ellenőrzött `DB_DATABASE` értéket kapja explicit célként.
 
+## Ismételhető, eldobható restore-drill
+
+Az alábbi drill lokális Docker környezetre való. Kizárólag eldobható adatbázist használj; staginget és productiont ezekkel a lépésekkel ne írj felül.
+
+```powershell
+$env:BACKUP_DIRECTORY = '/tmp/booking-backups'
+docker compose exec app mkdir -p /tmp/booking-backups
+docker compose exec app composer backup:database
+docker compose exec app sh -lc 'ls -1t /tmp/booking-backups/*.sql | head -n 1'
+```
+
+A dumpot és a hozzá tartozó `.sha256` fájlt másold egy külön, üres MariaDB/MySQL célba, majd a cél `.env`-jében állítsd be a `DB_*` változókat és a backup abszolút útját. A restore előtt a script explicit `RESTORE:<DB_DATABASE>` megerősítést kér. Utána futtasd:
+
+```powershell
+docker compose exec app composer restore:database
+docker compose exec app composer db:check
+docker compose exec app composer migrate
+```
+
+A drill akkor PASS, ha a checksum, restore, migráció, `/health` és egy read-only admin/foglaláslista ellenőrzés sikeres; rögzítsd a dump méretét, MariaDB/MySQL verziót, start/end időt és exit kódokat, PII és credential nélkül. A célok változatlanok: RPO 4 óra, RTO 5 perc. Ezek csak mért staging próbával tekinthetők igazoltnak.
+
 ## RPO 4 óra mérése
 
 Az RPO cél azt jelenti, hogy a legutolsó bizonyítottan használható mentés legfeljebb négy órával maradhat el a kiesés időpontjától.

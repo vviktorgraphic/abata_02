@@ -85,7 +85,7 @@ Release előtt: tiszta commit/tag, review, teljes tesztcsomag, dependency audit,
 
 ### Sprint 10 migráció és cron
 
-Backup után sorrendben futtasd a 017, 018, 019 és 020 migrációkat a normál `php bin/migrate.php` belépési ponttal. A 020 csak a meglévő `nightly_price` értékből javítja a hiányzó legacy `amount` mezőt; nem seedel production árat. A deploy után az egyetlen `/admin/pricing` oldalon kizárólag tulajdonos által jóváhagyott felnőttárakat és teljes gyermeklefedettséget ments.
+Backup után a normál `php bin/migrate.php` belépési ponttal futtasd a következő hiányzó migrációkat (a rendszer sorrendben alkalmazza őket), beleértve a 021 legacy import provenance sémát. A 020 csak a meglévő `nightly_price` értékből javítja a hiányzó legacy `amount` mezőt; nem seedel production árat. A deploy után az egyetlen `/admin/pricing` oldalon kizárólag tulajdonos által jóváhagyott felnőttárakat és teljes gyermeklefedettséget ments.
 
 Az iCal workert először kézzel, kétszer egymás után futtasd ugyanabban a védett CLI environmentben. Ellenőrizd a JSON outputot, exit kódot, duplikációmentességet és admin sync metrikákat; csak ezután vedd fel a [monitoring runbook](14_MONITORING_AND_CRON.md) helyőrzős 15 perces cronját. A PHP- és release-útvonalat a hosting adja.
 
@@ -101,3 +101,19 @@ Alkalmazáskód rollbackhez állítsd vissza a document rootot/symlinket az elő
 - SMTP provider, DNS rekordok és credentialek;
 - kontrollált proxy pontos IP-je, ha egyáltalán van;
 - backup RPO/RTO/retenció és monitoring címzettek.
+
+## Determinisztikus Windows PowerShell release-csomag
+
+**Állapot: IMPLEMENTED.** A tárhely deployment könyvtára nem Git checkout, ezért az ellenőrzött commitból készíts csomagot, ne kézi fájlmásolással állíts össze release-t:
+
+```powershell
+.\tools\New-ReleasePackage.ps1 -Commit (git rev-parse HEAD) -OutputDirectory .\release-packages
+```
+
+A script `git archive` használatával a megadott commit tartalmából készít ZIP-et és SHA-256 manifestet. Alapértelmezésben a `tests/` könyvtár kimarad; a runtime fájlok és a `database/migrations/` benne maradnak. A `.git`, a lokális `.env` és `.env.*` fájlok nem kerülnek a csomagba, és a script megtagadja az olyan commit csomagolását, amely tracked environment fájlt tartalmaz. Tesztekkel együtt csak külön ellenőrzési artefaktumhoz használható:
+
+```powershell
+.\tools\New-ReleasePackage.ps1 -Commit (git rev-parse HEAD) -IncludeTests
+```
+
+Ellenőrizd a manifestet, majd töltsd fel a ZIP tartalmát egy új, nem webes release könyvtárba. A production `.env`-et külön, meglévő secretből hozd létre; a csomag soha nem írhatja felül. A `public/` maradjon a DocumentRoot, a `vendor/` pedig Composerrel vagy ugyanazon platformon előállított, ellenőrzött artefaktummal kerüljön a release-be. Staging frissítés után ismételd meg a health, HTTPS, migráció, admin/2FA, iCal és backup smoke-ot, csak ezután válts productionre.

@@ -9,6 +9,13 @@
 - Migration 011 and the related pricing constraint migration use portable `DROP CONSTRAINT` syntax validated against MySQL 8.0 and MariaDB 10.6.28.
 - Production GO remains blocked on owner/provider decisions and cPanel/browser/restore smoke evidence.
 
+## Sprint 12 go-live operations
+
+- Added `tools/New-ReleasePackage.ps1` for commit-pinned Windows PowerShell release ZIPs and manifests; `.git`, `.env` and tests are excluded by default.
+- Added a disposable local backup/restore drill and explicit SMTP/2FA and 15-minute iCal cron activation checklists.
+- Production remains deployment-gated until staging restore, HTTPS, SMTP and browser smoke evidence is recorded.
+- Added the owner-facing legacy WP Booking System CSV import with preview, safe status/calendar defaults, provenance and duplicate protection.
+
 **Állapot:** release candidate forráskód; production kiadásra jelenleg **NO-GO**
 **Dátum:** 2026-07-18
 

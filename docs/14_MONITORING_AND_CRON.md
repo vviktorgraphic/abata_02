@@ -48,6 +48,8 @@ A workerben tartós, forrásonkénti MySQL advisory lock van; átfedő futás ne
 
 A cPanel PHP CLI útvonalát telepítéskor kell felderíteni: `command -v php` vagy `php -r "echo PHP_BINARY, PHP_EOL;"`. A cronban csak az ellenőrzött abszolút útvonal szerepelhet.
 
+Go-live előtt kézzel, ugyanazzal a release-útvonallal futtasd a cron parancsot kétszer. Ellenőrizd, hogy a közös `.env` bootstrap betöltődik, a JSON kimenet secretmentes, a folyamat exit kódja 0/1/2 szerint értelmezhető, és az advisory lock átfedő futást megakadályozza. A cPanel Cron Jobs aktiválása deployment művelet; Codex nem kapcsolja be.
+
 ### PLANNED/BLOCKED jobok
 
 | Job | Állapot | Blokkoló feltétel |

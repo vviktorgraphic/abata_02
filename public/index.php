@@ -103,6 +103,15 @@ $router->post('/admin/2fa/verify', static fn () => $admin()['two_factor']->verif
 $router->post('/admin/2fa/resend', static fn () => $admin()['two_factor']->resend($_POST, $context())->send());
 $router->get('/admin', static fn () => $admin()['dashboard']->show()->send());
 $router->get('/admin/bookings', static fn (array $query) => $admin()['bookings']->index($query)->send());
+$router->get('/admin/bookings/import', static fn () => $admin()['legacy_import']->show()->send());
+$router->post('/admin/bookings/import/preview', static fn () => $admin()['legacy_import']->preview(
+    $_POST, $_FILES, $_SERVER['CONTENT_TYPE'] ?? null,
+    isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
+)->send());
+$router->post('/admin/bookings/import/commit', static fn () => $admin()['legacy_import']->commit(
+    $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
+    isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
+)->send());
 $router->get('/admin/bookings/{reference}', static fn (array $_query, array $params) => $admin()['bookings']->detail($params['reference'])->send());
 $router->post('/admin/bookings/{reference}/retry-email', static fn (array $_query, array $params) => $admin()['bookings']->retryNotification(
     $params['reference'], $_POST, $_SERVER['CONTENT_TYPE'] ?? null, isset($_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null

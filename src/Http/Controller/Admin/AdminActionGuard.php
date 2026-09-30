@@ -20,7 +20,7 @@ final readonly class AdminActionGuard
     }
 
     /** @param array<string, mixed> $form */
-    public function authorizeForm(string $action, array $form, ?string $contentType, ?int $contentLength): AdminActionGuardResult
+    public function authorizeForm(string $action, array $form, ?string $contentType, ?int $contentLength, int $maxBodyBytes = self::MAX_BODY_BYTES): AdminActionGuardResult
     {
         $admin = $this->auth->currentAdmin();
         if ($admin === null) {
@@ -30,7 +30,7 @@ final readonly class AdminActionGuard
         if (!$this->isFormContentType($contentType)) {
             return $this->reject($this->error(415, 'A kérés formátuma nem támogatott.'));
         }
-        if ($contentLength === null || $contentLength < 0 || $contentLength > self::MAX_BODY_BYTES) {
+        if ($contentLength === null || $contentLength < 0 || $contentLength > $maxBodyBytes) {
             return $this->reject($this->error(413, 'A kérés túl nagy vagy a mérete nem ellenőrizhető.'));
         }
         if (!$this->csrf->isValid($form['_csrf'] ?? null)) {

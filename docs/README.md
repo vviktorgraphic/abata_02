@@ -39,6 +39,7 @@ A jelölések jelentése:
 | [18 – Automatikus iCal és személyár](18_SPRINT10_AUTOMATIC_ICAL_AND_PERSON_PRICING.md) | Lockolt worker, reconciliation és személyalapú pricing szerződés |
 | [19 – Pricing admin UX fix](19_PRICING_ADMIN_UX_FIX.md) | Tulajdonosi árkezelés, ársávtörlés, HUF runtime és reszponzív javítás |
 | [20 – Sprint 11 RC2 release hardening](20_SPRINT11_RC2_RELEASE_HARDENING.md) | RC2 integráció, biztonsági és deployment hardening, release gate-ek |
+| [21 – Legacy CSV import](21_LEGACY_CSV_IMPORT.md) | WP Booking System történeti foglalások előnézete, importja és provenance |
 | [Owner decisions pending](OWNER_DECISIONS_PENDING.md) | RC2 production GO előtti tényleges tulajdonosi/hosting döntések |
 | [98 – Nyitott döntések](98_OPEN_DECISIONS.md) | Prioritásos, még tulajdonosi vagy architekturális döntést igénylő kérdések |
 | [99 – Tulajdonosi döntések](99_OWNER_DECISIONS.md) | Dátummal rögzített, lezárt tulajdonosi döntések |
