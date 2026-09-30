@@ -6,6 +6,8 @@ Implemented in this sprint: configurable SMTP timeout (`MAIL_TIMEOUT_SECONDS`), 
 
 The RC2 environment bootstrap fix adds one shared, CRLF-safe loader for web and CLI entry points. It loads `<release>/.env` without overriding process variables and never emits loaded values.
 
+The migration compatibility matrix is available as `tools/Invoke-MigrationCompatibility.ps1`. It targets pinned MySQL 8.0 and MariaDB 10.6.28 containers; `-UpgradeFrom010` first applies migrations 001–010 and then continues through the latest migration. No production database is touched by the script.
+
 The RC2 branch was created from `release/rc1` and merged with `feature/automatic-ical-and-person-pricing` using `--no-ff`. The requested `git pull` could not run because `release/rc1` has no upstream tracking configuration; local feature and origin verification were retained and the deviation is recorded in the final report.
 
 Automated PHPUnit, static contract checks and Docker checks are release evidence. Real provider SMTP, HTTPS/cPanel, browser 2FA and measured backup restore remain deployment gates and are not claimed as completed by repository tests.

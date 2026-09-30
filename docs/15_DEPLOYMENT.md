@@ -6,7 +6,7 @@
 
 A deploy csak jóváhagyott jogi tartalommal, ellenőrzött backupból visszaállási lehetőséggel, hitelesített SMTP-vel és működő HTTPS-sel végezhető el. A repository nem tartalmaz production credentialt. A `.env.production.example` kizárólag mezőleltár: minden `<...>` értéket a hosting secret store-ban kell kitölteni.
 
-Követelmény: PHP 8.2 vagy újabb 8.x, Composer 2, MySQL 8, Apache `mod_rewrite`, valamint PHP `pdo`, `pdo_mysql`, `mbstring`, `curl` és `openssl`. Ajánlott production PHP-beállítás: `display_errors=Off`, `log_errors=On`, `expose_php=Off`, `session.use_strict_mode=1`. A szolgáltató által kezelt hibanapló és session könyvtár nem lehet weben elérhető.
+Követelmény: PHP 8.2 vagy újabb 8.x (productionen jelenleg PHP 8.3 tesztelt), Composer 2, MySQL 8.0 vagy MariaDB 10.6, Apache `mod_rewrite`, valamint PHP `pdo`, `pdo_mysql`, `mbstring`, `curl` és `openssl`. A migrációs mátrix mindkét adatbázis-motoron fut. Ajánlott production PHP-beállítás: `display_errors=Off`, `log_errors=On`, `expose_php=Off`, `session.use_strict_mode=1`. A szolgáltató által kezelt hibanapló és session könyvtár nem lehet weben elérhető.
 
 ## Könyvtárak és document root
 

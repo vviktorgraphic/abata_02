@@ -8,6 +8,7 @@ A projekt változásai ebben a fájlban követik a release-eket. A formátum a K
 
 - Added configurable SMTP timeout, PDO MySQL dependency declaration, strict session mode enforcement and masked iCal edit URLs.
 - Added one shared `.env` bootstrap for web and CLI entry points with process-environment precedence and CRLF-safe parsing.
+- Added MySQL 8.0/MariaDB 10.6 migration compatibility coverage and corrected portable check-constraint removal.
 
 ### Added
 

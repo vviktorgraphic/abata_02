@@ -26,7 +26,7 @@ ALTER TABLE bookings
         CHECK (cancellation_penalty_amount IS NULL OR cancellation_penalty_amount >= 0);
 
 ALTER TABLE pricing_rules
-    DROP CHECK chk_pricing_rule_base_unit;
+    DROP CONSTRAINT chk_pricing_rule_base_unit;
 
 UPDATE pricing_rules
 SET base_unit = 'per_person_per_night'

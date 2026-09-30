@@ -6,6 +6,7 @@
 - SMTP timeout is environment-configurable; PDO MySQL is declared as a runtime extension.
 - iCal private URLs are no longer rendered in admin edit forms; session strict mode is enforced.
 - Web and CLI entry points now share a CRLF-safe `.env` bootstrap; process environment variables retain precedence.
+- Migration 011 and the related pricing constraint migration use portable `DROP CONSTRAINT` syntax validated against MySQL 8.0 and MariaDB 10.6.28.
 - Production GO remains blocked on owner/provider decisions and cPanel/browser/restore smoke evidence.
 
 **Állapot:** release candidate forráskód; production kiadásra jelenleg **NO-GO**

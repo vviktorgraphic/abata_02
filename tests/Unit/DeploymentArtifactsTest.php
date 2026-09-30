@@ -52,6 +52,20 @@ final class DeploymentArtifactsTest extends TestCase
         self::assertStringContainsString('nem kell `source .env`', $contents);
     }
 
+    public function testMigrationCompatibilityArtifactsCoverBothSupportedEngines(): void
+    {
+        $migration011 = $this->read('database/migrations/011_add_email_outbox_processing_status.sql');
+        $migration013 = $this->read('database/migrations/013_add_pricing_policy_and_cancellation.sql');
+        $matrix = $this->read('tools/Invoke-MigrationCompatibility.ps1');
+
+        self::assertStringContainsString('DROP CONSTRAINT chk_email_outbox_status', $migration011);
+        self::assertStringNotContainsString('DROP CHECK', $migration011);
+        self::assertStringContainsString('DROP CONSTRAINT chk_pricing_rule_base_unit', $migration013);
+        self::assertStringContainsString('mysql:8.0', $matrix);
+        self::assertStringContainsString('mariadb:10.6.28', $matrix);
+        self::assertStringContainsString('MIGRATION_DIRECTORY', $matrix);
+    }
+
     private function read(string $relativePath): string
     {
         $contents = file_get_contents(dirname(__DIR__, 2) . '/' . $relativePath);
