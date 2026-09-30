@@ -293,3 +293,5 @@ A `017_add_ical_automation.sql` az external eventhez `missing_since`, a sync log
 A `018_add_person_pricing.sql` singleton `person_pricing_configuration` rekordot, `pricing_child_bands` és `pricing_child_age_coverage` táblát ad. A default mód `legacy`, ár nincs seedelve. A version optimistic lockingot szolgál; az age coverage elsődleges kulcsa a repository tranzakciójában DB-szinten elutasítja az aktív sávok overlapjét. A DECIMAL mezők kompatibilitás miatt megmaradnak, CHECK korlátozza őket egész, nem negatív HUF-ra.
 
 A booking táblák nem változnak: a v3 pricing JSON a meglévő immutable snapshot mezőbe kerül, így v1/v2 rekord nincs átírva. A migrációk forward-only-k; downgrade esetén legacy mód + cron tiltás + alkalmazáskód rollback, a sémát és snapshotot meg kell őrizni.
+
+A `020_backfill_legacy_pricing_amount.sql` adatjavítás a korábbi fejlesztői writer által `amount=NULL` értékkel hagyott `pricing_rules` sorokba a már eltárolt `nightly_price` értéket másolja. Sémát és üzleti árat nem változtat. A gyermek ársáv fizikai törlése csak az aktuális coverage sorokra kaszkádol; a booking snapshot JSON-nak nincs ársáv-FK-ja, ezért történeti rekord nem módosul.

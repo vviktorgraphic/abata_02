@@ -12,6 +12,9 @@ A projekt változásai ebben a fájlban követik a release-eket. A formátum a K
 
 ### Fixed
 
+- Az admin `Árképzés` most egyetlen, nem technikai tulajdonosi workflow: felnőttárak, létrehozható/szerkeszthető/törölhető gyermek ársávok és üzleti előnézet.
+- A legacy `amount=NULL` pricing sorok többé nem okoznak HufFormatter TypeErrort; adatjavító migráció, repository-normalizálás és biztonságos production 500 hibahatár készült.
+- Az admin intrinsic flex/grid/table szélességei nem okoznak dokumentumszintű horizontális túlcsordulást; a széles táblák saját wrapperben görgethetők.
 - A Szallas.hu bare `YYYYMMDD` iCal DATE eseményei most szabványos, fél-nyitott Blocked Periodként importálhatók.
 - A sikeres admin 2FA után az azonos másodpercben változatlan MySQL session touch többé nem okoz téves logoutot és login redirectet.
 - Session-létrehozási hiba esetén néma redirect helyett biztonságos felhasználói hiba jelenik meg.

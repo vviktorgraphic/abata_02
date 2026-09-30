@@ -52,10 +52,10 @@ final readonly class BookingManagementController
         if ($booking === null) return $this->error(404, 'A foglalás nem található.');
         $snapshot = $booking['pricing_snapshot'] ?? [];
         $accommodationFee = is_array($snapshot) ? ($snapshot['accommodation_fee'] ?? $snapshot['total'] ?? null) : null;
-        $cancellationPreview = is_string($accommodationFee)
+        $cancellationPreview = is_string($accommodationFee) || is_int($accommodationFee)
             ? (new CancellationPolicy())->calculate(
                 (string) $booking['arrival_date'],
-                $accommodationFee,
+                (string) $accommodationFee,
                 new DateTimeImmutable('now', new DateTimeZone('Europe/Budapest')),
                 (string) $booking['currency'],
             )

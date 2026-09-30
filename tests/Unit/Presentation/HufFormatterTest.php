@@ -20,6 +20,8 @@ final class HufFormatterTest extends TestCase
     public static function amounts(): iterable
     {
         yield ['20000.00', '20 000 Ft', '20000'];
+        yield ['20000', '20 000 Ft', '20000'];
+        yield [20000, '20 000 Ft', '20000'];
         yield [0, '0 Ft', '0'];
         yield ['-0.49', '0 Ft', '0'];
         yield ['00000.00', '0 Ft', '0'];

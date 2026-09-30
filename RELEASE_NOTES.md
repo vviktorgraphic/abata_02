@@ -9,6 +9,8 @@
 
 > **Sprint 10 feature branch:** elkészült az automatikus iCal worker, a személyalapú/gyermek ársávos árképzés és az egységes egész-HUF megjelenítés. Ez még nincs automatikusan merge-elve az RC1-be; részletek: [Sprint 10](docs/18_SPRINT10_AUTOMATIC_ICAL_AND_PERSON_PRICING.md).
 
+> **Pricing admin UX-javítás:** az egyetlen `Árképzés` oldal tulajdonosi nyelven kezeli a felnőtt- és gyermekárakat, támogatja az auditált ársávtörlést, javítja a legacy HUF runtime hibát és a keskeny nézetek horizontális túlcsordulását. Részletek: [árképzési admin javítás](docs/19_PRICING_ADMIN_UX_FIX.md).
+
 ## Fő funkciók
 
 - publikus availability naptár és tranzakciós, idempotens booking request;

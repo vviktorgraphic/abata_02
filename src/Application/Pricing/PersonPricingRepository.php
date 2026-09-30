@@ -6,4 +6,5 @@ interface PersonPricingRepository
 {
     public function get(): PersonPricingConfiguration;
     public function save(PersonPricingConfiguration $configuration, int $expectedVersion, int $adminId): PersonPricingConfiguration;
+    public function deleteBand(int $bandId, int $expectedVersion, int $adminId): PersonPricingConfiguration;
 }
