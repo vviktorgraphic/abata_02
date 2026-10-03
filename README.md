@@ -112,6 +112,8 @@ Release előtti staging ellenőrzéshez a csomagolt release gyökerében futtasd
 
 Az admin felületen a **Felhasználók** oldalon minden aktív admin azonos jogosultságú; új admin létrehozásakor legalább 12 karakteres kezdeti jelszó szükséges, a belépés a meglévő e-mailes 2FA-folyamaton történik. A személyalapú árképzésben az aktív tartózkodáshossz-sáv felülírja a felnőtt hétköznapi/hétvégi árat, gyermekenként továbbra is az életkor- és hétvégi logika érvényes.
 
+A `composer backup:database` MySQL- és MariaDB-kompatibilis: a `mysqldump` képességei alapján választja ki az opcionális GTID-kapcsolót, ezért MariaDB-n nincs szükség kézi scriptjavításra.
+
 ## Production backup és restore
 
 A `composer backup:database` webrooton/repositoryn kívüli könyvtárba készít atomikusan véglegesített, SHA-256 ellenőrzőösszeggel kísért MySQL dumpot. A `composer restore:database` csak checksum-ellenőrzés és adatbázisnévhez kötött explicit megerősítés után indul. A credential nem adható parancssori argumentumban, automatikus retention/törlés pedig nincs. A cPanel eljárás, staging restore-próba és a 4 órás RPO/5 perces RTO mérési útmutató: [docs/13_BACKUP_AND_RESTORE.md](docs/13_BACKUP_AND_RESTORE.md).

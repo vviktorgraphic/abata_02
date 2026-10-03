@@ -15,6 +15,10 @@
 - Új `/admin/users` felület készült azonos jogosultságú adminok létrehozására, aktiválására és inaktiválására; az inaktiválás munkameneteket és függő 2FA-kódokat von vissza.
 - A `/admin/pricing` személyalapú módja felnőtt tartózkodáshossz-sávokat kezel; a megfelelő sáv felnőttárat alkalmaz a teljes tartózkodásra, gyermekárak változatlanok.
 
+## MariaDB backup hotfix
+
+- A backup parancs capability-detectionnel kezeli a MySQL és MariaDB `mysqldump` különbségét; a nem támogatott `--set-gtid-purged=OFF` MariaDB-n automatikusan kimarad.
+
 ## RC2 Sprint 11 hardening
 
 - RC2 integration branch created without merging to `main`.

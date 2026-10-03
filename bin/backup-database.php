@@ -37,6 +37,7 @@ try {
     $username = $required('DB_USERNAME');
     $password = $required('DB_PASSWORD');
     $binary = getenv('MYSQLDUMP_BINARY') ?: 'mysqldump';
+    $supportsSetGtidPurged = App\Infrastructure\Database\MysqldumpCapabilities::supportsSetGtidPurged($binary, $root);
 
     if (!preg_match('/^[1-9][0-9]{0,4}$/', $port) || (int) $port > 65535) {
         throw new RuntimeException('DB_PORT must be an integer between 1 and 65535.');
@@ -107,10 +108,12 @@ try {
         '--quick',
         '--triggers',
         '--no-tablespaces',
-        '--set-gtid-purged=OFF',
-        '--default-character-set=utf8mb4',
-        $database,
     ];
+    if ($supportsSetGtidPurged) {
+        $command[] = '--set-gtid-purged=OFF';
+    }
+    $command[] = '--default-character-set=utf8mb4';
+    $command[] = $database;
     $process = proc_open($command, [0 => ['file', PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null', 'r'], 1 => $output, 2 => ['pipe', 'w']], $pipes, $root);
     if (!is_resource($process)) {
         fclose($output);
