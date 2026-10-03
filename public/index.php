@@ -109,10 +109,16 @@ $router->post('/admin/users', static fn () => $admin()['users']->create(
     $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
     isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
 )->send());
-$router->post('/admin/users/{id}/{action}', static fn (array $_query, array $params) => $admin()['users']->setActive(
-    (int) $params['id'], $params['action'] === 'activate', $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
-    isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
-)->send());
+$router->post('/admin/users/{id}/{action}', static function (array $_query, array $params) use ($admin): void {
+    if (!in_array($params['action'] ?? '', ['activate', 'deactivate'], true)) {
+        (new App\Http\Controller\Admin\HtmlResponse('Not found', 404))->send();
+        return;
+    }
+    $admin()['users']->setActive(
+        (int) $params['id'], $params['action'] === 'activate', $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
+        isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
+    )->send();
+});
 $router->get('/admin/bookings/import', static fn () => $admin()['legacy_import']->show()->send());
 $router->post('/admin/bookings/import/preview', static fn () => $admin()['legacy_import']->preview(
     $_POST, $_FILES, $_SERVER['CONTENT_TYPE'] ?? null,
