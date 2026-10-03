@@ -40,6 +40,14 @@ final class AdminBookingUiTest extends TestCase
         self::assertStringNotContainsString('guest@example', $html);
         self::assertStringContainsString('60 000 Ft', $html);
         self::assertStringNotContainsString('60000.00', $html);
+        self::assertStringContainsString('class="bookings-table"', $html);
+        self::assertStringContainsString('class="bookings-action"', $html);
+        self::assertStringContainsString('2026-08-01 → 2026-08-03', $html);
+        self::assertStringContainsString('Megnyitás<span class="sr-only">: AB-&lt;script&gt;</span>', $html);
+        self::assertStringContainsString('href="/admin/bookings/AB-%3Cscript%3E"', $html);
+        self::assertStringContainsString('3', $html);
+        self::assertStringContainsString('pending', $html);
+        self::assertStringContainsString('2026-07-16 10:00:00', $html);
     }
 
     #[DataProvider('snapshots')]
