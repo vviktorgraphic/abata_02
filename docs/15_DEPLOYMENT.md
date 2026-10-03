@@ -114,10 +114,40 @@ Alkalmazáskód rollbackhez állítsd vissza a document rootot/symlinket az elő
 .\tools\New-ReleasePackage.ps1 -Commit (git rev-parse HEAD) -OutputDirectory .\release-packages
 ```
 
-A script `git archive` használatával a megadott commit tartalmából készít ZIP-et és SHA-256 manifestet. Alapértelmezésben a `tests/` könyvtár kimarad; a runtime fájlok és a `database/migrations/` benne maradnak. A `.git`, a lokális `.env` és `.env.*` fájlok nem kerülnek a csomagba, és a script megtagadja az olyan commit csomagolását, amely tracked environment fájlt tartalmaz. Tesztekkel együtt csak külön ellenőrzési artefaktumhoz használható:
+A script a megadott commitból POSIX jogosultságokat megőrző `.tar.gz` és SHA-256 manifestet készít. Alapértelmezésben a `tests/` könyvtár kimarad; a runtime fájlok és a `database/migrations/` benne maradnak. A `.git`, a lokális `.env` és `.env.*` fájlok nem kerülnek a csomagba, és a script megtagadja az olyan commit csomagolását, amely tracked environment fájlt tartalmaz. Tesztekkel együtt csak külön ellenőrzési artefaktumhoz használható:
 
 ```powershell
 .\tools\New-ReleasePackage.ps1 -Commit (git rev-parse HEAD) -IncludeTests
 ```
 
-Ellenőrizd a manifestet, majd töltsd fel a ZIP tartalmát egy új, nem webes release könyvtárba. A production `.env`-et külön, meglévő secretből hozd létre; a csomag soha nem írhatja felül. A `public/` maradjon a DocumentRoot, a `vendor/` pedig Composerrel vagy ugyanazon platformon előállított, ellenőrzött artefaktummal kerüljön a release-be. Staging frissítés után ismételd meg a health, HTTPS, migráció, admin/2FA, iCal és backup smoke-ot, csak ezután válts productionre.
+Ellenőrizd a manifestet és a csomagot a `tools/Verify-ReleasePackage.ps1` scripttel, majd Linuxon bontsd ki:
+
+```powershell
+.\tools\Verify-ReleasePackage.ps1 -ArchivePath .\release-packages\foglalo-<sha>.tar.gz
+mkdir -p <release>
+tar -xzf foglalo-<sha>.tar.gz -C <release>
+```
+
+A `.tar.gz` megőrzi a Gitből származó traversable könyvtárjogokat; normál telepítéshez nem kell rekurzív `chmod`. A production `.env`-et külön, meglévő secretből hozd létre; a csomag soha nem írhatja felül. A `public/` maradjon a DocumentRoot, a `vendor/` pedig Composerrel vagy ugyanazon platformon előállított, ellenőrzött artefaktummal kerüljön a release-be.
+
+## Pre-import release preflight és sorrend
+
+Az új release-ben a Composer telepítése után futtasd a közös `.env` bootstrapet használó előellenőrzést; shell `source .env`, `set -a` vagy kézi `export DB_*` nem szükséges és nem támogatott:
+
+```powershell
+/opt/alt/php83/usr/bin/php bin/preflight.php
+/opt/alt/php83/usr/bin/php bin/db-check.php
+/opt/alt/php83/usr/bin/php bin/migrate.php
+```
+
+A végső sorrend: pontos commitból artifact készítése; feltöltés és `tar -xzf` kibontás új release könyvtárba; production `.env` létrehozása secretből; Composer install, validate és audit; `bin/preflight.php`; csak új migrációt tartalmazó release esetén migráció; WePanel DocumentRoot váltás; `/health`, `/api/availability` és `/static/...` smoke; admin login és 2FA; `/admin/bookings/import` preview.
+
+A valós 110 soros import előtt kötelező friss adatbázis-backupot készíteni:
+
+```powershell
+$env:BACKUP_DIRECTORY = 'D:\secure-backups\foglalo'
+/opt/alt/php83/usr/bin/php bin/backup-database.php
+Get-ChildItem 'D:\secure-backups\foglalo' | Sort-Object LastWriteTime -Descending | Select-Object -First 2
+```
+
+Rögzítsd a backup időpontját és SQL/checksum útvonalát, ellenőrizd hogy az SQL fájl nem üres és a `.sha256` egyezik, majd csak owner-jóváhagyás után futtasd a CSV importot. A backupot tartsd meg a booking-count és availability ellenőrzésének végéig. A `bin/restore-database.php` kizárólag külön jóváhagyott disposable adatbázison validálható; staging/production restore-t Codex nem futtat.

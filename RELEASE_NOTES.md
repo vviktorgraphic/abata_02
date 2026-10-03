@@ -4,6 +4,12 @@
 
 - A shared-hosting nginx `/assets/` tiltása miatt a publikus erőforrások `public/static/` alá kerültek, minden runtime HTML-hivatkozás `/static/...` útvonalat használ.
 
+## Pre-import hardening
+
+- A legacy import checkbox a meglévő kompakt, billentyűzetbarát `.checkbox-label` mintát használja; a törölt sorok továbbra is opt-in maradnak.
+- A release-csomag elsődleges formátuma POSIX jogosultságokat megőrző `.tar.gz`; a ZIP-alapú Linux kibontási problémát megszüntettük.
+- A `bin/preflight.php` egy futtatással ellenőrzi a bootstrapet, konfigurációt, SMTP-t, statikus fájlokat és opcionálisan az adatbázis-kapcsolatot.
+
 ## RC2 Sprint 11 hardening
 
 - RC2 integration branch created without merging to `main`.
@@ -15,7 +21,7 @@
 
 ## Sprint 12 go-live operations
 
-- Added `tools/New-ReleasePackage.ps1` for commit-pinned Windows PowerShell release ZIPs and manifests; `.git`, `.env` and tests are excluded by default.
+- Added `tools/New-ReleasePackage.ps1` for commit-pinned Windows PowerShell `.tar.gz` release packages and manifests; `.git`, `.env` and tests are excluded by default.
 - Added a disposable local backup/restore drill and explicit SMTP/2FA and 15-minute iCal cron activation checklists.
 - Production remains deployment-gated until staging restore, HTTPS, SMTP and browser smoke evidence is recorded.
 - Added the owner-facing legacy WP Booking System CSV import with preview, safe status/calendar defaults, provenance and duplicate protection.

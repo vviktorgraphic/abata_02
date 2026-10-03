@@ -50,6 +50,19 @@ final class DeploymentArtifactsTest extends TestCase
         self::assertStringContainsString('DMARC', $contents);
         self::assertStringContainsString('közös environment bootstrapet tölti be', $contents);
         self::assertStringContainsString('nem kell `source .env`', $contents);
+        self::assertStringContainsString('tar -xzf', $contents);
+        self::assertStringContainsString('bin/preflight.php', $contents);
+        self::assertStringContainsString('backupot tartsd meg', $contents);
+    }
+
+    public function testReleasePackageUsesPosixTarAndIncludesStaticTreeContract(): void
+    {
+        $script = $this->read('tools/New-ReleasePackage.ps1');
+        self::assertStringContainsString(".tar.gz", $script);
+        self::assertStringContainsString('tar -czf', $script);
+        self::assertStringContainsString("Join-Path \$payload 'tests'", $script);
+        self::assertStringNotContainsString('Compress-Archive', $script);
+        self::assertStringContainsString('public/static', $this->read('docs/15_DEPLOYMENT.md'));
     }
 
     public function testMigrationCompatibilityArtifactsCoverBothSupportedEngines(): void

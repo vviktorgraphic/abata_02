@@ -31,7 +31,7 @@ $releaseId = (& git -C $repo rev-parse --short $Commit).Trim()
 $stage = Join-Path ([System.IO.Path]::GetTempPath()) ('foglalo-release-' + [guid]::NewGuid().ToString('N'))
 $payload = Join-Path $stage 'release'
 $archive = Join-Path $stage 'source.tar'
-$zip = Join-Path $OutputDirectory ('foglalo-' + $releaseId + '.zip')
+$tarGz = Join-Path $OutputDirectory ('foglalo-' + $releaseId + '.tar.gz')
 $manifest = Join-Path $OutputDirectory ('foglalo-' + $releaseId + '.manifest.txt')
 
 try {
@@ -49,8 +49,11 @@ try {
         $_.Name -eq '.env' -or $_.Name -like '.env.*'
     } | Remove-Item -Force
 
-    if (Test-Path -LiteralPath $zip) { Remove-Item $zip -Force }
-    Compress-Archive -Path (Join-Path $payload '*') -DestinationPath $zip -CompressionLevel Optimal
+    # tar preserves the POSIX mode bits from git archive; PowerShell ZIP extraction
+    # does not reliably preserve traversable directory modes on shared Linux hosts.
+    if (Test-Path -LiteralPath $tarGz) { Remove-Item $tarGz -Force }
+    & tar -czf $tarGz -C $payload .
+    if ($LASTEXITCODE -ne 0) { throw 'tar.gz packaging failed.' }
 
     $files = Get-ChildItem -LiteralPath $payload -File -Recurse | Sort-Object FullName
     $lines = @(
@@ -67,7 +70,7 @@ try {
         $lines += ((Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant() + '  ' + $relative)
     }
     Set-Content -LiteralPath $manifest -Value $lines -Encoding UTF8
-    Write-Output ('Package: ' + $zip)
+    Write-Output ('Package: ' + $tarGz)
     Write-Output ('Manifest: ' + $manifest)
 }
 finally {
