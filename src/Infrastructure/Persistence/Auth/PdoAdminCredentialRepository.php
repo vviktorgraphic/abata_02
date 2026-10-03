@@ -75,6 +75,32 @@ final readonly class PdoAdminCredentialRepository implements AdminUserRepository
         return $statement->rowCount() === 1;
     }
 
+    public function setActiveSafely(int $adminId, bool $active): bool
+    {
+        $this->pdo->beginTransaction();
+        try {
+            $activeRows = $this->pdo->query('SELECT id FROM admins WHERE is_active = 1 FOR UPDATE')->fetchAll(PDO::FETCH_COLUMN);
+            $lookup = $this->pdo->prepare('SELECT is_active FROM admins WHERE id = :id FOR UPDATE');
+            $lookup->execute(['id' => $adminId]);
+            $current = $lookup->fetchColumn();
+            if ($current === false || (!$active && (bool) $current && count($activeRows) <= 1)) {
+                $this->pdo->rollBack();
+                return false;
+            }
+            if ((bool) $current === $active) {
+                $this->pdo->commit();
+                return false;
+            }
+            $update = $this->pdo->prepare('UPDATE admins SET is_active = :active WHERE id = :id');
+            $update->execute(['active' => $active ? 1 : 0, 'id' => $adminId]);
+            $this->pdo->commit();
+            return true;
+        } catch (\Throwable $error) {
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $error;
+        }
+    }
+
     public function countActive(): int
     {
         return (int) $this->pdo->query('SELECT COUNT(*) FROM admins WHERE is_active = 1')->fetchColumn();

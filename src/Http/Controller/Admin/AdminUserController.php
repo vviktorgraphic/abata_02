@@ -79,10 +79,9 @@ final readonly class AdminUserController
         $actor = $authorization->admin['id'];
         if ($targetId === $actor && !$active) return $this->index('A saját aktív fiókja nem inaktiválható.', 422);
         if ($targetId < 1) return $this->index('A felhasználó nem található.', 404);
-        if (!$active && $this->repository->countActive() <= 1) return $this->index('Az utolsó aktív admin nem inaktiválható.', 422);
         try {
-            $changed = $this->repository->setActive($targetId, $active);
-            if (!$changed) return $this->index('A felhasználó nem található vagy már ebben az állapotban van.', 422);
+            $changed = $this->repository->setActiveSafely($targetId, $active);
+            if (!$changed) return $this->index($active ? 'A felhasználó nem található vagy már aktív.' : 'Az utolsó aktív admin nem inaktiválható, vagy a felhasználó már inaktív.', 422);
             $now = $this->now();
             if (!$active) { $this->sessions->revokeAllForAdmin($targetId, $now); $this->codes->invalidateAllForAdmin($targetId, $now); }
             $this->audit->append(new AuditEvent('admin_user.' . ($active ? 'activated' : 'deactivated'), 'success', $now, new AuditMetadata(['target_type'=>'admin','target_id'=>(string)$targetId,'target_admin_id'=>$targetId]), $actor));

@@ -10,5 +10,6 @@ interface AdminUserRepository extends AdminCredentialRepository
     public function allForManagement(): array;
     public function createAdmin(string $name, string $email, string $passwordHash): int;
     public function setActive(int $adminId, bool $active): bool;
+    public function setActiveSafely(int $adminId, bool $active): bool;
     public function countActive(): int;
 }
