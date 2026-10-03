@@ -116,6 +116,12 @@ final readonly class AdminSessionRepository
         return $statement->rowCount() === 1;
     }
 
+    public function revokeAllForAdmin(int $adminId, DateTimeImmutable $revokedAt): void
+    {
+        $statement = $this->pdo->prepare('UPDATE admin_sessions SET revoked_at = :revoked_at WHERE admin_id = :admin_id AND revoked_at IS NULL');
+        $statement->execute(['revoked_at' => $this->format($revokedAt), 'admin_id' => $adminId]);
+    }
+
     private function hash(string $rawSessionToken): string
     {
         return hash('sha256', $rawSessionToken);

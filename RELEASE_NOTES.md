@@ -10,6 +10,11 @@
 - A release-csomag elsődleges formátuma POSIX jogosultságokat megőrző `.tar.gz`; a ZIP-alapú Linux kibontási problémát megszüntettük.
 - A `bin/preflight.php` egy futtatással ellenőrzi a bootstrapet, konfigurációt, SMTP-t, statikus fájlokat és opcionálisan az adatbázis-kapcsolatot.
 
+## Admin users and stay-length pricing
+
+- Új `/admin/users` felület készült azonos jogosultságú adminok létrehozására, aktiválására és inaktiválására; az inaktiválás munkameneteket és függő 2FA-kódokat von vissza.
+- A `/admin/pricing` személyalapú módja felnőtt tartózkodáshossz-sávokat kezel; a megfelelő sáv felnőttárat alkalmaz a teljes tartózkodásra, gyermekárak változatlanok.
+
 ## RC2 Sprint 11 hardening
 
 - RC2 integration branch created without merging to `main`.

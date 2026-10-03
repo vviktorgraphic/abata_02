@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Persistence\Auth;
 
-use App\Application\Authentication\AdminCredentialRepository;
+use App\Application\Authentication\AdminUserRepository;
 use App\Domain\Authentication\AdminCredential;
 use PDO;
 
-final readonly class PdoAdminCredentialRepository implements AdminCredentialRepository
+final readonly class PdoAdminCredentialRepository implements AdminUserRepository
 {
     public function __construct(private PDO $pdo)
     {
@@ -49,5 +49,34 @@ final readonly class PdoAdminCredentialRepository implements AdminCredentialRepo
         $statement->execute(['id' => $adminId]);
         $row = $statement->fetch();
         return $row === false ? null : ['id' => (int) $row['id'], 'name' => (string) $row['name'], 'email' => (string) $row['email']];
+    }
+
+    /** @return list<array{id:int,name:string,email:string,is_active:bool,created_at:string}> */
+    public function allForManagement(): array
+    {
+        $rows = $this->pdo->query('SELECT id, name, email, is_active, created_at FROM admins ORDER BY name, id')->fetchAll();
+        return array_map(static fn (array $row): array => [
+            'id' => (int) $row['id'], 'name' => (string) $row['name'], 'email' => (string) $row['email'],
+            'is_active' => (bool) $row['is_active'], 'created_at' => (string) $row['created_at'],
+        ], $rows);
+    }
+
+    public function createAdmin(string $name, string $email, string $passwordHash): int
+    {
+        $statement = $this->pdo->prepare('INSERT INTO admins (email, password_hash, name, is_active) VALUES (:email, :password_hash, :name, TRUE)');
+        $statement->execute(['email' => $email, 'password_hash' => $passwordHash, 'name' => $name]);
+        return (int) $this->pdo->lastInsertId();
+    }
+
+    public function setActive(int $adminId, bool $active): bool
+    {
+        $statement = $this->pdo->prepare('UPDATE admins SET is_active = :active WHERE id = :id');
+        $statement->execute(['active' => $active ? 1 : 0, 'id' => $adminId]);
+        return $statement->rowCount() === 1;
+    }
+
+    public function countActive(): int
+    {
+        return (int) $this->pdo->query('SELECT COUNT(*) FROM admins WHERE is_active = 1')->fetchColumn();
     }
 }

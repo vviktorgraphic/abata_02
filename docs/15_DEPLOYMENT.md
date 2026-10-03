@@ -142,6 +142,10 @@ Az új release-ben a Composer telepítése után futtasd a közös `.env` bootst
 
 A végső sorrend: pontos commitból artifact készítése; feltöltés és `tar -xzf` kibontás új release könyvtárba; production `.env` létrehozása secretből; Composer install, validate és audit; `bin/preflight.php`; csak új migrációt tartalmazó release esetén migráció; WePanel DocumentRoot váltás; `/health`, `/api/availability` és `/static/...` smoke; admin login és 2FA; `/admin/bookings/import` preview.
 
+Az admin felhasználók az `/admin/users` oldalon kezelhetők. Minden aktív rekord azonos admin jogosultságú; az új felhasználó legalább 12 karakteres jelszót kap, majd a normál e-mailes 2FA-belépést használja. Inaktiválás visszavonja az érintett munkameneteket és függő 2FA-kódokat; az utolsó aktív admin és a saját aktuális fiók nem inaktiválható.
+
+A személyalapú árképzésben az aktív, illeszkedő felnőtt tartózkodáshossz-sáv elsőbbsége: `stay-length band > adult weekday/weekend`. Ha nincs illeszkedő sáv, a meglévő péntek/szombat hétvégi és egyéb hétköznapi felnőttár marad érvényben; a gyermek életkor- és hétvégi árazása ettől független.
+
 A valós 110 soros import előtt kötelező friss adatbázis-backupot készíteni:
 
 ```powershell

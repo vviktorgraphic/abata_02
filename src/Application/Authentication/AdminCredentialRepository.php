@@ -13,4 +13,5 @@ interface AdminCredentialRepository
 
     /** Replaces a password hash after a successful credential check. */
     public function updatePasswordHash(int $adminId, string $passwordHash): void;
+
 }

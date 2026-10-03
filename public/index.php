@@ -103,6 +103,16 @@ $router->post('/admin/2fa/verify', static fn () => $admin()['two_factor']->verif
 $router->post('/admin/2fa/resend', static fn () => $admin()['two_factor']->resend($_POST, $context())->send());
 $router->get('/admin', static fn () => $admin()['dashboard']->show()->send());
 $router->get('/admin/bookings', static fn (array $query) => $admin()['bookings']->index($query)->send());
+$router->get('/admin/users', static fn () => $admin()['users']->index()->send());
+$router->get('/admin/users/create', static fn () => $admin()['users']->createForm()->send());
+$router->post('/admin/users', static fn () => $admin()['users']->create(
+    $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
+    isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
+)->send());
+$router->post('/admin/users/{id}/{action}', static fn (array $_query, array $params) => $admin()['users']->setActive(
+    (int) $params['id'], $params['action'] === 'activate', $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
+    isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
+)->send());
 $router->get('/admin/bookings/import', static fn () => $admin()['legacy_import']->show()->send());
 $router->post('/admin/bookings/import/preview', static fn () => $admin()['legacy_import']->preview(
     $_POST, $_FILES, $_SERVER['CONTENT_TYPE'] ?? null,

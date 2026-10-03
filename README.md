@@ -110,6 +110,8 @@ Docker nélkül, telepített függőségekkel: `composer test`.
 
 Release előtti staging ellenőrzéshez a csomagolt release gyökerében futtasd a `php bin/preflight.php` parancsot; a CLI automatikusan betölti a `.env` fájlt, ezért annak shellből történő `source`-olása nem szükséges.
 
+Az admin felületen a **Felhasználók** oldalon minden aktív admin azonos jogosultságú; új admin létrehozásakor legalább 12 karakteres kezdeti jelszó szükséges, a belépés a meglévő e-mailes 2FA-folyamaton történik. A személyalapú árképzésben az aktív tartózkodáshossz-sáv felülírja a felnőtt hétköznapi/hétvégi árat, gyermekenként továbbra is az életkor- és hétvégi logika érvényes.
+
 ## Production backup és restore
 
 A `composer backup:database` webrooton/repositoryn kívüli könyvtárba készít atomikusan véglegesített, SHA-256 ellenőrzőösszeggel kísért MySQL dumpot. A `composer restore:database` csak checksum-ellenőrzés és adatbázisnévhez kötött explicit megerősítés után indul. A credential nem adható parancssori argumentumban, automatikus retention/törlés pedig nincs. A cPanel eljárás, staging restore-próba és a 4 órás RPO/5 perces RTO mérési útmutató: [docs/13_BACKUP_AND_RESTORE.md](docs/13_BACKUP_AND_RESTORE.md).

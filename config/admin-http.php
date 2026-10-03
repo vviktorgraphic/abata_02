@@ -61,6 +61,7 @@ use App\Infrastructure\Persistence\Calendar\PdoCalendarSourceRepository;
 use App\Infrastructure\Persistence\Calendar\PdoCalendarSyncLogRepository;
 use App\Infrastructure\Persistence\Calendar\PdoExternalCalendarEventRepository;
 use App\Http\Controller\Admin\LegacyBookingImportController;
+use App\Http\Controller\Admin\AdminUserController;
 use App\Application\LegacyImport\LegacyImportCsvParser;
 use App\Application\LegacyImport\LegacyImportService;
 use App\Infrastructure\Persistence\Booking\PdoLegacyImportProvenanceRepository;
@@ -138,6 +139,11 @@ return [
         $workflow, $view, $csrf, $actionGuard, $storage,
         new LegacyImportService($pdo, new PdoLegacyImportProvenanceRepository($pdo), new LegacyImportCsvParser()),
         $audit,
+    ),
+    'users' => new AdminUserController(
+        $workflow, $view, $csrf, $actionGuard, $admins,
+        new AdminSessionRepository($pdo, $authConfig['session_absolute_timeout_seconds']),
+        $codes, $audit,
     ),
     'blocked_periods' => new BlockedPeriodController($workflow, $view, $csrf, $actionGuard, new BlockedPeriodService($blockedRepository), $blockedRepository),
     'pricing' => new PricingAdminController(

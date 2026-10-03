@@ -58,6 +58,12 @@ final readonly class PdoTwoFactorCodeStore implements TwoFactorCodeStore, TwoFac
         ]);
     }
 
+    public function invalidateAllForAdmin(int $adminId, DateTimeImmutable $at): void
+    {
+        $statement = $this->pdo->prepare('UPDATE admin_login_codes SET invalidated_at = :at WHERE admin_id = :admin_id AND used_at IS NULL AND invalidated_at IS NULL');
+        $statement->execute(['at' => $this->format($at), 'admin_id' => $adminId]);
+    }
+
     public function replaceActiveIfAllowed(
         int $adminId,
         TwoFactorCode $code,
