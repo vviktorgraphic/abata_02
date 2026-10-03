@@ -107,6 +107,18 @@ final readonly class PersonPricingAdminController
                 foreach ($adultBands as $index => $existing) if ($id !== 0 && $existing->id === $id) { $adultBands[$index] = $band; $found = true; break; }
                 if ($id === 0) $adultBands[] = $band; elseif (!$found) return $this->index('A tartózkodási ársáv nem található.', 404);
                 $configuration = new PersonPricingConfiguration($version, $current->mode, $current->adultWeekdayPrice, $current->adultWeekendPrice, $bands, $adultBands);
+            } elseif (($form['action'] ?? null) === 'adult_stay_toggle') {
+                $id = $this->integer($form['band_id'] ?? '0', 1, PHP_INT_MAX);
+                $found = false;
+                foreach ($adultBands as $index => $existing) {
+                    if ($existing->id === $id) {
+                        $adultBands[$index] = new AdultStayLengthBand($existing->minNights, $existing->maxNights, $existing->pricePerPersonPerNight, ($form['active'] ?? '') === '1', $existing->sortOrder, $existing->id);
+                        $found = true;
+                        break;
+                    }
+                }
+                if (!$found) return $this->index('A tartózkodási ársáv nem található.', 404);
+                $configuration = new PersonPricingConfiguration($version, $current->mode, $current->adultWeekdayPrice, $current->adultWeekendPrice, $bands, $adultBands);
             } elseif (($form['action'] ?? null) === 'delete') {
                 $this->repository->deleteBand(
                     $this->integer($form['band_id'] ?? null, 1, PHP_INT_MAX),
