@@ -58,6 +58,15 @@ require __DIR__ . '/_layout_start.php';
 </details>
 </section>
 
+<section class="panel" aria-labelledby="stay-length-prices-title">
+<h2 id="stay-length-prices-title">Tartózkodás hossza szerinti felnőttárak</h2>
+<p>Ha az éjszakák száma beleesik egy aktív sávba, annak Ft/fő/éj ára érvényes minden felnőttre a teljes tartózkodás alatt. Megfelelő sáv hiányában a normál hétköznapi/hétvégi felnőttár érvényes.</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Tartózkodási felnőtt ársávok"><table><thead><tr><th>Éjszakák</th><th>Ár / fő / éj</th><th>Állapot</th><th>Művelet</th></tr></thead><tbody>
+<?php foreach ($visibleAdultStayBands as $band): ?><tr><td><?= $band->maxNights === null ? $band->minNights.'+ éj' : ($band->minNights === $band->maxNights ? $band->minNights.' éj' : $band->minNights.'–'.$band->maxNights.' éj') ?></td><td><?= $e(HufFormatter::format($band->pricePerPersonPerNight)) ?></td><td><?= $band->active ? 'Aktív' : 'Inaktív' ?></td><td><details><summary>Szerkesztés</summary><form method="post" action="/admin/pricing"><input type="hidden" name="_csrf" value="<?= $e($csrfToken) ?>"><input type="hidden" name="version" value="<?= $configuration->version ?>"><input type="hidden" name="action" value="adult_stay_band"><input type="hidden" name="band_id" value="<?= $band->id ?>"><div class="field-grid"><label>Minimum éjszaka<input required type="number" min="1" name="min_nights" value="<?= $band->minNights ?>"></label><label>Maximum éjszaka<input type="number" min="1" name="max_nights" value="<?= $band->maxNights ?? '' ?>"></label><label>Ár (Ft / fő / éj)<input required inputmode="numeric" name="price_per_person_per_night" value="<?= $e(HufFormatter::input($band->pricePerPersonPerNight)) ?>"></label></div><button class="compact" type="submit">Mentés</button></form></details></td></tr><?php endforeach ?>
+<?php if ($visibleAdultStayBands === []): ?><tr><td colspan="4">Még nincs tartózkodási ársáv beállítva.</td></tr><?php endif ?></tbody></table></div>
+<details class="new-band"><summary>+ Új tartózkodási ársáv</summary><form method="post" action="/admin/pricing"><input type="hidden" name="_csrf" value="<?= $e($csrfToken) ?>"><input type="hidden" name="version" value="<?= $configuration->version ?>"><input type="hidden" name="action" value="adult_stay_band"><input type="hidden" name="band_id" value="0"><div class="field-grid"><label>Minimum éjszaka<input required type="number" min="1" name="min_nights"></label><label>Maximum éjszaka<input type="number" min="1" name="max_nights"></label><label>Ár (Ft / fő / éj)<input required inputmode="numeric" name="price_per_person_per_night"></label></div><button type="submit">Ársáv hozzáadása</button></form></details>
+</section>
+
 <section class="panel" aria-labelledby="preview-title">
 <h2 id="preview-title">Árkalkuláció előnézet</h2>
 <form method="post" action="/admin/pricing/preview">

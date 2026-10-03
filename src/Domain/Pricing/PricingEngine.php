@@ -141,12 +141,13 @@ final class PricingEngine
             $childBands[] = $configuration->bandForAge($age);
         }
         $accommodation = 0;
+        $stayBand = $configuration->adultBandForNights((int)$arrival->diff($departure)->format('%a'));
         $items = [];
         $applied = [];
         $nightly = [];
         for ($day = $arrival; $day < $departure; $day = $day->modify('+1 day')) {
             $weekend = in_array((int) $day->format('N'), [5, 6], true);
-            $adultRate = $weekend ? $configuration->adultWeekendPrice : $configuration->adultWeekdayPrice;
+            $adultRate = $stayBand?->pricePerPersonPerNight ?? ($weekend ? $configuration->adultWeekendPrice : $configuration->adultWeekdayPrice);
             $adultTotal = $this->multiply($this->minor($adultRate), $input->adults);
             $childrenTotal = 0;
             $children = [];
@@ -174,6 +175,8 @@ final class PricingEngine
             }
             $accommodation += $nightAmount;
             $nightly[] = ['date'=>$date, 'weekend'=>$weekend, 'adults'=>$input->adults,
+                'adult_rate_source'=>$stayBand === null ? ($weekend ? 'weekend' : 'weekday') : 'stay_length_band',
+                'adult_stay_length_band_id'=>$stayBand?->id,
                 'adult_unit_amount'=>$adultRate, 'adult_total'=>$this->huf(intdiv($adultTotal, 100)),
                 'children'=>$children, 'children_total'=>$this->huf(intdiv($childrenTotal, 100)),
                 'seasonal_adjustments'=>$seasonalItems, 'total'=>$this->huf(intdiv($adultTotal + $childrenTotal, 100) + array_sum(array_column($seasonalItems, 'total_huf')))];
@@ -181,6 +184,7 @@ final class PricingEngine
         return [$accommodation, $items, $applied, [
             'pricing_mode'=>'person', 'pricing_configuration_version'=>$configuration->version,
             'adult_weekday_price'=>$configuration->adultWeekdayPrice, 'adult_weekend_price'=>$configuration->adultWeekendPrice,
+            'adult_stay_length_band'=>$stayBand?->snapshot(), 'adult_stay_length_bands'=>array_map(static fn ($b): array => $b->snapshot(), $configuration->adultStayLengthBands),
             'child_bands'=>array_map(static fn (ChildPriceBand $band): array => $band->snapshot(), $configuration->childBands),
             'child_ages'=>$input->childAges, 'child_maximum_age'=>17, 'adult_minimum_age'=>18,
             'weekend_iso_weekdays'=>[5,6], 'nightly_breakdown'=>$nightly,

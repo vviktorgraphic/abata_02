@@ -6,6 +6,7 @@ namespace Tests\Unit\Pricing;
 
 use App\Domain\Booking\CancellationPolicy;
 use App\Domain\Pricing\ChildPriceBand;
+use App\Domain\Pricing\AdultStayLengthBand;
 use App\Domain\Pricing\MissingChildPriceBand;
 use App\Domain\Pricing\PersonPricingConfiguration;
 use App\Domain\Pricing\PersonPricingNotConfigured;
@@ -75,6 +76,32 @@ final class PersonPricingEngineTest extends TestCase
         $person = $engine->calculate($input,$rules,null,$this->configuration());
         self::assertSame('12000.00', $person->totalAmount);
         self::assertSame([], $person->appliedRuleIds);
+    }
+
+    public function testAdultStayLengthBandOverridesWeekendForWholeStayAndIsSnapshotted(): void
+    {
+        $config = new PersonPricingConfiguration(9, 'person', '15000', '17000', $this->configuration()->childBands, [
+            new AdultStayLengthBand(2, 2, '18000', id: 12), new AdultStayLengthBand(4, 8, '14000', id: 13),
+        ]);
+        $result = (new PricingEngine())->calculate(new PricingInput('2026-08-07', '2026-08-09', 2), [], null, $config);
+        self::assertSame('72000.00', $result->accommodationFee);
+        self::assertSame(12, $result->snapshot['adult_stay_length_band']['id']);
+        self::assertSame('stay_length_band', $result->snapshot['nightly_breakdown'][0]['adult_rate_source']);
+    }
+
+    public function testAdultStayLengthBandFallsBackAndDoesNotChangeChildWeekendPricing(): void
+    {
+        $config = new PersonPricingConfiguration(9, 'person', '15000', '17000', $this->configuration()->childBands, [new AdultStayLengthBand(4, 8, '14000')]);
+        $result = (new PricingEngine())->calculate(new PricingInput('2026-08-06', '2026-08-09', 1, [3]), [], null, $config);
+        self::assertSame('66000.00', $result->accommodationFee);
+        self::assertSame('weekday', $result->snapshot['nightly_breakdown'][0]['adult_rate_source']);
+        self::assertSame('weekend', $result->snapshot['nightly_breakdown'][1]['adult_rate_source']);
+    }
+
+    public function testAdultStayLengthBandsRejectOverlappingActiveRanges(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        new PersonPricingConfiguration(adultStayLengthBands: [new AdultStayLengthBand(1, 4, '1'), new AdultStayLengthBand(4, 8, '1')]);
     }
 
     public function testSeasonalAdjustmentUsesEachActualNightAndCancellationExcludesTaxAndFixedFee(): void

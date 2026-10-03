@@ -7,6 +7,7 @@ namespace App\Infrastructure\Persistence\Pricing;
 use App\Application\Pricing\PersonPricingRepository;
 use App\Application\Pricing\PricingVersionConflict;
 use App\Domain\Pricing\ChildPriceBand;
+use App\Domain\Pricing\AdultStayLengthBand;
 use App\Domain\Pricing\PersonPricingConfiguration;
 use PDO;
 
@@ -30,7 +31,14 @@ final readonly class PdoPersonPricingRepository implements PersonPricingReposito
                 (int) $row['sort_order'], (int) $row['id']);
         }
         return new PersonPricingConfiguration((int) $rows[0]['version'], (string) $rows[0]['pricing_mode'],
-            $rows[0]['adult_weekday_price'], $rows[0]['adult_weekend_price'], $bands);
+            $rows[0]['adult_weekday_price'], $rows[0]['adult_weekend_price'], $bands, $this->getAdultBands());
+    }
+
+    /** @return list<AdultStayLengthBand> */
+    private function getAdultBands(): array
+    {
+        $rows = $this->pdo->query('SELECT id,min_nights,max_nights,price_per_person_per_night,is_active,sort_order FROM pricing_adult_stay_length_bands ORDER BY min_nights,id')->fetchAll(PDO::FETCH_ASSOC);
+        return array_map(static fn (array $r): AdultStayLengthBand => new AdultStayLengthBand((int)$r['min_nights'], $r['max_nights'] === null ? null : (int)$r['max_nights'], (string)$r['price_per_person_per_night'], (bool)$r['is_active'], (int)$r['sort_order'], (int)$r['id']), $rows);
     }
 
     public function save(PersonPricingConfiguration $configuration, int $expectedVersion, int $adminId): PersonPricingConfiguration
@@ -46,6 +54,7 @@ final readonly class PdoPersonPricingRepository implements PersonPricingReposito
                 throw new PricingVersionConflict('Az árképzést másik admin módosította. Frissítse az oldalt.');
             }
             $existing = array_map('intval', $this->pdo->query('SELECT id FROM pricing_child_bands')->fetchAll(PDO::FETCH_COLUMN));
+            $existingAdult = array_map('intval', $this->pdo->query('SELECT id FROM pricing_adult_stay_length_bands')->fetchAll(PDO::FETCH_COLUMN));
             $this->pdo->exec('DELETE FROM pricing_child_age_coverage');
             $retained = [];
             foreach ($configuration->childBands as $band) {
@@ -70,6 +79,21 @@ final readonly class PdoPersonPricingRepository implements PersonPricingReposito
             }
             // Band lifecycle is activation/inactivation; omission cannot silently delete one.
             if (array_diff($existing, $retained) !== []) { throw new \InvalidArgumentException('Existing child price bands must be retained; deactivate them instead.'); }
+            $retainedAdult = [];
+            foreach ($configuration->adultStayLengthBands as $band) {
+                $params = ['min'=>$band->minNights,'max'=>$band->maxNights,'price'=>$band->pricePerPersonPerNight,'active'=>$band->active ? 1 : 0,'sort'=>$band->sortOrder,'admin'=>$adminId,'now'=>(new \DateTimeImmutable('now', new \DateTimeZone('Europe/Budapest')))->format('Y-m-d H:i:s')];
+                if ($band->id !== 0) {
+                    if (!in_array($band->id, $existingAdult, true)) throw new \InvalidArgumentException('Unknown adult stay-length band.');
+                    $params['id'] = $band->id;
+                    $this->pdo->prepare('UPDATE pricing_adult_stay_length_bands SET min_nights=:min,max_nights=:max,price_per_person_per_night=:price,is_active=:active,sort_order=:sort,updated_by_admin_id=:admin,updated_at=:now WHERE id=:id')->execute($params);
+                    $id = $band->id;
+                } else {
+                    $this->pdo->prepare('INSERT INTO pricing_adult_stay_length_bands (min_nights,max_nights,price_per_person_per_night,is_active,sort_order,created_by_admin_id,updated_by_admin_id) VALUES (:min,:max,:price,:active,:sort,:admin,:admin)')->execute($params);
+                    $id = (int)$this->pdo->lastInsertId();
+                }
+                $retainedAdult[] = $id;
+            }
+            if (array_diff($existingAdult, $retainedAdult) !== []) throw new \InvalidArgumentException('Existing adult stay-length bands must be retained; deactivate them instead.');
             $this->pdo->prepare('UPDATE person_pricing_configuration SET version=version+1, pricing_mode=:mode,
                 adult_weekday_price=:weekday, adult_weekend_price=:weekend, updated_by_admin_id=:admin, updated_at=:now WHERE id=1')
                 ->execute(['mode'=>$configuration->mode,'weekday'=>$configuration->adultWeekdayPrice,

@@ -7,6 +7,7 @@ namespace App\Http\Controller\Admin;
 use App\Application\Pricing\PersonPricingRepository;
 use App\Application\Pricing\PricingVersionConflict;
 use App\Domain\Pricing\ChildPriceBand;
+use App\Domain\Pricing\AdultStayLengthBand;
 use App\Domain\Pricing\PersonPricingConfiguration;
 use App\Domain\Pricing\PricingConfigurationError;
 use App\Security\Csrf\CsrfTokenManager;
@@ -43,6 +44,7 @@ final readonly class PersonPricingAdminController
                 static fn (ChildPriceBand $band): bool => $band->active,
             )),
             'hasMissingChildAgeCoverage' => count($coveredAges) !== 18,
+            'visibleAdultStayBands' => $configuration->adultStayLengthBands,
             'csrfToken' => $this->csrf->token(),
             'error' => $error,
         ]), $status);
@@ -62,12 +64,13 @@ final readonly class PersonPricingAdminController
                 return $this->index('Az árakat közben módosították. Ellenőrizze az aktuális adatokat, majd mentse újra.', 409);
             }
             $bands = $current->childBands;
+            $adultBands = $current->adultStayLengthBands;
             if (($form['action'] ?? null) === 'settings') {
                 $configuration = new PersonPricingConfiguration(
                     $version, 'person',
                     $this->amount($form['adult_weekday_price'] ?? null),
                     $this->amount($form['adult_weekend_price'] ?? null),
-                    $bands,
+                    $bands, $adultBands,
                 );
             } elseif (($form['action'] ?? null) === 'band') {
                 $id = $this->integer($form['band_id'] ?? '0', 0, PHP_INT_MAX);
@@ -94,8 +97,16 @@ final readonly class PersonPricingAdminController
                     return $this->index('A gyermek ársáv nem található.', 404);
                 }
                 $configuration = new PersonPricingConfiguration(
-                    $version, $current->mode, $current->adultWeekdayPrice, $current->adultWeekendPrice, $bands,
+                    $version, $current->mode, $current->adultWeekdayPrice, $current->adultWeekendPrice, $bands, $adultBands,
                 );
+            } elseif (($form['action'] ?? null) === 'adult_stay_band') {
+                $id = $this->integer($form['band_id'] ?? '0', 0, PHP_INT_MAX);
+                $max = ($form['max_nights'] ?? '') === '' ? null : $this->integer($form['max_nights'], 1, 65535);
+                $band = new AdultStayLengthBand($this->integer($form['min_nights'] ?? null, 1, 65535), $max, $this->amount($form['price_per_person_per_night'] ?? null), true, 0, $id);
+                $found = false;
+                foreach ($adultBands as $index => $existing) if ($id !== 0 && $existing->id === $id) { $adultBands[$index] = $band; $found = true; break; }
+                if ($id === 0) $adultBands[] = $band; elseif (!$found) return $this->index('A tartózkodási ársáv nem található.', 404);
+                $configuration = new PersonPricingConfiguration($version, $current->mode, $current->adultWeekdayPrice, $current->adultWeekendPrice, $bands, $adultBands);
             } elseif (($form['action'] ?? null) === 'delete') {
                 $this->repository->deleteBand(
                     $this->integer($form['band_id'] ?? null, 1, PHP_INT_MAX),

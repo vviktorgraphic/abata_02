@@ -9,13 +9,14 @@ final readonly class PersonPricingConfiguration
     public ?string $adultWeekdayPrice;
     public ?string $adultWeekendPrice;
 
-    /** @param list<ChildPriceBand> $childBands */
+    /** @param list<ChildPriceBand> $childBands @param list<AdultStayLengthBand> $adultStayLengthBands */
     public function __construct(
         public int $version = 1,
         public string $mode = 'legacy',
         ?string $adultWeekdayPrice = null,
         ?string $adultWeekendPrice = null,
         public array $childBands = [],
+        public array $adultStayLengthBands = [],
     ) {
         if ($version < 1 || !in_array($mode, ['legacy', 'person'], true)) {
             throw new \InvalidArgumentException('Érvénytelen árképzési mód vagy verzió.');
@@ -40,6 +41,16 @@ final readonly class PersonPricingConfiguration
                 $covered[$age] = true;
             }
         }
+        $ranges = [];
+        foreach ($adultStayLengthBands as $band) {
+            if (!$band instanceof AdultStayLengthBand) { throw new \InvalidArgumentException('Érvénytelen felnőtt tartózkodási ársáv.'); }
+            if ($band->id !== 0 && isset($ids['adult'.$band->id])) { throw new \InvalidArgumentException('Egy tartózkodási ársáv csak egyszer szerepelhet.'); }
+            $ids['adult'.$band->id] = true;
+            if (!$band->active) { continue; }
+            $end = $band->maxNights ?? PHP_INT_MAX;
+            foreach ($ranges as [$from, $to]) { if ($band->minNights <= $to && $from <= $end) { throw new \InvalidArgumentException('Az aktív tartózkodási ársávok nem fedhetik át egymást.'); } }
+            $ranges[] = [$band->minNights, $end];
+        }
     }
 
     public function bandForAge(int $age): ChildPriceBand
@@ -48,5 +59,11 @@ final readonly class PersonPricingConfiguration
             if ($band->active && $age >= $band->minAge && $age <= $band->maxAge) { return $band; }
         }
         throw new MissingChildPriceBand('A megadott gyermekéletkorhoz nincs aktív ársáv.');
+    }
+
+    public function adultBandForNights(int $nights): ?AdultStayLengthBand
+    {
+        foreach ($this->adultStayLengthBands as $band) if ($band->matches($nights)) return $band;
+        return null;
     }
 }
