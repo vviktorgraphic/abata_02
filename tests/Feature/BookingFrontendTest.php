@@ -13,7 +13,7 @@ final class BookingFrontendTest extends TestCase
     {
         $root = dirname(__DIR__, 2);
         $template = (string) file_get_contents($root . '/templates/booking/index.php');
-        $javascript = (string) file_get_contents($root . '/public/assets/js/booking-calendar.js');
+        $javascript = (string) file_get_contents($root . '/public/static/js/booking-calendar.js');
 
         self::assertStringContainsString('Foglalás | A Bata', $template);
         self::assertStringContainsString('name="contact_name"', $template);

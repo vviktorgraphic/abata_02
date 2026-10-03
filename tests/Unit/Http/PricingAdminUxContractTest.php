@@ -30,7 +30,7 @@ final class PricingAdminUxContractTest extends TestCase
 
     public function testResponsiveCssConstrainsTheDocumentWithoutHidingOverflow(): void
     {
-        $css = (string) file_get_contents(dirname(__DIR__, 3) . '/public/assets/css/admin.css');
+        $css = (string) file_get_contents(dirname(__DIR__, 3) . '/public/static/css/admin.css');
         self::assertStringContainsString('* { box-sizing: border-box; }', $css);
         self::assertStringContainsString('.admin-page { width:100%; max-width:80rem; min-width:0;', $css);
         self::assertStringContainsString('.table-scroll { width:100%; max-width:100%; min-width:0; overflow-x:auto;', $css);

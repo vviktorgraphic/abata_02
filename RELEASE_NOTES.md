@@ -1,5 +1,9 @@
 # A Bata 1.0.0-rc2 release notes
 
+## Static path compatibility hotfix
+
+- A shared-hosting nginx `/assets/` tiltása miatt a publikus erőforrások `public/static/` alá kerültek, minden runtime HTML-hivatkozás `/static/...` útvonalat használ.
+
 ## RC2 Sprint 11 hardening
 
 - RC2 integration branch created without merging to `main`.

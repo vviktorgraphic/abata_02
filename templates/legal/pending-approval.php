@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex,nofollow">
     <title><?= htmlspecialchars($pageTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?> | A Bata</title>
-    <link rel="stylesheet" href="/assets/css/booking.css">
+    <link rel="stylesheet" href="/static/css/booking.css">
 </head>
 <body>
 <main class="booking-shell" data-legal-page="<?= htmlspecialchars($contentType, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">

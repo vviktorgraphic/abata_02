@@ -24,8 +24,8 @@ final class BrandingAuditTest extends TestCase
     public function testUiStylesAndHtmlEmailDeclareApprovedDesignTokens(): void
     {
         $paths = [
-            dirname(__DIR__, 2) . '/public/assets/css/booking.css',
-            dirname(__DIR__, 2) . '/public/assets/css/admin.css',
+            dirname(__DIR__, 2) . '/public/static/css/booking.css',
+            dirname(__DIR__, 2) . '/public/static/css/admin.css',
         ];
         $emailTemplates = glob(dirname(__DIR__, 2) . '/templates/email/*.html*');
         self::assertIsArray($emailTemplates);

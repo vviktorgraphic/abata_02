@@ -190,7 +190,7 @@ database/migrations/    verziózott SQL migrációk
 docker/php/             fejlesztői PHP–Apache image
 public/                 az egyetlen publikált web root
 templates/              szerveroldali HTML sablonok
-public/assets/          lokális, build nélküli CSS és JavaScript
+public/static/          lokális, build nélküli CSS és JavaScript
 src/Application/        alkalmazási use case-ek és repository interfészek
 src/Domain/             üzleti objektumok és domain service-ek
 src/Http/               routing és controllerek

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Válasszon szabad időpontot és állítsa össze foglalási igényét.">
     <title>Foglalás | A Bata</title>
-    <link rel="stylesheet" href="/assets/css/booking.css">
+    <link rel="stylesheet" href="/static/css/booking.css">
 </head>
 <body>
 <main class="booking-shell">
@@ -95,7 +95,7 @@
         </form>
     </section>
 </main>
-<script src="/assets/js/booking-calendar.js" defer></script>
+<script src="/static/js/booking-calendar.js" defer></script>
 </body>
 </html>
 

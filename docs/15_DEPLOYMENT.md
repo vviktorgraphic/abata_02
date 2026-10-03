@@ -20,6 +20,10 @@ Javasolt elrendezés, ahol `<account>` és `<release-id>` deployment érték:
 
 A domain document rootja kizárólag a release `public/` könyvtára vagy pontosan arra mutató támogatott symlink lehet. A `public/` fájljait tilos önmagukban `public_html` alá másolni: a front controller a szülő release könyvtárban keresi a `vendor/`, `config/`, `src/` és `templates/` elemeket. A `src/`, `config/`, `database/`, `vendor/`, `.env`, backup és log soha nem lehet a webroot alatt. Az alkalmazás jelenleg nem igényel feltöltési vagy cache könyvtárat, ezért a release kódnak nem kell írhatónak lennie. Írási jog csak a hosting által használt, webrooton kívüli session- és logkönyvtárhoz, illetve az operations runbook által kijelölt backup célhoz kell. Ne adj rekurzívan `777` jogot.
 
+### Statikus fájlok shared-hosting kompatibilitása
+
+Az aktuális shared-hosting nginx környezetben az `/assets/` útvonal foglalt és HTTP 403 választ ad. Az alkalmazás statikus fájljai ezért a `/static/` útvonalon érhetők el; a release-ben a `public/static/` könyvtárat kell publikálni.
+
 ## Első telepítés és release
 
 Az alábbi parancsok PowerShellből, SSH-n keresztül vagy a cPanel Terminalban azonos sorrendben futtathatók; a konkrét SSH hostot és elérési utat a szolgáltató adja meg.
