@@ -26,6 +26,6 @@ final class MysqldumpCapabilities
         if ($exitCode !== 0) {
             throw new \RuntimeException('mysqldump capability detection failed.');
         }
-        return self::supportsSetGtidPurged((string) $stdout . "\n" . (string) $stderr);
+        return self::supportsSetGtidPurgedFromHelp((string) $stdout . "\n" . (string) $stderr);
     }
 }
