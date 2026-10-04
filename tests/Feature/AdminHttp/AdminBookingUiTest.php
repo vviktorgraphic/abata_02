@@ -46,7 +46,8 @@ final class AdminBookingUiTest extends TestCase
         self::assertStringContainsString('Megnyitás<span class="sr-only">: AB-&lt;script&gt;</span>', $html);
         self::assertStringContainsString('href="/admin/bookings/AB-%3Cscript%3E"', $html);
         self::assertStringContainsString('3', $html);
-        self::assertStringContainsString('pending', $html);
+        self::assertStringContainsString('Függőben', $html);
+        self::assertStringContainsString('status-pending', $html);
         self::assertStringContainsString('2026-07-16 10:00:00', $html);
     }
 
