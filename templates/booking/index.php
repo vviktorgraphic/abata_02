@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="/static/css/booking.css">
 </head>
 <body>
+<header class="booking-brand"><a href="https://abata.hu/" target="_blank" rel="noopener noreferrer"><img src="/static/img/abata-logo.png" alt="A Bata"></a><a class="site-link" href="https://abata.hu/" target="_blank" rel="noopener noreferrer">Ugrás A Bata weboldalra</a></header>
 <main class="booking-shell">
     <section class="calendar-panel" aria-labelledby="booking-title">
         <p class="eyebrow">Közvetlen foglalási igény</p>

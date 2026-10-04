@@ -17,6 +17,10 @@ final class BookingFrontendTest extends TestCase
 
         self::assertStringContainsString('Foglalás | A Bata', $template);
         self::assertStringContainsString('name="contact_name"', $template);
+        self::assertStringContainsString('/static/img/abata-logo.png', $template);
+        self::assertStringContainsString('alt="A Bata"', $template);
+        self::assertStringContainsString('Ugrás A Bata weboldalra', $template);
+        self::assertStringContainsString('https://abata.hu/', $template);
         self::assertStringContainsString('name="privacy_accepted"', $template);
         self::assertStringContainsString('htmlspecialchars($privacyPolicyUrl', $template);
         self::assertStringContainsString('htmlspecialchars($bookingPolicyUrl', $template);

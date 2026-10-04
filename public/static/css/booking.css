@@ -113,3 +113,7 @@ form { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     form { grid-template-columns: 1fr; }
     .field, .full { grid-column: 1; }
 }
+.booking-brand { display:flex; align-items:center; justify-content:space-between; gap:1rem; max-width:1180px; margin:0 auto; padding:1rem 1.25rem; }
+.booking-brand img { display:block; width:88px; height:88px; object-fit:contain; }
+.site-link { display:inline-block; background:#19194B; color:#fff; border:2px solid #F0A236; border-radius:.5rem; padding:.7rem 1rem; font-weight:700; text-decoration:none; }
+@media (max-width:640px) { .booking-brand { align-items:flex-start; flex-direction:column; } .booking-brand img { width:72px; height:72px; } }

@@ -5,7 +5,7 @@ $notes = $data->notes === null || trim($data->notes) === '' ? 'Nincs megjegyzés
 ?>Új foglalási igény érkezett
 
 Referencia: <?= $data->reference ?>
-Állapot: pending
+Állapot: <?= \App\Presentation\BookingStatusLabel::for($data->status) ?>
 Név: <?= $data->contactName ?>
 E-mail: <?= $data->guestEmail !== '' ? $data->guestEmail : $data->recipient ?>
 Telefon: <?= $data->phone ?>
