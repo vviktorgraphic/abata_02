@@ -10,6 +10,7 @@ final readonly class HomeController
         private string $templateDirectory,
         private string $bookingPolicyUrl = '/foglalasi-szabalyzat',
         private string $privacyPolicyUrl = '/adatkezelesi_tajekoztato',
+        private string $houseRulesUrl = '/hazirend',
         private ?\Closure $readinessCheck = null,
     )
     {
@@ -20,6 +21,7 @@ final readonly class HomeController
     {
         $bookingPolicyUrl = $this->bookingPolicyUrl;
         $privacyPolicyUrl = $this->privacyPolicyUrl;
+        $houseRulesUrl = $this->houseRulesUrl;
         require $this->templateDirectory . '/booking/index.php';
     }
 

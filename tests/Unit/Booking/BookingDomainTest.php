@@ -67,6 +67,7 @@ final class BookingDomainTest extends TestCase
         yield 'unreasonable age' => ['child_ages', [18], 'child_ages'];
         yield 'privacy false' => ['privacy_accepted', false, 'privacy_accepted'];
         yield 'booking policy false' => ['booking_policy_accepted', false, 'booking_policy_accepted'];
+        yield 'house rules false' => ['house_rules_accepted', false, 'house_rules_accepted'];
         yield 'invalid phone' => ['phone', 'call-me', 'phone'];
         yield 'honeypot' => ['website', 'spam', 'website'];
         yield 'short key' => ['idempotency_key', 'short', 'idempotency_key'];
@@ -92,7 +93,7 @@ final class BookingDomainTest extends TestCase
     /** @return array<string, mixed> */
     private function payload(): array
     {
-        return ['arrival_date' => '2026-08-10', 'departure_date' => '2026-08-13', 'contact_name' => ' Teszt Elek ', 'email' => 'Teszt@example.test', 'phone' => '+36 1 234 5678', 'adults' => 2, 'children' => 1, 'child_ages' => [6], 'notes' => ' Csendes ', 'privacy_accepted' => true, 'booking_policy_accepted' => true, 'idempotency_key' => 'client-generated-value', 'website' => ''];
+        return ['arrival_date' => '2026-08-10', 'departure_date' => '2026-08-13', 'contact_name' => ' Teszt Elek ', 'email' => 'Teszt@example.test', 'phone' => '+36 1 234 5678', 'adults' => 2, 'children' => 1, 'child_ages' => [6], 'notes' => ' Csendes ', 'privacy_accepted' => true, 'booking_policy_accepted' => true, 'house_rules_accepted' => true, 'idempotency_key' => 'client-generated-value', 'website' => ''];
     }
 
     private function period(string $arrival, string $departure): BookingPeriod

@@ -25,6 +25,8 @@ final readonly class BookingPersistenceCommand
         public string $privacyAcceptedAt,
         public string $privacyPolicyVersion,
         public string $privacyPolicyUrl,
+        public string $houseRulesAcceptedAt = '',
+        public string $houseRulesUrl = '',
     ) {
         if (!preg_match('/^[a-f0-9]{64}$/', $requestHash)) {
             throw new \InvalidArgumentException('The canonical request hash must be a lowercase SHA-256 hex value.');

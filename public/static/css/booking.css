@@ -90,7 +90,8 @@ form { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .consent input { margin-top: 3px; accent-color: var(--color-accent); }
 .submit-button { display: flex; justify-content: space-between; border: 0; border-radius: 12px; padding: 17px 20px; color: var(--color-primary); background: var(--color-accent); cursor: pointer; font-weight: 800; }
 .submit-button:hover { filter: brightness(1.08); }
-.submit-button:disabled { cursor: wait; opacity: .72; }
+.submit-button:disabled { cursor: not-allowed; opacity: .72; }
+.submit-button[aria-busy="true"] { cursor: wait; }
 .notice { padding: 12px 15px; border-radius: 10px; color: var(--color-primary); background: var(--color-warning-soft); font-size: .86rem; line-height: 1.5; }
 .notice-error { margin-bottom: 18px; color: var(--color-error); background: var(--color-error-soft); }
 .notice-success { color: var(--color-success); background: var(--color-success-soft); }

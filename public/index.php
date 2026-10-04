@@ -61,10 +61,12 @@ foreach (App\Http\Controller\Admin\SecurityHeaders::transport(
 $router = new Router();
 $bookingPolicy = require dirname(__DIR__) . '/config/booking-policy.php';
 $privacyPolicy = require dirname(__DIR__) . '/config/privacy-policy.php';
+$houseRules = require dirname(__DIR__) . '/config/house-rules.php';
 $controller = new HomeController(
     dirname(__DIR__) . '/templates',
     $bookingPolicy['url'],
     $privacyPolicy['url'],
+    $houseRules['url'],
     static function (): bool {
         $pdo = ConnectionFactory::create(require dirname(__DIR__) . '/config/database.php');
         return (string) $pdo->query('SELECT 1')->fetchColumn() === '1';
@@ -264,6 +266,7 @@ $router->post('/api/bookings', static function () use ($bookingPolicy, $privacyP
             bookingPolicyVersion: $bookingPolicy['version'],
             privacyPolicyUrl: $privacyPolicy['url'],
             privacyPolicyVersion: $privacyPolicy['version'],
+            houseRulesUrl: $houseRules['url'],
         );
         $controller = new BookingCreateController(
             App\Domain\Booking\BookingCreateRequestValidator::forBudapestToday(

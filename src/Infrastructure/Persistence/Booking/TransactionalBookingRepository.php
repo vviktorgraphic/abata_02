@@ -324,12 +324,14 @@ final class TransactionalBookingRepository
                     (reference, status, arrival_date, departure_date, guest_name, guest_email,
                      guest_phone, adults, children, total_amount, currency, notes,
                      privacy_accepted_at, privacy_policy_version, privacy_policy_url,
-                     booking_policy_accepted_at, booking_policy_version, booking_policy_url)
+                     booking_policy_accepted_at, booking_policy_version, booking_policy_url,
+                     house_rules_accepted_at, house_rules_url)
                  VALUES
                     (:reference, \'pending\', :arrival, :departure, :name, :email,
                      :phone, :adults, :children, :total, :currency, :notes,
                      :privacy_accepted_at, :privacy_version, :privacy_url,
-                     :policy_accepted_at, :policy_version, :policy_url)'
+                     :policy_accepted_at, :policy_version, :policy_url,
+                     :house_rules_accepted_at, :house_rules_url)'
             );
             $booking->execute([
                 'reference' => $command->reference,
@@ -349,6 +351,8 @@ final class TransactionalBookingRepository
                 'policy_accepted_at' => $command->bookingPolicyAcceptedAt,
                 'policy_version' => $command->bookingPolicyVersion,
                 'policy_url' => $command->bookingPolicyUrl,
+                'house_rules_accepted_at' => $command->houseRulesAcceptedAt,
+                'house_rules_url' => $command->houseRulesUrl,
             ]);
             $bookingId = (int) $this->pdo->lastInsertId();
             ($this->transactionProbe ?? static fn (string $stage): null => null)('booking_inserted');
@@ -382,6 +386,19 @@ final class TransactionalBookingRepository
                 ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
             ]);
             ($this->transactionProbe ?? static fn (string $stage): null => null)('privacy_audit_inserted');
+
+            $houseRulesAudit = $this->pdo->prepare(
+                'INSERT INTO audit_logs
+                    (event_type, admin_id, target_type, target_id, outcome, metadata_json)
+                 VALUES (\'house_rules.accepted\', NULL, \'booking\', :target_id, \'success\', :metadata)'
+            );
+            $houseRulesAudit->execute([
+                'target_id' => (string) $bookingId,
+                'metadata' => json_encode([
+                    'booking_reference' => $command->reference,
+                    'house_rules_url' => $command->houseRulesUrl,
+                ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
+            ]);
 
             $child = $this->pdo->prepare(
                 'INSERT INTO booking_child_ages (booking_id, position, age)

@@ -18,6 +18,7 @@ final readonly class DefaultBookingCreateWorkflow implements BookingCreateWorkfl
         private string $bookingPolicyVersion,
         private string $privacyPolicyUrl,
         private string $privacyPolicyVersion,
+        private string $houseRulesUrl = '/hazirend',
     ) {
     }
 
@@ -42,6 +43,8 @@ final readonly class DefaultBookingCreateWorkflow implements BookingCreateWorkfl
             $acceptedAt,
             $this->privacyPolicyVersion,
             $this->privacyPolicyUrl,
+            $acceptedAt,
+            $this->houseRulesUrl,
         ), $this->pricing);
 
         // Persistence has committed before SMTP is attempted. A delivery failure

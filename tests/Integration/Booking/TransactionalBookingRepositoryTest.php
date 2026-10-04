@@ -63,7 +63,8 @@ final class TransactionalBookingRepositoryTest extends TestCase
         self::assertSame(1, $this->countBookingRows('booking_idempotency', $created->bookingId));
         $booking = $this->pdo->prepare(
             'SELECT booking_policy_accepted_at, booking_policy_version, booking_policy_url,
-                    privacy_accepted_at, privacy_policy_version, privacy_policy_url
+                    privacy_accepted_at, privacy_policy_version, privacy_policy_url,
+                    house_rules_accepted_at, house_rules_url
              FROM bookings WHERE id = :id'
         );
         $booking->execute(['id' => $created->bookingId]);
@@ -74,6 +75,8 @@ final class TransactionalBookingRepositoryTest extends TestCase
             'privacy_accepted_at' => '2040-01-01 12:00:00',
             'privacy_policy_version' => 'privacy-test-v1',
             'privacy_policy_url' => '/adatkezelesi_tajekoztato',
+            'house_rules_accepted_at' => '2040-01-01 12:00:00',
+            'house_rules_url' => 'https://abata.hu/abata_hazirend.pdf',
         ], $booking->fetch(PDO::FETCH_ASSOC));
         $audit = $this->pdo->prepare(
             "SELECT COUNT(*) FROM audit_logs
@@ -87,6 +90,9 @@ final class TransactionalBookingRepositoryTest extends TestCase
         );
         $privacyAudit->execute(['id' => (string) $created->bookingId]);
         self::assertSame(1, (int) $privacyAudit->fetchColumn());
+        $houseRulesAudit = $this->pdo->prepare("SELECT COUNT(*) FROM audit_logs WHERE event_type = 'house_rules.accepted' AND target_type = 'booking' AND target_id = :id");
+        $houseRulesAudit->execute(['id' => (string) $created->bookingId]);
+        self::assertSame(1, (int) $houseRulesAudit->fetchColumn());
     }
 
     public function testSameKeyWithDifferentPayloadIsRejected(): void
@@ -154,6 +160,8 @@ final class TransactionalBookingRepositoryTest extends TestCase
             '2040-01-01 12:00:00',
             'privacy-test-v1',
             '/adatkezelesi_tajekoztato',
+            '2040-01-01 12:00:00',
+            'https://abata.hu/abata_hazirend.pdf',
         );
 
         try {

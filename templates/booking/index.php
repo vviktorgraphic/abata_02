@@ -78,14 +78,9 @@
                 <label for="guest-notes">Megjegyzés <span>(opcionális)</span></label>
                 <textarea id="guest-notes" name="notes" rows="4" maxlength="2000"></textarea>
             </div>
-            <label class="consent full">
-                <input name="privacy_accepted" type="checkbox" required>
-                <span>Elolvastam és elfogadom az <a href="<?= htmlspecialchars($privacyPolicyUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" target="_blank" rel="noopener noreferrer">adatkezelési tájékoztatót</a>.</span>
-            </label>
-            <label class="consent full">
-                <input name="booking_policy_accepted" type="checkbox" required aria-describedby="booking-policy-error">
-                <span>Elolvastam és elfogadom a <a href="<?= htmlspecialchars($bookingPolicyUrl ?? '/foglalasi-szabalyzat', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" target="_blank" rel="noopener noreferrer">Foglalási szabályzatot</a>.</span>
-            </label>
+            <label class="consent full"><input name="privacy_accepted" type="checkbox" required><span>Elolvastam és elfogadom az <a href="<?= htmlspecialchars($privacyPolicyUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" target="_blank" rel="noopener noreferrer">Adatvédelmi irányelveket</a>.</span></label>
+            <label class="consent full"><input name="booking_policy_accepted" type="checkbox" required><span>Elolvastam és elfogadom a <a href="<?= htmlspecialchars($bookingPolicyUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" target="_blank" rel="noopener noreferrer">Foglalási szabályzatot</a>.</span></label>
+            <label class="consent full"><input name="house_rules_accepted" type="checkbox" required><span>Elolvastam és elfogadom a <a href="<?= htmlspecialchars($houseRulesUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" target="_blank" rel="noopener noreferrer">Házirendet</a>.</span></label>
             <span id="booking-policy-error" class="field-error full" data-error-for="booking_policy_accepted"></span>
             <input id="arrival-input" name="arrival_date" type="hidden">
             <input id="departure-input" name="departure_date" type="hidden">

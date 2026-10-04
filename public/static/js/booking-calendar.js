@@ -189,6 +189,7 @@
         payload.children = Number(payload.children);
         payload.privacy_accepted = formData.has('privacy_accepted');
         payload.booking_policy_accepted = formData.has('booking_policy_accepted');
+        payload.house_rules_accepted = formData.has('house_rules_accepted');
         payload.child_ages = formData.getAll('child_ages[]').map(Number);
         state.idempotencyKey ||= newIdempotencyKey();
         payload.idempotency_key = state.idempotencyKey;
@@ -204,6 +205,8 @@
             const result = await response.json().catch(() => ({}));
             if ((response.status === 200 || response.status === 201) && result.status === 'pending') {
                 state.bookingSaved = true;
+                submitLabel.textContent = 'Foglalási igény elküldve';
+                submitButton.removeAttribute('aria-busy');
                 const reference = result.reference ? ` Hivatkozás: ${result.reference}.` : '';
                 const total = result.formatted_total_amount ? ` Végösszeg: ${result.formatted_total_amount}.` : '';
                 if (result.email_status === 'failed') {

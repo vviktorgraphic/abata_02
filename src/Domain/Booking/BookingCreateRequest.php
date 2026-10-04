@@ -20,6 +20,7 @@ final readonly class BookingCreateRequest
         public string $notes,
         public bool $privacyAccepted,
         public bool $bookingPolicyAccepted,
+        public bool $houseRulesAccepted,
         public string $idempotencyKey,
     ) {
     }
@@ -44,6 +45,7 @@ final readonly class BookingCreateRequest
             'phone' => $this->phone,
             'privacy_accepted' => $this->privacyAccepted,
             'booking_policy_accepted' => $this->bookingPolicyAccepted,
+            'house_rules_accepted' => $this->houseRulesAccepted,
         ];
     }
 

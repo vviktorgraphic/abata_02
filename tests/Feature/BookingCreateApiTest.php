@@ -288,6 +288,7 @@ final class BookingCreateApiTest extends TestCase
             'phone' => '+3612345678', 'adults' => 2, 'children' => 1,
             'child_ages' => [6], 'notes' => '', 'privacy_accepted' => true,
             'booking_policy_accepted' => true,
+            'house_rules_accepted' => true,
             'idempotency_key' => 'client-generated-value-123', 'website' => '',
         ];
     }
