@@ -217,7 +217,7 @@ $router->post('/api/booking/validate', static function (): void {
         App\Http\JsonResponse::send(['valid' => false, 'error' => 'Az ellenőrzés átmenetileg nem érhető el.'], 500);
     }
 });
-$router->post('/api/bookings', static function () use ($bookingPolicy, $privacyPolicy): void {
+$router->post('/api/bookings', static function () use ($bookingPolicy, $privacyPolicy, $houseRules): void {
     try {
         $root = dirname(__DIR__);
         $pdo = ConnectionFactory::create(require $root . '/config/database.php');

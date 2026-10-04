@@ -55,4 +55,14 @@ final class BookingFrontendTest extends TestCase
             );
         }
     }
+
+    public function testPublicBookingRouteCapturesHouseRulesConfiguration(): void
+    {
+        $source = (string) file_get_contents(dirname(__DIR__, 2) . '/public/index.php');
+        self::assertStringContainsString(
+            "\$router->post('/api/bookings', static function () use (\$bookingPolicy, \$privacyPolicy, \$houseRules): void {",
+            $source,
+        );
+        self::assertStringContainsString("houseRulesUrl: \$houseRules['url']", $source);
+    }
 }
