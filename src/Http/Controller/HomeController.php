@@ -22,6 +22,11 @@ final readonly class HomeController
         $bookingPolicyUrl = $this->bookingPolicyUrl;
         $privacyPolicyUrl = $this->privacyPolicyUrl;
         $houseRulesUrl = $this->houseRulesUrl;
+        $publicRoot = dirname($this->templateDirectory) . '/public/static';
+        $assetVersion = static function (string $path) use ($publicRoot): string {
+            $mtime = @filemtime($publicRoot . '/' . $path);
+            return $mtime === false ? '0' : (string) $mtime;
+        };
         require $this->templateDirectory . '/booking/index.php';
     }
 

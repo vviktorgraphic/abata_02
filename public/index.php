@@ -178,6 +178,9 @@ $router->post('/admin/calendar/sources/{id}/sync', static fn (array $_query,arra
 $router->post('/admin/calendar/token/rotate', static fn () => $calendarPost(fn($form,$type,$length) => $admin()['calendar']->rotateToken($form,$type,$length)));
 $router->post('/admin/logout', static fn () => $admin()['logout']->submit($_POST, $context())->send());
 $router->get('/api/availability', static function (array $query): void {
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
+    header('Expires: 0');
     try {
         $root = dirname(__DIR__);
         $database = ConnectionFactory::create(require $root . '/config/database.php');
