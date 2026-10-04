@@ -49,6 +49,7 @@ $check('legal document URLs', static function () use ($root): void {
     require $root . '/config/booking-policy.php';
     require $root . '/config/house-rules.php';
 });
+$check('booking notification configuration', static function () use ($root): void { require $root . '/config/booking-notifications.php'; });
 $check('admin session configuration', static function () use ($root): void {
     $config = require $root . '/config/auth.php';
     if (($config['rate_limit_pepper'] ?? '') === '' || str_contains((string) $config['rate_limit_pepper'], '<')) {

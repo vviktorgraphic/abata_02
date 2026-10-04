@@ -14,12 +14,13 @@ final readonly class BookingRequestMailRenderer
 
     public function render(BookingRequestMailData $data): Message
     {
+        $owner = $data->messageType === 'booking_request_admin_notification';
         return new Message(
             $this->fromEmail,
             $data->recipient,
-            'A Bata – foglalási igény érkezett',
-            $this->renderTemplate('booking-request.txt.php', $data),
-            $this->renderTemplate('booking-request.html.php', $data),
+            $owner ? 'Új foglalási igény érkezett' : 'A Bata – Foglalását megkaptuk',
+            $this->renderTemplate($owner ? 'booking-admin-notification.txt.php' : 'booking-request.txt.php', $data),
+            $this->renderTemplate($owner ? 'booking-admin-notification.html.php' : 'booking-request.html.php', $data),
         );
     }
 

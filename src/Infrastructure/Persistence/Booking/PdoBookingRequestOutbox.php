@@ -14,7 +14,7 @@ final readonly class PdoBookingRequestOutbox implements BookingRequestOutbox
     {
     }
 
-    public function findForDelivery(int $bookingId): ?array
+    public function findForDelivery(int $bookingId, string $messageType = 'booking_request_received'): ?array
     {
         if ($this->pdo->inTransaction()) {
             throw new \LogicException('SMTP delivery must run after the booking transaction commits.');
@@ -26,7 +26,7 @@ final readonly class PdoBookingRequestOutbox implements BookingRequestOutbox
             'UPDATE email_outbox SET status = \'processing\'
              WHERE booking_id = :booking_id AND message_type = :message_type AND status = \'pending\''
         );
-        $claim->execute(['booking_id' => $bookingId, 'message_type' => 'booking_request_received']);
+        $claim->execute(['booking_id' => $bookingId, 'message_type' => $messageType]);
         if ($claim->rowCount() !== 1) {
             return null;
         }
@@ -36,7 +36,7 @@ final readonly class PdoBookingRequestOutbox implements BookingRequestOutbox
              WHERE booking_id = :booking_id AND message_type = :message_type AND status = \'processing\'
              LIMIT 1'
         );
-        $statement->execute(['booking_id' => $bookingId, 'message_type' => 'booking_request_received']);
+        $statement->execute(['booking_id' => $bookingId, 'message_type' => $messageType]);
         $row = $statement->fetch(PDO::FETCH_ASSOC);
         if ($row === false) {
             return null;
@@ -48,6 +48,10 @@ final readonly class PdoBookingRequestOutbox implements BookingRequestOutbox
             (string) $payload['arrival_date'], (string) $payload['departure_date'],
             (int) $payload['adults'], array_map('intval', $payload['child_ages']),
             (string) $payload['total'], (string) $payload['currency'],
+            (string) ($payload['contact_name'] ?? ''), (string) ($payload['phone'] ?? ''),
+            isset($payload['notes']) ? (string) $payload['notes'] : null,
+            (string) ($payload['status'] ?? 'pending'), (string) ($payload['admin_url'] ?? ''), $messageType,
+            (string) ($payload['guest_email'] ?? $row['recipient']),
         )];
     }
 

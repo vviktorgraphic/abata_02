@@ -16,6 +16,13 @@ final readonly class BookingRequestMailData
         public array $childAges,
         public string $totalAmount,
         public string $currency,
+        public string $contactName = '',
+        public string $phone = '',
+        public ?string $notes = null,
+        public string $status = 'pending',
+        public string $adminUrl = '',
+        public string $messageType = 'booking_request_received',
+        public string $guestEmail = '',
     ) {
     }
 

@@ -35,6 +35,7 @@ final class BookingFrontendTest extends TestCase
         self::assertStringContainsString('payload.idempotency_key = state.idempotencyKey', $javascript);
         self::assertStringContainsString("payload.booking_policy_accepted = formData.has('booking_policy_accepted')", $javascript);
         self::assertStringContainsString("payload.house_rules_accepted = formData.has('house_rules_accepted')", $javascript);
+        self::assertStringContainsString('A Bata – Foglalását megkaptuk', (string) file_get_contents($root . '/src/Application/Mail/BookingRequestMailRenderer.php'));
         self::assertStringContainsString('Foglalási igény elküldve', $javascript);
         self::assertStringContainsString("response.status === 409", $javascript);
         self::assertStringContainsString("result.email_status === 'failed'", $javascript);

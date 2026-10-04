@@ -7,7 +7,7 @@ namespace App\Application\Mail;
 interface BookingRequestOutbox
 {
     /** @return array{id: int, data: BookingRequestMailData}|null */
-    public function findForDelivery(int $bookingId): ?array;
+    public function findForDelivery(int $bookingId, string $messageType = 'booking_request_received'): ?array;
 
     public function markSent(int $outboxId): void;
 

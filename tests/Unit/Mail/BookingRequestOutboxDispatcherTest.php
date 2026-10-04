@@ -69,10 +69,10 @@ final class FakeBookingRequestOutbox implements BookingRequestOutbox
     /** @var list<array{int, string}> */ public array $failed = [];
     public int $bookingStillExists = 42;
 
-    public function findForDelivery(int $bookingId): ?array
+    public function findForDelivery(int $bookingId, string $messageType = 'booking_request_received'): ?array
     {
         if (!$this->deliverable) { return null; }
-        return ['id' => 7, 'data' => new BookingRequestMailData(
+        return $messageType !== 'booking_request_received' ? null : ['id' => 7, 'data' => new BookingRequestMailData(
             'guest@example.test', 'AB-42', '2027-08-10', '2027-08-13', 2, [6], '45000.00', 'HUF',
         )];
     }

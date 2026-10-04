@@ -27,6 +27,8 @@ final class TransactionalBookingRepository
         private readonly ?\Closure $transactionProbe = null,
         private readonly ?CancellationPolicy $cancellationPolicy = null,
         private readonly ?\Closure $clock = null,
+        private readonly ?string $bookingNotificationEmail = null,
+        private readonly ?string $bookingAdminBaseUrl = null,
     ) {
     }
 
@@ -433,6 +435,12 @@ final class TransactionalBookingRepository
                 'departure_date' => $command->departureDate,
                 'adults' => $command->adults,
                 'child_ages' => $command->childAges,
+                'contact_name' => $command->contactName,
+                'guest_email' => $command->email,
+                'phone' => $command->phone,
+                'notes' => $command->notes,
+                'status' => 'pending',
+                'admin_url' => $this->bookingAdminBaseUrl !== null ? $this->bookingAdminBaseUrl . '/' . rawurlencode($command->reference) : '',
                 'total' => $pricing->totalAmount,
                 'currency' => $pricing->currency,
             ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
@@ -445,9 +453,13 @@ final class TransactionalBookingRepository
             $outbox->execute([
                 'booking_id' => $bookingId,
                 'recipient' => $command->email,
-                'subject' => 'A Bata foglalási igény',
+                'subject' => 'A Bata – Foglalását megkaptuk',
                 'payload' => $outboxPayload,
             ]);
+            if ($this->bookingNotificationEmail !== null) {
+                $owner = $this->pdo->prepare('INSERT INTO email_outbox (booking_id, message_type, recipient, subject, payload, status) VALUES (:booking_id, \'booking_request_admin_notification\', :recipient, :subject, :payload, \'pending\')');
+                $owner->execute(['booking_id' => $bookingId, 'recipient' => $this->bookingNotificationEmail, 'subject' => 'Új foglalási igény érkezett', 'payload' => $outboxPayload]);
+            }
 
             $bindClaim = $this->pdo->prepare(
                 'UPDATE booking_idempotency SET booking_id = :booking_id WHERE id = :id'

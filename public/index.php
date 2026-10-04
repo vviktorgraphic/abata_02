@@ -62,6 +62,7 @@ $router = new Router();
 $bookingPolicy = require dirname(__DIR__) . '/config/booking-policy.php';
 $privacyPolicy = require dirname(__DIR__) . '/config/privacy-policy.php';
 $houseRules = require dirname(__DIR__) . '/config/house-rules.php';
+$bookingNotifications = require dirname(__DIR__) . '/config/booking-notifications.php';
 $controller = new HomeController(
     dirname(__DIR__) . '/templates',
     $bookingPolicy['url'],
@@ -217,7 +218,7 @@ $router->post('/api/booking/validate', static function (): void {
         App\Http\JsonResponse::send(['valid' => false, 'error' => 'Az ellenőrzés átmenetileg nem érhető el.'], 500);
     }
 });
-$router->post('/api/bookings', static function () use ($bookingPolicy, $privacyPolicy, $houseRules): void {
+$router->post('/api/bookings', static function () use ($bookingPolicy, $privacyPolicy, $houseRules, $bookingNotifications): void {
     try {
         $root = dirname(__DIR__);
         $pdo = ConnectionFactory::create(require $root . '/config/database.php');
@@ -258,7 +259,7 @@ $router->post('/api/bookings', static function () use ($bookingPolicy, $privacyP
             $smtp,
         ));
         $workflow = new DefaultBookingCreateWorkflow(
-            new TransactionalBookingRepository($pdo),
+            new TransactionalBookingRepository($pdo, bookingNotificationEmail: $bookingNotifications['email'], bookingAdminBaseUrl: $bookingNotifications['base_url']),
             new PdoPricingEngineAdapter($pdo),
             $outbox,
             clock: new BudapestBookingClock(),
