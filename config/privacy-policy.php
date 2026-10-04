@@ -9,7 +9,8 @@ $version = trim(getenv('PRIVACY_POLICY_VERSION') ?: '');
 if ($url === '') {
     throw new RuntimeException('PRIVACY_POLICY_URL is required.');
 }
-if ($version === '' || mb_strlen($version) > 100 || preg_match('/[\x00-\x1F\x7F]/', $version) === 1) {
+if ($version === '' || mb_strlen($version) > 100 || preg_match('/[\x00-\x1F\x7F]/', $version) === 1
+    || ($environment === 'production' && (str_contains($version, '<') || str_contains($version, '>')))) {
     throw new RuntimeException('PRIVACY_POLICY_VERSION is required and must be at most 100 characters.');
 }
 

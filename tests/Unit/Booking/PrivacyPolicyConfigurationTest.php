@@ -36,4 +36,21 @@ final class PrivacyPolicyConfigurationTest extends TestCase
         $this->expectException(RuntimeException::class);
         require dirname(__DIR__, 3) . '/config/privacy-policy.php';
     }
+
+    public function testRejectsProductionPlaceholderVersion(): void
+    {
+        putenv('APP_ENV=production');
+        putenv('PRIVACY_POLICY_URL=https://abata.hu/adatkezelesi_tajekoztato/');
+        putenv('PRIVACY_POLICY_VERSION=<approved-legal-version>');
+        $this->expectException(RuntimeException::class);
+        require dirname(__DIR__, 3) . '/config/privacy-policy.php';
+    }
+
+    public function testAcceptsPublishedProductionVersion(): void
+    {
+        putenv('APP_ENV=production');
+        putenv('PRIVACY_POLICY_URL=https://abata.hu/adatkezelesi_tajekoztato/');
+        putenv('PRIVACY_POLICY_VERSION=2018-09-10');
+        self::assertSame('2018-09-10', (require dirname(__DIR__, 3) . '/config/privacy-policy.php')['version']);
+    }
 }

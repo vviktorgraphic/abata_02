@@ -9,8 +9,12 @@ $version = trim(getenv('BOOKING_POLICY_VERSION') ?: '');
 if ($url === '') {
     throw new RuntimeException('BOOKING_POLICY_URL is required.');
 }
-if ($version === '' || mb_strlen($version) > 100 || preg_match('/[\x00-\x1F\x7F]/', $version) === 1) {
+if ($version === '' || mb_strlen($version) > 100 || preg_match('/[\x00-\x1F\x7F]/', $version) === 1
+    || ($environment === 'production' && (str_contains($version, '<') || str_contains($version, '>')))) {
     throw new RuntimeException('BOOKING_POLICY_VERSION is required and must be at most 100 characters.');
+}
+if (str_starts_with($version, 'sha256:') && preg_match('/^sha256:[0-9a-f]{64}$/', $version) !== 1) {
+    throw new RuntimeException('BOOKING_POLICY_VERSION sha256 fingerprints must contain exactly 64 lowercase hexadecimal characters.');
 }
 
 $relative = preg_match('#^/(?!/)[^\x00-\x20\\\\]*$#u', $url) === 1;

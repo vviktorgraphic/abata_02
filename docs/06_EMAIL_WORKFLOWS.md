@@ -11,7 +11,7 @@ Ez a dokumentum az 1.0 tranzakciós e-mail folyamatait tervezi. Kapcsolódó dok
 
 **IMPLEMENTED Sprint 3:** `Mailer` port, strukturált `Message`, HTML/plain-text 2FA sablonrenderer, tesztelhető in-memory mailer és socket-alapú SMTP adapter. Az adapter Mailpithez plain SMTP-t, production konfigurációhoz titkosítást és opcionális authentikációt támogat; a PHP `mail()` függvényét nem használja. Transporthiba nem adja vissza a provider nyers válaszát, így credential vagy PII nem kerül kivételszövegbe.
 
-**IMPLEMENTED:** booking request és confirmed/rejected/cancelled outbox, commit utáni SMTP, valamint sikertelen státuszlevél védett admin újraküldése. **PLANNED:** automatikus retry worker, stale claim reclaim, provider-idempotencia és bounce/complaint kezelés.
+**IMPLEMENTED:** booking request és confirmed/rejected/cancelled outbox, commit utáni SMTP, valamint sikertelen státuszlevél védett admin újraküldése. Az új public booking két független request üzenetet queue-z: `booking_request_received` a vendégnek (`A Bata – Foglalását megkaptuk`) és `booking_request_admin_notification` a `BOOKING_NOTIFICATION_EMAIL` címre (`Új foglalási igény érkezett`). A második levél a konfigurált `BOOKING_ADMIN_BASE_URL` alatt védett admin booking-linket tartalmazza. A két rekord külön claimelhető és küldhető; replay/idempotens újraküldés nem hoz létre és nem küld új példányt. **PLANNED:** automatikus retry worker, stale claim reclaim, provider-idempotencia és bounce/complaint kezelés.
 
 **DECISION REQUIRED:** a production host tulajdonosi értéke `s54.tarhely.com`, de a port, TLS mód, authentikáció, felhasználónév, feladó cím és reply-to továbbra is nyitott. Ezek hiányában production SMTP smoke nem tekinthető teljesítettnek.
 

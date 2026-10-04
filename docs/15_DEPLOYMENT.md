@@ -6,6 +6,19 @@
 
 A deploy csak jóváhagyott jogi tartalommal, ellenőrzött backupból visszaállási lehetőséggel, hitelesített SMTP-vel és működő HTTPS-sel végezhető el. A repository nem tartalmaz production credentialt. A `.env.production.example` kizárólag mezőleltár: minden `<...>` értéket a hosting secret store-ban kell kitölteni.
 
+### Jogi dokumentumverziók
+
+Productionben a privacy policy azonosítója `PRIVACY_POLICY_VERSION=2018-09-10`. A foglalási szabályzatnak nincs tulajdonostól kapott emberi verziója, ezért a ténylegesen közzétett PDF bájtjainak fingerprintje szükséges. Deploy előtt futtasd:
+
+```powershell
+curl.exe -fsSL 'https://abata.hu/abata_foglalasi_szabalyzat.pdf' -o .\booking-policy.pdf
+$hash = (Get-FileHash .\booking-policy.pdf -Algorithm SHA256).Hash.ToLowerInvariant()
+"BOOKING_POLICY_VERSION=sha256:$hash"
+Remove-Item .\booking-policy.pdf
+```
+
+Az így kapott sort másold a hosting secret store production `.env` értékébe. A preflight productionben elutasítja az angle-bracket helyőrzőket és a hibás SHA-256 fingerprintet; a repositoryban nem szerepelhet a valódi production `.env`.
+
 Követelmény: PHP 8.2 vagy újabb 8.x (productionen jelenleg PHP 8.3 tesztelt), Composer 2, MySQL 8.0 vagy MariaDB 10.6, Apache `mod_rewrite`, valamint PHP `pdo`, `pdo_mysql`, `mbstring`, `curl` és `openssl`. A migrációs mátrix mindkét adatbázis-motoron fut. Ajánlott production PHP-beállítás: `display_errors=Off`, `log_errors=On`, `expose_php=Off`, `session.use_strict_mode=1`. A szolgáltató által kezelt hibanapló és session könyvtár nem lehet weben elérhető.
 
 ## Könyvtárak és document root

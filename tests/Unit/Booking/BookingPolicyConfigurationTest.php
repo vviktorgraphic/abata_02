@@ -57,4 +57,30 @@ final class BookingPolicyConfigurationTest extends TestCase
         $this->expectException(RuntimeException::class);
         require dirname(__DIR__, 3) . '/config/booking-policy.php';
     }
+
+    public function testAcceptsValidSha256Fingerprint(): void
+    {
+        putenv('APP_ENV=production');
+        putenv('BOOKING_POLICY_URL=https://abata.hu/abata_foglalasi_szabalyzat.pdf');
+        putenv('BOOKING_POLICY_VERSION=sha256:' . str_repeat('a', 64));
+        self::assertSame(71, strlen((require dirname(__DIR__, 3) . '/config/booking-policy.php')['version']));
+    }
+
+    public function testRejectsMalformedSha256Fingerprint(): void
+    {
+        putenv('APP_ENV=production');
+        putenv('BOOKING_POLICY_URL=https://abata.hu/abata_foglalasi_szabalyzat.pdf');
+        putenv('BOOKING_POLICY_VERSION=sha256:' . str_repeat('A', 64));
+        $this->expectException(RuntimeException::class);
+        require dirname(__DIR__, 3) . '/config/booking-policy.php';
+    }
+
+    public function testRejectsProductionPlaceholderVersion(): void
+    {
+        putenv('APP_ENV=production');
+        putenv('BOOKING_POLICY_URL=https://abata.hu/abata_foglalasi_szabalyzat.pdf');
+        putenv('BOOKING_POLICY_VERSION=<approved-legal-version>');
+        $this->expectException(RuntimeException::class);
+        require dirname(__DIR__, 3) . '/config/booking-policy.php';
+    }
 }
