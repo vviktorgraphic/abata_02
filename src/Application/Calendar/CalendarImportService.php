@@ -84,6 +84,13 @@ final readonly class CalendarImportService
             foreach ($calendar->events as $event) {
                 try {
                     [$start, $end] = $this->calendarDates($event);
+                    // Szallas.hu publishes a provider-level availability marker for
+                    // periods where it has no reservation data. It is not an
+                    // occupancy event and must never become a public block. Passing
+                    // it through the existing cancellation/removal lifecycle also
+                    // repairs an older, already-imported placeholder block.
+                    $cancelled = $event->status === 'CANCELLED'
+                        || $this->isProviderAvailabilityPlaceholder((string) $source['provider'], $event->summary);
                     $result = $this->events->importEvent(
                         $sourceId,
                         $event->uid,
@@ -93,7 +100,7 @@ final readonly class CalendarImportService
                         $end,
                         $this->payloadHash($event, $start, $end),
                         $this->clock->now(),
-                        $event->status === 'CANCELLED',
+                        $cancelled,
                     );
                     if ($result->outcome === ImportedEventPersistenceResult::BLOCKED) {
                         $result->updated ? ++$updated : ++$imported;
@@ -134,6 +141,16 @@ final readonly class CalendarImportService
     private function fingerprint(string $uid): string
     {
         return substr(hash('sha256', $uid), 0, 12);
+    }
+
+    private function isProviderAvailabilityPlaceholder(string $provider, string $summary): bool
+    {
+        if ($provider !== 'szallas_hu') {
+            return false;
+        }
+
+        $normalized = preg_replace('/\\s+/u', ' ', trim(mb_strtolower($summary, 'UTF-8')));
+        return $normalized === 'szallas.hu (not available)';
     }
 
     /** @return array{DateTimeImmutable, DateTimeImmutable} */

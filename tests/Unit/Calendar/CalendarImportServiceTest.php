@@ -59,6 +59,31 @@ final class CalendarImportServiceTest extends TestCase
         self::assertCount(1, $events->calls);
     }
 
+    public function testSzallasHuAvailabilityPlaceholderUsesRemovalLifecycle(): void
+    {
+        $events = new FakeImportEvents([ImportedEventPersistenceResult::REMOVED]);
+        $body = $this->feed([
+            $this->eventWithSummary('placeholder', '20270101', '20271201', '  SZALLAS.HU   (Not Available)  '),
+        ]);
+
+        $result = $this->service(new FakeImportSources($this->source('szallas_hu')), new FakeImportLogs(), $events, $body)->import(4);
+
+        self::assertSame('success', $result->status);
+        self::assertTrue($events->calls[0]['cancelled']);
+    }
+
+    public function testNotAvailableFromAnotherProviderIsNotSuppressed(): void
+    {
+        $events = new FakeImportEvents([ImportedEventPersistenceResult::BLOCKED]);
+        $body = $this->feed([
+            $this->eventWithSummary('google-unavailable', '20270101', '20270102', 'Not available'),
+        ]);
+
+        $this->service(new FakeImportSources($this->source('google_calendar')), new FakeImportLogs(), $events, $body)->import(4);
+
+        self::assertFalse($events->calls[0]['cancelled']);
+    }
+
     public function testUtcDateTimeAcrossBudapestDstFallbackBlocksTheExactLocalCalendarDay(): void
     {
         $events = new FakeImportEvents([ImportedEventPersistenceResult::BLOCKED]);
@@ -129,8 +154,13 @@ final class CalendarImportServiceTest extends TestCase
     private function feed(array $events): string { return "BEGIN:VCALENDAR\r\nVERSION:2.0\r\n" . implode('', $events) . "END:VCALENDAR\r\n"; }
     private function event(string $uid, string $start, string $end, bool $allDay = true): string
     {
+        return $this->eventWithSummary($uid, $start, $end, 'Reserved', $allDay);
+    }
+
+    private function eventWithSummary(string $uid, string $start, string $end, string $summary, bool $allDay = true): string
+    {
         $type = $allDay ? ';VALUE=DATE' : '';
-        return "BEGIN:VEVENT\r\nUID:{$uid}\r\nDTSTART{$type}:{$start}\r\nDTEND{$type}:{$end}\r\nSUMMARY:Reserved\r\nEND:VEVENT\r\n";
+        return "BEGIN:VEVENT\r\nUID:{$uid}\r\nDTSTART{$type}:{$start}\r\nDTEND{$type}:{$end}\r\nSUMMARY:{$summary}\r\nEND:VEVENT\r\n";
     }
 }
 

@@ -183,7 +183,7 @@ final class CalendarPersistenceTest extends TestCase
 
         $first = $service->import($sourceId);
         self::assertSame('success', $first->status);
-        self::assertSame(3, $first->imported);
+        self::assertSame(2, $first->imported);
         self::assertSame(0, $first->duplicates);
 
         $statement = $this->pdo->prepare(
@@ -194,28 +194,33 @@ final class CalendarPersistenceTest extends TestCase
         );
         $statement->execute(['source_id' => $sourceId]);
         $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
-        self::assertCount(3, $rows);
+        self::assertCount(2, $rows);
         self::assertSame([
             ['2026-08-07', '2026-08-09'],
             ['2026-08-24', '2026-08-26'],
-            ['2027-01-01', '2027-12-01'],
         ], array_map(static fn (array $row): array => [$row['start_date'], $row['end_date']], $rows));
         foreach ($rows as $row) {
             self::assertStringContainsString('@szallas.example', $row['external_uid']);
             self::assertSame(1, (int) $row['is_active']);
             $this->blockedPeriodIds[] = (int) $row['blocked_period_id'];
         }
+        $placeholder = $this->pdo->prepare(
+            'SELECT status, blocked_period_id FROM external_calendar_events
+             WHERE calendar_source_id = :source_id AND external_uid = :uid'
+        );
+        $placeholder->execute(['source_id' => $sourceId, 'uid' => 'generic-unavailable-3@szallas.example']);
+        self::assertSame(['status' => 'removed', 'blocked_period_id' => null], $placeholder->fetch(PDO::FETCH_ASSOC));
 
         $second = $service->import($sourceId);
         self::assertSame('success', $second->status);
         self::assertSame(0, $second->imported);
-        self::assertSame(3, $second->duplicates);
+        self::assertSame(2, $second->duplicates);
         $statement->execute(['source_id' => $sourceId]);
-        self::assertCount(3, $statement->fetchAll());
+        self::assertCount(2, $statement->fetchAll());
 
         $latestLogs = $logs->recent($sourceId, 2);
         self::assertSame('success', $latestLogs[1]['status']);
-        self::assertSame(3, (int) $latestLogs[1]['imported_count']);
+        self::assertSame(2, (int) $latestLogs[1]['imported_count']);
         self::assertSame([], json_decode($latestLogs[1]['warnings_json'], true, flags: JSON_THROW_ON_ERROR));
         self::assertSame([], json_decode($latestLogs[1]['errors_json'], true, flags: JSON_THROW_ON_ERROR));
 
