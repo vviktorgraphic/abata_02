@@ -21,8 +21,8 @@ final class BookingFrontendTest extends TestCase
         self::assertStringContainsString('alt="A Bata"', $template);
         self::assertStringContainsString('Ugrás A Bata weboldalra', $template);
         self::assertStringContainsString('https://abata.hu/', $template);
-        self::assertStringContainsString('/static/css/booking.css?v=', $template);
-        self::assertStringContainsString('/static/js/booking-calendar.js?v=', $template);
+        self::assertStringContainsString('/static/css/booking.539ed48318b9.css', $template);
+        self::assertStringContainsString('/static/js/booking-calendar.0b9c5031b059.js', $template);
         self::assertStringContainsString("cache: 'no-store'", $javascript);
         self::assertStringContainsString('name="privacy_accepted"', $template);
         self::assertStringContainsString('htmlspecialchars($privacyPolicyUrl', $template);

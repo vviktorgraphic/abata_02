@@ -63,6 +63,7 @@ final class DeploymentArtifactsTest extends TestCase
         self::assertStringContainsString("Join-Path \$payload 'tests'", $script);
         self::assertStringNotContainsString('Compress-Archive', $script);
         self::assertStringContainsString('public/static', $this->read('docs/15_DEPLOYMENT.md'));
+        self::assertStringContainsString('fingerprinted booking CSS', $this->read('tools/Verify-ReleasePackage.ps1'));
     }
 
     public function testMigrationCompatibilityArtifactsCoverBothSupportedEngines(): void

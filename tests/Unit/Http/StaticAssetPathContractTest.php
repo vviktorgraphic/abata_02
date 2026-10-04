@@ -17,8 +17,8 @@ final class StaticAssetPathContractTest extends TestCase
         (new HomeController(dirname(__DIR__, 3) . '/templates', '/foglalasi-szabalyzat', '/privacy'))->index();
         $html = (string) ob_get_clean();
 
-        self::assertStringContainsString('href="/static/css/booking.css"', $html);
-        self::assertStringContainsString('src="/static/js/booking-calendar.js"', $html);
+        self::assertMatchesRegularExpression('#href="/static/css/booking\.[0-9a-f]{12}\.css"#', $html);
+        self::assertMatchesRegularExpression('#src="/static/js/booking-calendar\.[0-9a-f]{12}\.js"#', $html);
         self::assertStringNotContainsString('/assets/', $html);
     }
 
