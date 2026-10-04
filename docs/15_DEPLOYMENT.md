@@ -21,6 +21,10 @@ Az így kapott sort másold a hosting secret store production `.env` értékébe
 
 A public booking két külön outbox üzenetet hoz létre: a vendégnek `booking_request_received`, az ownernek `booking_request_admin_notification`. Productionben a címzett `BOOKING_NOTIFICATION_EMAIL=foglalas@abata.hu`, az admin link alapja `BOOKING_ADMIN_BASE_URL=https://foglalas.abata.hu/admin/bookings`; az üzenetek külön claimelhetők és idempotens replay esetén nem duplikálódnak.
 
+### Candidate release tesztelése
+
+A release csomagból a `.env*` és a tesztek szándékosan kimaradnak. Szerveroldali jelölt-ellenőrzéshez ideiglenesen másold fel a `tests/`, `.env.example` és `.env.production.example` fájlokat, majd futtasd `vendor/bin/phpunit tests/Unit tests/Feature`; teljes suite esetén adatbázis-konfiguráció nélkül az integrációs teszteknek skipelniük kell. Ezután töröld a három ideiglenes forrást és `.phpunit.cache` könyvtárat, telepíts `composer install --no-dev` parancsot, és csak ezután add meg a valódi production `.env` fájlt. PHPUnit nem futhat production adatbázison.
+
 Követelmény: PHP 8.2 vagy újabb 8.x (productionen jelenleg PHP 8.3 tesztelt), Composer 2, MySQL 8.0 vagy MariaDB 10.6, Apache `mod_rewrite`, valamint PHP `pdo`, `pdo_mysql`, `mbstring`, `curl` és `openssl`. A migrációs mátrix mindkét adatbázis-motoron fut. Ajánlott production PHP-beállítás: `display_errors=Off`, `log_errors=On`, `expose_php=Off`, `session.use_strict_mode=1`. A szolgáltató által kezelt hibanapló és session könyvtár nem lehet weben elérhető.
 
 ## Könyvtárak és document root

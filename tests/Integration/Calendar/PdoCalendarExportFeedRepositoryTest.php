@@ -15,13 +15,16 @@ final class PdoCalendarExportFeedRepositoryTest extends TestCase
 
     protected function setUp(): void
     {
+        if (getenv('DB_HOST') === false) {
+            self::markTestSkipped('Database environment is not configured.');
+        }
         $this->pdo = ConnectionFactory::create(require dirname(__DIR__, 3) . '/config/database.php');
         $this->pdo->beginTransaction();
     }
 
     protected function tearDown(): void
     {
-        if ($this->pdo->inTransaction()) {
+        if (isset($this->pdo) && $this->pdo->inTransaction()) {
             $this->pdo->rollBack();
         }
     }
