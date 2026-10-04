@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Válasszon szabad időpontot és állítsa össze foglalási igényét.">
     <title>Foglalás | A Bata</title>
-    <link rel="stylesheet" href="/static/css/booking.css">
+    <link rel="stylesheet" href="/static/css/booking.css?v=<?= htmlspecialchars($assetVersion('css/booking.css'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
 </head>
 <body>
 <header class="booking-brand"><a href="https://abata.hu/" target="_blank" rel="noopener noreferrer"><img src="/static/img/abata-logo.png" alt="A Bata"></a><a class="site-link" href="https://abata.hu/" target="_blank" rel="noopener noreferrer">Ugrás A Bata weboldalra</a></header>
@@ -65,7 +65,7 @@
             <div class="field">
                 <label for="adult-count">Felnőttek</label>
                 <select id="adult-count" name="adults">
-                    <option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option>
+                    <option>1</option><option selected>2</option><option>3</option><option>4</option>
                 </select>
             </div>
             <div class="field">
@@ -91,7 +91,7 @@
         </form>
     </section>
 </main>
-<script src="/static/js/booking-calendar.js" defer></script>
+<script src="/static/js/booking-calendar.js?v=<?= htmlspecialchars($assetVersion('js/booking-calendar.js'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" defer></script>
 </body>
 </html>
 

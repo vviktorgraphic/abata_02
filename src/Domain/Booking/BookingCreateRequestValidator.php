@@ -9,13 +9,15 @@ use DateTimeZone;
 
 final readonly class BookingCreateRequestValidator
 {
+    public const MAX_TOTAL_GUESTS = 4;
+
     public function __construct(
         private DateTimeImmutable $today,
         private int $minimumNights = 1,
         private int $maximumNights = 30,
         private int $bookingHorizonDays = 365,
-        private int $maximumAdults = 6,
-        private int $maximumChildren = 4,
+        private int $maximumAdults = self::MAX_TOTAL_GUESTS,
+        private int $maximumChildren = self::MAX_TOTAL_GUESTS,
         private int $maximumNotesLength = 2000,
     ) {
     }
@@ -55,6 +57,15 @@ final readonly class BookingCreateRequestValidator
         $children = $this->integer($payload['children'] ?? null);
         if ($children === null || $children < 0 || $children > $this->maximumChildren) {
             $errors['children'] = sprintf('A gyermekek száma 0 és %d között lehet.', $this->maximumChildren);
+        }
+
+        if ($adults !== null && $children !== null && $adults >= 1 && $children >= 0
+            && $adults <= $this->maximumAdults && $children <= $this->maximumChildren
+            && $adults + $children > self::MAX_TOTAL_GUESTS) {
+            $errors['guests'] = sprintf(
+                'A szállás maximális befogadóképessége %d fő, a gyermekeket is beleszámítva.',
+                self::MAX_TOTAL_GUESTS,
+            );
         }
 
         $childAges = $payload['child_ages'] ?? [];

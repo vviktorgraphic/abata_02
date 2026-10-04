@@ -41,6 +41,44 @@ final class BookingDomainTest extends TestCase
         self::assertMatchesRegularExpression('/^[a-f0-9]{64}$/', $first->canonicalHash());
     }
 
+    #[DataProvider('validCapacities')]
+    public function testTotalCapacityIncludesChildren(int $adults, int $children): void
+    {
+        $payload = $this->payload();
+        $payload['adults'] = $adults;
+        $payload['children'] = $children;
+        $payload['child_ages'] = array_fill(0, $children, 6);
+
+        self::assertSame($adults, $this->validator->validate($payload)->adults);
+    }
+
+    /** @return iterable<string, array{int, int}> */
+    public static function validCapacities(): iterable
+    {
+        yield 'four adults' => [4, 0];
+        yield 'three adults one child' => [3, 1];
+        yield 'two adults two children' => [2, 2];
+        yield 'one adult three children' => [1, 3];
+    }
+
+    public function testTotalCapacityRejectsFivePeopleIncludingChildren(): void
+    {
+        $payload = $this->payload();
+        $payload['adults'] = 3;
+        $payload['children'] = 2;
+        $payload['child_ages'] = [6, 10];
+
+        try {
+            $this->validator->validate($payload);
+            self::fail('Validation should have failed.');
+        } catch (BookingValidationFailed $exception) {
+            self::assertSame(
+                'A szállás maximális befogadóképessége 4 fő, a gyermekeket is beleszámítva.',
+                $exception->errors()['guests'],
+            );
+        }
+    }
+
     #[DataProvider('invalidPayloads')]
     public function testInvalidBusinessInputIsRejected(string $field, mixed $value, string $expectedError): void
     {

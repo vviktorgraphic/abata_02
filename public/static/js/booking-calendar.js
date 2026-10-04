@@ -14,6 +14,7 @@
         available: 'szabad', occupied: 'foglalt', departure_only: 'távozási nap, érkezés lehetséges',
         arrival_only: 'érkezési nap', turnover: 'távozás és érkezés', blocked: 'lezárt', past: 'múltbeli'
     };
+    const MAX_TOTAL_GUESTS = 4;
 
     function startOfMonth(date) { return new Date(date.getFullYear(), date.getMonth(), 1); }
     function addMonths(date, amount) { return new Date(date.getFullYear(), date.getMonth() + amount, 1); }
@@ -36,7 +37,7 @@
         const from = iso(state.month);
         const to = iso(addMonths(state.month, 2));
         try {
-            const response = await fetch(`/api/availability?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { headers: { Accept: 'application/json' } });
+            const response = await fetch(`/api/availability?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { headers: { Accept: 'application/json' }, cache: 'no-store' });
             const payload = await response.json();
             if (!response.ok) throw new Error(payload.error || 'A naptár nem tölthető be.');
             payload.days.forEach(day => state.days.set(day.date, day));
@@ -134,16 +135,47 @@
     });
     clearButton.addEventListener('click', () => { state.arrival = null; state.departure = null; state.idempotencyKey = null; errorBox.hidden = true; render(); });
 
-    document.querySelector('#child-count').addEventListener('change', event => {
-        const container = document.querySelector('#child-ages');
-        container.replaceChildren();
-        for (let index = 1; index <= Number(event.target.value); index++) {
+    const adultCount = document.querySelector('#adult-count');
+    const childCount = document.querySelector('#child-count');
+    const childAges = document.querySelector('#child-ages');
+
+    function renderChildAgeFields() {
+        childAges.replaceChildren();
+        for (let index = 1; index <= Number(childCount.value); index++) {
             const wrapper = document.createElement('div'); wrapper.className = 'field';
             const label = document.createElement('label'); label.htmlFor = `child-age-${index}`; label.textContent = `${index}. gyermek életkora`;
             const input = document.createElement('input'); input.id = `child-age-${index}`; input.name = 'child_ages[]'; input.type = 'number'; input.min = '0'; input.max = '17'; input.required = true;
-            wrapper.append(label, input); container.append(wrapper);
+            wrapper.append(label, input); childAges.append(wrapper);
         }
+    }
+
+    function syncGuestSelectors(changed) {
+        let adults = Number(adultCount.value) || 1;
+        let children = Number(childCount.value) || 0;
+        const maximumChildren = Math.max(0, MAX_TOTAL_GUESTS - adults);
+        if (changed === 'adults' && children > maximumChildren) {
+            children = maximumChildren;
+            childCount.value = String(children);
+            renderChildAgeFields();
+        }
+        Array.from(childCount.options).forEach(option => {
+            option.disabled = Number(option.value) > maximumChildren;
+        });
+        Array.from(adultCount.options).forEach(option => {
+            option.disabled = Number(option.value) > MAX_TOTAL_GUESTS - children;
+        });
+        if (adults + children > MAX_TOTAL_GUESTS) {
+            adults = Math.max(1, MAX_TOTAL_GUESTS - children);
+            adultCount.value = String(adults);
+        }
+    }
+
+    adultCount.addEventListener('change', () => syncGuestSelectors('adults'));
+    childCount.addEventListener('change', () => {
+        syncGuestSelectors('children');
+        renderChildAgeFields();
     });
+    syncGuestSelectors();
 
     const bookingForm = document.querySelector('#booking-form');
     const submitButton = document.querySelector('#booking-submit');
