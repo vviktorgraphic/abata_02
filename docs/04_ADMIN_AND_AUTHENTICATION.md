@@ -1,5 +1,7 @@
 # Adminfelület és hitelesítés
 
+> **Aktuális RC2 kiegészítés:** [occupancy áradmin, IFA és díjbekérő](22_OCCUPANCY_IFA_AND_PAYMENT_REQUEST.md). Pending foglalás megerősítéséhez sikeresen elküldött díjbekérő szükséges; az elutasítás és érvénytelenítés továbbra is elérhető. Az alábbi person-admin workflow korábbi sprintállapot.
+
 > **RC2 státusz:** az e-mailes 2FA és session strict mode enforcement IMPLEMENTED; valós SMTP/cPanel smoke production gate.
 
 **Állapot:** auth, booking management, pricing és iCal adminfelület IMPLEMENTED; kézi booking, settings és kereshető audit UI PLANNED

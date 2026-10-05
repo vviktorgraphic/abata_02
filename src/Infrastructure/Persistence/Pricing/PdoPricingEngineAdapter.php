@@ -73,7 +73,7 @@ final readonly class PdoPricingEngineAdapter implements BookingPricingProvider, 
     private function occupancyConfiguration(PDO $pdo): ?OccupancyPricingConfiguration
     {
         try {
-            $configuration = $pdo->query('SELECT version, one_night_surcharge FROM occupancy_pricing_configuration WHERE id = 1')->fetch(PDO::FETCH_ASSOC);
+            $configuration = $pdo->query('SELECT version, one_night_surcharge, tourism_tax_per_person_per_night FROM occupancy_pricing_configuration WHERE id = 1')->fetch(PDO::FETCH_ASSOC);
             if ($configuration === false) return null;
             $bands = [];
             $statement = $pdo->query('SELECT id, guest_count, min_nights, max_nights, nightly_price, is_active, sort_order FROM occupancy_stay_length_bands ORDER BY guest_count, sort_order, id');
@@ -81,7 +81,7 @@ final readonly class PdoPricingEngineAdapter implements BookingPricingProvider, 
             $overrides = [];
             $statement = $pdo->query('SELECT id, start_date, end_date, price_1_guest, price_2_guests, price_3_guests, price_4_guests, is_active FROM occupancy_date_overrides ORDER BY start_date, id');
             foreach ($statement->fetchAll(PDO::FETCH_ASSOC) as $row) $overrides[] = new OccupancyDateOverride((int)$row['id'], (string)$row['start_date'], (string)$row['end_date'], [1=>(string)$row['price_1_guest'],2=>(string)$row['price_2_guests'],3=>(string)$row['price_3_guests'],4=>(string)$row['price_4_guests']], (bool)$row['is_active']);
-            return new OccupancyPricingConfiguration((int)$configuration['version'], (string)$configuration['one_night_surcharge'], $bands, $overrides);
+            return new OccupancyPricingConfiguration((int)$configuration['version'], (string)$configuration['one_night_surcharge'], $bands, $overrides, (string)$configuration['tourism_tax_per_person_per_night']);
         } catch (\PDOException $e) {
             if (stripos($e->getMessage(), 'doesn\'t exist') !== false || stripos($e->getMessage(), 'unknown table') !== false) return null;
             throw $e;

@@ -7,20 +7,21 @@ final readonly class OccupancyPricingConfiguration
 {
     public int $version;
     public string $oneNightSurcharge;
+    public string $tourismTaxPerPersonPerNight;
     /** @var list<OccupancyStayLengthBand> */
     public array $bands;
     /** @var list<OccupancyDateOverride> */
     public array $overrides;
 
     /** @param list<OccupancyStayLengthBand> $bands @param list<OccupancyDateOverride> $overrides */
-    public function __construct(int $version, string $oneNightSurcharge, array $bands, array $overrides = [])
+    public function __construct(int $version, string $oneNightSurcharge, array $bands, array $overrides = [], string $tourismTaxPerPersonPerNight = '0.00')
     {
         $ranges = [];
         foreach ($bands as $band) {
             if (!$band instanceof OccupancyStayLengthBand) throw new \InvalidArgumentException('Érvénytelen létszám ársáv.');
             if (!$band->active) continue;
             $end = $band->maxNights ?? PHP_INT_MAX;
-            foreach ($ranges[$band->guestCount] ?? [] as [$from,$to]) if ($band->minNights <= $to && $from <= $end) throw new \InvalidArgumentException('Az aktív tartózkodási ársávok nem fedhetik át egymást.');
+            foreach ($ranges[$band->guestCount] ?? [] as [$from,$to]) if ($band->minNights <= $to && $from <= $end) throw new \InvalidArgumentException('Ez az ársáv átfedésben van egy már aktív, azonos létszámhoz tartozó ársávval. Előbb módosítsa vagy inaktiválja a meglévő ársávot.');
             $ranges[$band->guestCount][] = [$band->minNights,$end];
         }
         $active = [];
@@ -31,6 +32,7 @@ final readonly class OccupancyPricingConfiguration
             $active[] = $override;
         }
         $this->oneNightSurcharge = WholeHuf::normalize($oneNightSurcharge);
+        $this->tourismTaxPerPersonPerNight = WholeHuf::normalize($tourismTaxPerPersonPerNight);
         $this->version = $version;
         $this->bands = $bands;
         $this->overrides = $overrides;

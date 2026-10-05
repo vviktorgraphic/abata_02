@@ -11,8 +11,13 @@ final class HufFormatter
 {
     public static function format(string|int $amount): string
     {
-        $whole = self::input($amount);
-        return preg_replace('/\B(?=(\d{3})+(?!\d))/', ' ', $whole) . ' Ft';
+        return self::groupedInput($amount) . ' Ft';
+    }
+
+    /** Human-readable input value; existing ungrouped input() remains compatible. */
+    public static function groupedInput(string|int $amount): string
+    {
+        return preg_replace('/\B(?=(\d{3})+(?!\d))/', ' ', self::input($amount));
     }
 
     /** Whole, ungrouped HUF using decimal HALF_UP without floats or integer overflow. */

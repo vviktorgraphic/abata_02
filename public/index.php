@@ -136,6 +136,10 @@ $router->get('/admin/bookings/{reference}', static fn (array $_query, array $par
 $router->post('/admin/bookings/{reference}/retry-email', static fn (array $_query, array $params) => $admin()['bookings']->retryNotification(
     $params['reference'], $_POST, $_SERVER['CONTENT_TYPE'] ?? null, isset($_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null
 )->send());
+$router->post('/admin/bookings/{reference}/payment-request', static fn (array $_query, array $params) => $admin()['bookings']->paymentRequest(
+    $params['reference'], $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
+    isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
+)->send());
 $router->post('/admin/bookings/{reference}/{action}', static fn (array $_query, array $params) => $admin()['bookings']->transition(
     $params['reference'], $params['action'], $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
     isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,

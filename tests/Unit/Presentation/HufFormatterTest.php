@@ -15,11 +15,17 @@ final class HufFormatterTest extends TestCase
     {
         self::assertSame($expected, HufFormatter::format($amount));
         self::assertSame($input, HufFormatter::input($amount));
+        self::assertSame(substr($expected, 0, -3), HufFormatter::groupedInput($amount));
     }
 
     public static function amounts(): iterable
     {
         yield ['20000.00', '20 000 Ft', '20000'];
+        yield ['22000.00', '22 000 Ft', '22000'];
+        yield ['27000.00', '27 000 Ft', '27000'];
+        yield ['42000.00', '42 000 Ft', '42000'];
+        yield ['8000.00', '8 000 Ft', '8000'];
+        yield ['500.00', '500 Ft', '500'];
         yield ['20000', '20 000 Ft', '20000'];
         yield [20000, '20 000 Ft', '20000'];
         yield [0, '0 Ft', '0'];

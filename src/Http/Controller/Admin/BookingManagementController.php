@@ -25,6 +25,8 @@ final readonly class BookingManagementController
         private PdoAdminBookingQueryRepository $queries,
         private TransactionalBookingRepository $transitions,
         private \App\Application\Mail\BookingStatusNotificationDispatcher $notifications,
+        private ?\App\Application\Mail\BookingPaymentRequestDispatcher $paymentRequests = null,
+        private ?\App\Application\Mail\BookingPaymentRequestConfiguration $paymentConfiguration = null,
     ) {}
 
     /** @param array<string, mixed> $query */
@@ -60,8 +62,18 @@ final readonly class BookingManagementController
                 (string) $booking['currency'],
             )
             : null;
+        $paymentAdvance = $booking['payment_request']['advance_amount'] ?? null;
+        $paymentConfigurationError = null;
+        if ($paymentAdvance === null && empty($booking['legacy_pricing_unavailable']) && $booking['status'] === 'pending') {
+            try {
+                $paymentAdvance = $this->paymentConfiguration?->advanceFor((string) $booking['total_amount']);
+            } catch (\InvalidArgumentException) {
+                $paymentConfigurationError = 'A díjbekérő előlegbeállítása vagy a rögzített végösszeg érvénytelen.';
+            }
+        }
         return new HtmlResponse($this->view->render('booking-detail', [
             'booking' => $booking, 'csrfToken' => $this->csrf->token(), 'cancellationPreview' => $cancellationPreview,
+            'paymentAdvance' => $paymentAdvance, 'paymentConfigurationError' => $paymentConfigurationError,
         ]));
     }
 
@@ -80,10 +92,30 @@ final readonly class BookingManagementController
             return new RedirectResponse('/admin/bookings/' . rawurlencode($reference) . '?result=' . $targets[$action]);
         } catch (BookingNotFound) {
             return $this->error(404, 'A foglalás nem található.');
+        } catch (\App\Application\Booking\PaymentRequestRequired) {
+            return $this->error(409, 'A foglalás a díjbekérő sikeres elküldése után erősíthető meg.');
         } catch (BookingConflict|BookingTransitionNotAllowed) {
             return $this->error(409, 'A státuszváltás ütközés vagy az aktuális státusz miatt nem hajtható végre.');
         } catch (\InvalidArgumentException) {
             return $this->error(422, 'A státuszváltás adatai érvénytelenek.');
+        }
+    }
+
+    /** @param array<string, mixed> $form */
+    public function paymentRequest(string $reference, array $form, ?string $contentType, ?int $contentLength): AdminResponse
+    {
+        $authorization = $this->guard->authorizeForm('email.payment_request', $form, $contentType, $contentLength);
+        if (!$authorization->allowed()) return $authorization->rejection;
+        if ($this->paymentRequests === null) return $this->error(422, 'A díjbekérő levelezési konfigurációja hiányzik.');
+        try {
+            $result = $this->paymentRequests->dispatch($reference, $authorization->admin['id']);
+            return new RedirectResponse('/admin/bookings/' . rawurlencode($reference) . '?payment=' . rawurlencode($result->status));
+        } catch (\OutOfBoundsException) {
+            return $this->error(404, 'A foglalás nem található.');
+        } catch (\DomainException) {
+            return $this->error(409, 'Díjbekérő csak függőben lévő foglaláshoz küldhető.');
+        } catch (\InvalidArgumentException $error) {
+            return $this->error(422, $error->getMessage());
         }
     }
 

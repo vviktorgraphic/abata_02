@@ -44,14 +44,16 @@ final class PricingEngine
             if (!$rule instanceof PricingRule || !$rule->active || $rule->type === 'base' || $rule->type === 'stay_length' || $rule->type === 'weekend' || $rule->type === 'seasonal') continue;
             if ($rule->type === 'fixed_fee' && $this->overlaps($rule, $arrival, $departure)) {
                 $fee = $this->wholeHuf($rule->amount); $otherHuf += $fee; $items[] = ['type'=>'fixed_fee','description'=>$rule->name,'rule_id'=>$rule->id,'quantity'=>1,'unit_amount'=>$this->huf($fee),'total'=>$this->huf($fee),'total_huf'=>$fee];
-            } elseif ($rule->type === 'tourism_tax' && !$exempt && $this->coversPeriod($rule, $arrival, $departure)) {
-                $quantity = match ($rule->baseUnit) { 'per_person_per_night' => $physical * $nights, 'per_night' => $nights, 'per_booking' => 1, default => throw new PricingConfigurationError('Tourism tax has no valid base unit.') };
-                $taxUnit = $this->wholeHuf($rule->amount); $taxTotal = $taxUnit * $quantity; $taxHuf += $taxTotal; $items[] = ['type'=>'tourism_tax','description'=>$rule->name,'rule_id'=>$rule->id,'quantity'=>$quantity,'unit_amount'=>$this->huf($taxUnit),'total'=>$this->huf($taxTotal),'total_huf'=>$taxTotal];
             }
         }
+        $taxQuantity = $exempt ? 0 : $physical * $nights;
+        $taxHuf = (int) $configuration->tourismTaxPerPersonPerNight * $taxQuantity;
+        $items[] = ['type'=>'tourism_tax','description'=>'Idegenforgalmi adó (IFA)','quantity'=>$taxQuantity,'unit_amount'=>$configuration->tourismTaxPerPersonPerNight,'total'=>$this->huf($taxHuf),'total_huf'=>$taxHuf];
         $now = ($calculatedAt ?? new \DateTimeImmutable('now', new \DateTimeZone(self::TIMEZONE)))->setTimezone(new \DateTimeZone(self::TIMEZONE));
         $totalHuf = $accommodationHuf + $otherHuf + $taxHuf;
         $snapshot = ['version'=>4,'pricing_mode'=>'occupancy','calculated_at'=>$now->format(DATE_ATOM),'arrival_date'=>$input->arrivalDate,'departure_date'=>$input->departureDate,'nights'=>$nights,'adults'=>$input->adults,'child_ages'=>$input->childAges,'physical_guests'=>$physical,'chargeable_guests'=>$chargeable,'free_children'=>array_values(array_filter($input->childAges, static fn (int $age): bool => $age <= 3)),'chargeable_children'=>array_values(array_filter($input->childAges, static fn (int $age): bool => $age >= 4)),'occupancy_configuration_version'=>$configuration->version,'matched_base_band'=>$band->snapshot(),'one_night_surcharge'=>$this->huf($surcharge),'nightly_breakdown'=>$nightly,'applied_date_override_ids'=>array_map('intval', array_keys($overrideIds)), 'line_items'=>$items,'accommodation_fee'=>$this->huf($accommodationHuf),'taxes'=>$this->huf($taxHuf),'other_fees'=>$this->huf($otherHuf),'total'=>$this->huf($totalHuf),'currency'=>'HUF'];
+        $snapshot['tourism_tax_per_person_per_night'] = $configuration->tourismTaxPerPersonPerNight;
+        $snapshot['tourism_tax_quantity'] = $taxQuantity;
         return new PricingResult($this->huf($totalHuf), $this->huf($accommodationHuf), $this->huf($taxHuf), 'HUF', $items, [], $snapshot);
     }
 

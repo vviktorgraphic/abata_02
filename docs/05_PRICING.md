@@ -1,5 +1,7 @@
 # Árképzés
 
+> **Aktuális RC2 kiegészítés:** az occupancy alapársávok, időszakos árak, saját IFA és a HUF-bevitel IMPLEMENTED szerződését a [22. dokumentum](22_OCCUPANCY_IFA_AND_PAYMENT_REQUEST.md) rögzíti. Az alábbi korábbi sprintleírások person/legacy működése történeti háttér; a normál áradmin occupancy módot kezel.
+
 > **RC2 státusz:** a Sprint 6 közös engine és Sprint 10 személy/gyermekáras konfiguráció IMPLEMENTED; production árérték owner döntés.
 
 **Állapot:** Sprint 6 közös pricing engine, admin CRUD/preview és immutable snapshot IMPLEMENTED; konkrét production értékek és opcionális kedvezmények OPEN/PLANNED

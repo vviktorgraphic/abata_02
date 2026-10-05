@@ -124,6 +124,17 @@ $statusNotifications = new BookingStatusNotificationDispatcher(
     $audit,
 );
 $calendarSources = new PdoCalendarSourceRepository($pdo);
+$paymentConfig = require $root . '/config/payment-request.php';
+$paymentConfiguration = new App\Application\Mail\BookingPaymentRequestConfiguration(
+    $paymentConfig['beneficiary'], $paymentConfig['bank_account'], $paymentConfig['advance_percent'],
+);
+$paymentRequests = new App\Application\Mail\BookingPaymentRequestDispatcher(
+    new App\Infrastructure\Persistence\Booking\PdoBookingPaymentRequestOutbox($pdo),
+    new App\Application\Mail\BookingPaymentRequestMailRenderer($root . '/templates/email', $mailConfig['from_email']),
+    new SmtpMailer(new SmtpConfiguration($mailConfig['host'], $mailConfig['port'], $mailConfig['encryption'], $username, $password, $mailConfig['timeout_seconds'], $mailConfig['production'])),
+    $paymentConfiguration,
+    $audit,
+);
 $calendarLogs = new PdoCalendarSyncLogRepository($pdo);
 $calendarImporter = (require __DIR__ . '/calendar-services.php')($pdo);
 
@@ -135,7 +146,7 @@ return [
     'login' => new LoginController($workflow, $view, $csrf),
     'two_factor' => new TwoFactorController($workflow, $view, $csrf),
     'dashboard' => new DashboardController($workflow, $view, $csrf, $queries),
-    'bookings' => new BookingManagementController($workflow, $view, $csrf, $actionGuard, $queries, $transitions, $statusNotifications),
+    'bookings' => new BookingManagementController($workflow, $view, $csrf, $actionGuard, $queries, $transitions, $statusNotifications, $paymentRequests, $paymentConfiguration),
     'legacy_import' => new LegacyBookingImportController(
         $workflow, $view, $csrf, $actionGuard, $storage,
         new LegacyImportService($pdo, new PdoLegacyImportProvenanceRepository($pdo), new LegacyImportCsvParser()),

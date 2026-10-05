@@ -1,5 +1,7 @@
 # API-referencia
 
+> **Aktuális RC2 kiegészítés:** [IFA és payment-request HTTP szerződés](22_OCCUPANCY_IFA_AND_PAYMENT_REQUEST.md). Új védett POST: `/admin/bookings/{reference}/payment-request`; confirm sikeres díjbekérő nélkül 409. A kanonikus áradmin occupancy műveletei: `band|band_toggle|override|override_toggle|surcharge|tourism_tax`, optimistic verzióval.
+
 **Állapot:** IMPLEMENTED és PLANNED részekre bontva
 **Utolsó ellenőrzés:** 2026-07-18, `release/rc1` munkafa (commit előtt)
 

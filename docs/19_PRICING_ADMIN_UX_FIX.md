@@ -1,5 +1,7 @@
 # Árképzési admin UX- és runtime-javítás
 
+> **Történeti person-admin leírás.** A jelenlegi kanonikus occupancy felület és a saját IFA [aktuális szerződése](22_OCCUPANCY_IFA_AND_PAYMENT_REQUEST.md) felváltja az alábbi tulajdonosi workflow-t. A korábbi person snapshotok részletes megjelenítése továbbra is támogatott.
+
 **Állapot:** IMPLEMENTED a `fix/pricing-admin-ux` ágon; production aktiválás és valós cPanel/browser smoke PENDING.
 
 ## Tulajdonosi workflow

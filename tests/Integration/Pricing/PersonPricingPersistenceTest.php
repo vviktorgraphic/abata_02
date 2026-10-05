@@ -189,6 +189,9 @@ final class PersonPricingPersistenceTest extends TestCase
         self::assertSame($snapshotBefore, $this->snapshot($created->bookingId));
         self::assertNotSame($preview->totalAmount, $adapter->preview(new PricingInput('2044-08-04','2044-08-07',2,[4,10]))->totalAmount);
 
+        $this->pdo->prepare("INSERT INTO email_outbox (booking_id, message_type, recipient, subject, payload, status, sent_at)
+            VALUES (:id, 'booking_payment_request', 'guest@example.test', 'Test payment', '{}', 'sent', CURRENT_TIMESTAMP)")
+            ->execute(['id' => $created->bookingId]);
         $repository->transition($created->reference, 'confirmed', $this->adminId);
         $repository->transition($created->reference, 'cancelled', $this->adminId);
         $row = $this->pdo->query('SELECT cancellation_penalty_amount,cancellation_calculation_snapshot FROM bookings WHERE id='.(int)$created->bookingId)->fetch(PDO::FETCH_ASSOC);

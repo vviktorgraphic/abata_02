@@ -59,6 +59,14 @@ final class TransactionalBookingRepository
             $cancellation = $targetStatus === 'cancelled' ? $this->calculateCancellation((int) $booking['id'], $booking) : null;
 
             if ($targetStatus === 'confirmed') {
+                $payment = $this->pdo->prepare(
+                    "SELECT status FROM email_outbox WHERE booking_id = :id
+                     AND message_type = 'booking_payment_request' FOR UPDATE"
+                );
+                $payment->execute(['id' => $bookingId]);
+                if ($payment->fetchColumn() !== 'sent') {
+                    throw new \App\Application\Booking\PaymentRequestRequired('A foglalás a díjbekérő sikeres elküldése után erősíthető meg.');
+                }
                 $this->assertAvailableForConfirmation(
                     (int) $booking['id'],
                     (string) $booking['arrival_date'],
@@ -154,15 +162,18 @@ final class TransactionalBookingRepository
             $statement = $this->pdo->prepare(
                 'INSERT INTO audit_logs
                     (event_type, admin_id, target_type, target_id, outcome, metadata_json)
-                 VALUES (\'booking.transition_failed\', :admin_id, \'booking\', :target_id, \'failure\', :metadata)'
+                 VALUES (:event_type, :admin_id, \'booking\', :target_id, \'failure\', :metadata)'
             );
             $statement->execute([
+                'event_type' => $error instanceof \App\Application\Booking\PaymentRequestRequired
+                    ? 'booking.confirm_blocked_payment_request_missing' : 'booking.transition_failed',
                 'admin_id' => $adminId,
                 'target_id' => $bookingId === null ? $reference : (string) $bookingId,
                 'metadata' => json_encode([
                     'booking_reference' => $reference,
                     'target_status' => $targetStatus,
                     'reason_code' => match (true) {
+                        $error instanceof \App\Application\Booking\PaymentRequestRequired => 'payment_request_not_sent',
                         $error instanceof BookingNotFound => 'booking_not_found',
                         $error instanceof BookingConflict => 'booking_conflict',
                         $error instanceof BookingTransitionNotAllowed => 'transition_not_allowed',

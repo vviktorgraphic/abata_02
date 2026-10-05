@@ -23,7 +23,7 @@ final class OccupancyPricingAdminTemplateContractTest extends TestCase
 
         self::assertStringContainsString('name="band_id" value="<?= $b->id ?>"', $template);
         self::assertStringContainsString('name="action" value="band_toggle"', $template);
-        self::assertStringContainsString('<summary>Szerkesztés</summary>', $template);
+        self::assertStringContainsString('<summary>Szerkesztés<span class="sr-only">', $template);
     }
 
     public function testDateOverrideCreateFormIsAvailableWithoutRemovingExistingActions(): void

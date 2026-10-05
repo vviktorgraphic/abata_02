@@ -52,6 +52,7 @@ final class TransactionalStateChangesTest extends TestCase
     public function testConfirmWritesStatusHistoryAuditAndContractPayloadAtomically(): void
     {
         $id = $this->booking('pending', '2042-01-10', '2042-01-13');
+        $this->paymentSent($id);
         $result = (new TransactionalBookingRepository($this->pdo))->transition(
             $this->reference($id), 'confirmed', $this->adminId, 'Approved internally'
         );
@@ -171,6 +172,7 @@ final class TransactionalStateChangesTest extends TestCase
     {
         $first = $this->booking('confirmed', '2042-04-10', '2042-04-13');
         $candidate = $this->booking('pending', '2042-04-12', '2042-04-14');
+        $this->paymentSent($candidate);
         $repository = new TransactionalBookingRepository($this->pdo);
         try {
             $repository->transition($this->reference($candidate), 'confirmed', $this->adminId);
@@ -201,6 +203,7 @@ final class TransactionalStateChangesTest extends TestCase
     {
         foreach (['transition_history_inserted', 'transition_audit_inserted'] as $stage) {
             $id = $this->booking('pending', '2042-05-10', '2042-05-13');
+            $this->paymentSent($id);
             $repository = new TransactionalBookingRepository($this->pdo, static function (string $seen) use ($stage): void {
                 if ($seen === $stage) {
                     throw new \RuntimeException('Injected transaction failure.');
@@ -214,7 +217,8 @@ final class TransactionalStateChangesTest extends TestCase
             }
             self::assertSame('pending', $this->bookingStatus($id));
             self::assertSame(0, $this->countRows('booking_status_history', $id));
-            self::assertSame(0, $this->countRows('email_outbox', $id));
+            self::assertSame(1, $this->countRows('email_outbox', $id));
+            self::assertSame('booking_payment_request', $this->row('email_outbox', $id)['message_type']);
         }
     }
 
@@ -225,6 +229,8 @@ final class TransactionalStateChangesTest extends TestCase
         }
         $first = $this->booking('pending', '2042-06-10', '2042-06-14');
         $second = $this->booking('pending', '2042-06-12', '2042-06-16');
+        $this->paymentSent($first);
+        $this->paymentSent($second);
         $barrier = tempnam(sys_get_temp_dir(), 'transition-barrier-');
         self::assertIsString($barrier);
         unlink($barrier);
@@ -256,6 +262,35 @@ final class TransactionalStateChangesTest extends TestCase
         );
         $statement->execute(['first' => $first, 'second' => $second]);
         self::assertSame(1, (int) $statement->fetchColumn());
+    }
+
+    public function testConfirmationRequiresSentPaymentRequestAndAuditsDenial(): void
+    {
+        foreach ([null, 'pending', 'processing', 'failed'] as $status) {
+            $id = $this->booking('pending', '2042-07-10', '2042-07-13');
+            if ($status !== null) {
+                $this->paymentSent($id);
+                $this->pdo->prepare('UPDATE email_outbox SET status = :status WHERE booking_id = :id')
+                    ->execute(['status' => $status, 'id' => $id]);
+            }
+            try {
+                (new TransactionalBookingRepository($this->pdo))->transition($this->reference($id), 'confirmed', $this->adminId);
+                self::fail('Confirmation must require a sent payment request.');
+            } catch (\App\Application\Booking\PaymentRequestRequired) {
+                self::assertSame('pending', $this->bookingStatus($id));
+                self::assertSame(0, $this->countRows('booking_status_history', $id));
+                $audit = $this->pdo->prepare("SELECT COUNT(*) FROM audit_logs WHERE target_id = :id AND event_type = 'booking.confirm_blocked_payment_request_missing'");
+                $audit->execute(['id' => (string) $id]);
+                self::assertSame(1, (int) $audit->fetchColumn());
+            }
+        }
+    }
+
+    private function paymentSent(int $bookingId): void
+    {
+        $this->pdo->prepare("INSERT INTO email_outbox (booking_id, message_type, recipient, subject, payload, status, sent_at)
+            VALUES (:id, 'booking_payment_request', 'guest@example.test', 'Test payment', '{}', 'sent', CURRENT_TIMESTAMP)")
+            ->execute(['id' => $bookingId]);
     }
 
     private function booking(string $status, string $arrival, string $departure): int

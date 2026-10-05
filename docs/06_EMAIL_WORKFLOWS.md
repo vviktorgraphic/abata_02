@@ -1,5 +1,7 @@
 # E-mail folyamatok
 
+> **IMPLEMENTED RC2:** [díjbekérő a megerősítés előtt](22_OCCUPANCY_IFA_AND_PAYMENT_REQUEST.md). A `booking_payment_request` manuális retry ugyanazt az immutable outbox rekordot használja; a lentebb PLANNED-ként leírt új rekordos resend erre nem vonatkozik. Meglévő request/status levelek változatlanok.
+
 > A production SMTP paraméterezés, SPF/DKIM/DMARC előkészítés és staging kézbesítési smoke végrehajtható lépéseit a [production deployment runbook](15_DEPLOYMENT.md#production-smtp) tartalmazza. Provider rekordot, credentialt vagy enforcement policyt a rendszer nem feltételez.
 
 **Állapot:** 2FA, booking-request és booking-status/cancellation e-mail, outbox és manuális failed resend IMPLEMENTED; automatikus retry/stale reclaim PLANNED

@@ -12,6 +12,37 @@
 <?php endif ?>
 <section><h2>Foglalási szabályzat</h2><dl class="facts"><div><dt>Elfogadva</dt><dd><?= $e($booking['booking_policy_accepted_at'] ?? '—') ?></dd></div><div><dt>Verzió</dt><dd><?= $e($booking['booking_policy_version'] ?? '—') ?></dd></div><div><dt>URL</dt><dd><?php if (!empty($booking['booking_policy_url'])): ?><a href="<?= $e($booking['booking_policy_url']) ?>" rel="noopener noreferrer"><?= $e($booking['booking_policy_url']) ?></a><?php else: ?>—<?php endif ?></dd></div></dl></section>
 <?php require __DIR__ . '/_nightly-pricing.php'; ?><section><h2>Lemondási feltételek</h2><?php if (isset($cancellationPreview) && $cancellationPreview !== null): ?><dl class="facts"><div><dt>Díjmentes lemondás határideje</dt><dd><?= $e($cancellationPreview->snapshot['free_cancellation_deadline']) ?></dd></div><div><dt>Mai kötbér-előnézet</dt><dd><?= $e(\App\Presentation\HufFormatter::format($cancellationPreview->penaltyAmount)) ?></dd></div><div><dt>Ár-pillanatkép szállásdíja</dt><dd><?= $e(\App\Presentation\HufFormatter::format($cancellationPreview->snapshot['accommodation_fee'])) ?></dd></div><div><dt>Kötbér mértéke</dt><dd><?= $e($cancellationPreview->penaltyRate) ?></dd></div></dl><?php else: ?><p>Az előnézethez nem áll rendelkezésre megfelelő ár-pillanatkép.</p><?php endif ?><?php if (!empty($booking['cancelled_at'])): ?><p>A rögzített lemondás: <?= $e($booking['cancelled_at']) ?>; kötbér: <?= $e(\App\Presentation\HufFormatter::format($booking['cancellation_penalty_amount'])) ?>.</p><?php endif ?></section>
-<?php $allowed=['pending'=>['confirm'=>'Megerősítés','reject'=>'Elutasítás','invalidate'=>'Érvénytelenítés'],'confirmed'=>['cancel'=>'Lemondás','invalidate'=>'Érvénytelenítés']][$booking['status']] ?? []; if ($allowed): ?><section><h2>Műveletek</h2><div class="actions"><?php foreach ($allowed as $action=>$label): ?><form method="post" action="/admin/bookings/<?= rawurlencode((string)$booking['reference']) ?>/<?= $action ?>"><input type="hidden" name="_csrf" value="<?= $e($csrfToken) ?>"><label for="note-<?= $action ?>">Admin megjegyzés (opcionális)</label><textarea id="note-<?= $action ?>" name="admin_note" maxlength="500"></textarea><button class="<?= in_array($action,['reject','cancel','invalidate'],true)?'danger':'' ?>" type="submit"><?= $label ?></button></form><?php endforeach ?></div></section><?php endif ?>
+<?php if ($booking['status'] === 'pending'): ?>
+<section aria-labelledby="payment-request-title">
+<h2 id="payment-request-title">Foglalás véglegesítése</h2>
+<?php if (!empty($paymentConfigurationError)): ?><p class="alert"><?= $e($paymentConfigurationError) ?></p><?php endif ?>
+<?php $payment = $booking['payment_request'] ?? null; $paymentStatus = $payment['status'] ?? null; ?>
+<?php $advance = $payment['advance_amount'] ?? $paymentAdvance ?? null; if ($advance !== null): ?>
+<p>Előleg: <?= $e(\App\Presentation\HufFormatter::format($advance)) ?></p>
+<?php endif ?>
+<?php if ($paymentStatus === 'sent'): ?>
+<p>Díjbekérő elküldve<?= !empty($payment['sent_at']) ? ': ' . $e($payment['sent_at']) : '' ?></p>
+<p>A rendszer nem ellenőrzi automatikusan a banki jóváírást. Az előleg beérkezésének ellenőrzése után erősítse meg a foglalást.</p>
+<form method="post" action="/admin/bookings/<?= rawurlencode((string) $booking['reference']) ?>/confirm">
+<input type="hidden" name="_csrf" value="<?= $e($csrfToken) ?>">
+<label for="note-confirm">Admin megjegyzés (opcionális)</label><textarea id="note-confirm" name="admin_note" maxlength="500"></textarea>
+<button type="submit">Megerősítés</button>
+</form>
+<?php else: ?>
+<p>A foglalás a díjbekérő sikeres elküldése után erősíthető meg.</p>
+<?php if ($paymentStatus === 'failed'): ?><p class="alert">Díjbekérő küldése sikertelen</p><?php endif ?>
+<?php if ($paymentStatus === 'processing'): ?>
+<p>Díjbekérő küldése folyamatban.</p>
+<?php elseif (!empty($booking['legacy_pricing_unavailable'])): ?>
+<p class="alert">A régi foglalás rögzített végösszege nem áll rendelkezésre; díjbekérő nem küldhető.</p>
+<?php else: ?>
+<form method="post" action="/admin/bookings/<?= rawurlencode((string) $booking['reference']) ?>/payment-request">
+<input type="hidden" name="_csrf" value="<?= $e($csrfToken) ?>">
+<button type="submit"><?= $paymentStatus === 'failed' ? 'Díjbekérő újraküldése' : 'Díjbekérő e-mail küldése' ?></button>
+</form>
+<?php endif; endif ?>
+</section>
+<?php endif ?>
+<?php $allowed=['pending'=>['reject'=>'Elutasítás','invalidate'=>'Érvénytelenítés'],'confirmed'=>['cancel'=>'Lemondás','invalidate'=>'Érvénytelenítés']][$booking['status']] ?? []; if ($allowed): ?><section><h2>Műveletek</h2><div class="actions"><?php foreach ($allowed as $action=>$label): ?><form method="post" action="/admin/bookings/<?= rawurlencode((string)$booking['reference']) ?>/<?= $action ?>"><input type="hidden" name="_csrf" value="<?= $e($csrfToken) ?>"><label for="note-<?= $action ?>">Admin megjegyzés (opcionális)</label><textarea id="note-<?= $action ?>" name="admin_note" maxlength="500"></textarea><button class="<?= in_array($action,['reject','cancel','invalidate'],true)?'danger':'' ?>" type="submit"><?= $label ?></button></form><?php endforeach ?></div></section><?php endif ?>
 <section><h2>Státusztörténet</h2><ol class="timeline"><?php foreach ($booking['status_history'] as $item): ?><li><strong><?= $e($item['old_status'] === null ? 'Létrehozás' : \App\Presentation\BookingStatusLabel::for((string) $item['old_status'])) ?> → <?= $e(\App\Presentation\BookingStatusLabel::for((string) $item['status'])) ?></strong><br><time><?= $e($item['created_at']) ?></time><?php if ($item['admin_note']): ?><p><?= $e($item['admin_note']) ?></p><?php endif ?></li><?php endforeach ?></ol></section>
 <section><h2>E-mail állapot</h2><?php if (!$booking['email_outbox']): ?><p>Nincs e-mail rekord.</p><?php else: ?><ul><?php foreach ($booking['email_outbox'] as $mail): ?><li><?= $e(\App\Presentation\EmailStatusLabel::type((string) $mail['type'])) ?> — <strong><?= $e(\App\Presentation\EmailStatusLabel::for((string) $mail['status'])) ?></strong> (<?= (int)$mail['attempts'] ?> kísérlet)<?php if ($mail['status']==='failed'): ?> <span class="alert-inline">Küldés sikertelen</span><?php endif ?></li><?php endforeach ?></ul><?php if (in_array($booking['status'], ['confirmed','rejected','cancelled'], true) && array_filter($booking['email_outbox'], static fn (array $mail): bool => $mail['status'] === 'failed')): ?><form method="post" action="/admin/bookings/<?= rawurlencode((string)$booking['reference']) ?>/retry-email"><input type="hidden" name="_csrf" value="<?= $e($csrfToken) ?>"><button type="submit">Sikertelen státuszlevél újraküldése</button></form><?php endif; endif ?></section></article><?php require __DIR__ . '/_layout_end.php'; ?>

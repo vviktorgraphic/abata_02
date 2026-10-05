@@ -132,6 +132,7 @@ final class PdoAdminBookingQueryRepository
             'pricing_snapshot' => $snapshot,
             'status_history' => $history,
             'email_outbox' => $emails,
+            'payment_request' => $this->paymentRequest($bookingId),
             'pricingSnapshot' => $snapshot,
             'statusHistory' => $history,
             'emailOutbox' => $emails,
@@ -220,6 +221,25 @@ final class PdoAdminBookingQueryRepository
             'updated_at' => (string) $row['updated_at'],
             'sent_at' => $row['sent_at'] !== null ? (string) $row['sent_at'] : null,
         ], $statement->fetchAll());
+    }
+
+    /** @return array<string, mixed>|null */
+    private function paymentRequest(int $bookingId): ?array
+    {
+        $statement = $this->pdo->prepare(
+            "SELECT status, sent_at, payload FROM email_outbox
+             WHERE booking_id = :id AND message_type = 'booking_payment_request' LIMIT 1"
+        );
+        $statement->execute(['id' => $bookingId]);
+        $row = $statement->fetch();
+        if ($row === false) return null;
+        $payload = $this->decodeJson((string) $row['payload'], 'Stored payment request is invalid.');
+
+        return [
+            'status' => $row['status'], 'sent_at' => $row['sent_at'],
+            'advance_amount' => $payload['advance_amount'] ?? null,
+            'advance_percent' => $payload['advance_percent'] ?? null,
+        ];
     }
 
     /** @return array<string, mixed>|null */

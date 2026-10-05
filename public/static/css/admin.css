@@ -60,4 +60,18 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 .new-band { margin-top:1rem; padding:1rem; border:1px solid var(--neutral-300); }
 .new-band summary, .nightly-details > summary, .table-actions summary { font-weight:800; cursor:pointer; }
 .nightly-details { margin:1.5rem 0; }
+.pricing-page .panel { border-radius:.35rem; }
+.pricing-page .inline-form { margin:0; }
+.pricing-page .field-grid { align-items:start; }
+.pricing-page .field-grid > button { align-self:end; margin-bottom:.35rem; }
+.pricing-page label small { display:block; margin-top:.35rem; color:var(--neutral-700); font-size:.85rem; font-weight:400; }
+.pricing-page .pricing-edit-row > td { white-space:normal; padding:.65rem 1rem; background:var(--neutral-50); border-bottom:2px solid var(--neutral-300); }
+.pricing-editor summary { width:fit-content; padding:.35rem 0; font-weight:800; cursor:pointer; }
+.pricing-editor summary:focus-visible, .new-band summary:focus-visible { outline:3px solid var(--color-accent); outline-offset:3px; }
+.pricing-editor[open] { padding-bottom:.5rem; }
+.pricing-editor .field-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.pricing-page .pricing-save { width:auto; min-width:10rem; }
+#override-prices-title { scroll-margin-top:1rem; }
+@media (min-width:64rem) { .pricing-editor .field-grid { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+@media (max-width:36rem) { .pricing-editor .field-grid { grid-template-columns:1fr; } }
 @media (max-width:30rem) { .brand-header { gap:.75rem; } .brand-header nav { width:100%; } .admin-main { padding-inline:.5rem; } .admin-page { padding-inline:.75rem; } }
