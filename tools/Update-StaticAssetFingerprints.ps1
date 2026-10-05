@@ -9,5 +9,13 @@ foreach ($item in @(@{Source='public/static/css/booking.css'; Pattern='public/st
     $extension = [IO.Path]::GetExtension($source)
     $target = Join-Path $directory (([IO.Path]::GetFileNameWithoutExtension($source)) + '.' + $hash + $extension)
     Copy-Item $source $target -Force
-    Write-Output $target
+    $relativeTarget = ('/' + $target.Substring((Join-Path $Root 'public').Length).TrimStart('\','/') -replace '\\','/')
+    if ($item.Source -like '*booking.css') { $cssPath = $relativeTarget } else { $jsPath = $relativeTarget }
 }
+$configPath = Join-Path $Root 'config/static-assets.php'
+$config = Get-Content -LiteralPath $configPath -Raw
+$config = [regex]::Replace($config, "'booking_css'\s*=>\s*'[^']+'", "'booking_css' => '$cssPath'")
+$config = [regex]::Replace($config, "'booking_js'\s*=>\s*'[^']+'", "'booking_js' => '$jsPath'")
+Set-Content -LiteralPath $configPath -Value $config -Encoding UTF8
+Write-Output $cssPath
+Write-Output $jsPath
