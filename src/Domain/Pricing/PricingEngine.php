@@ -8,6 +8,51 @@ final class PricingEngine
 {
     private const TIMEZONE = 'Europe/Budapest';
 
+    /**
+     * Occupancy model: the configured nightly amount is for the whole party,
+     * never multiplied by the number of adults or children.
+     */
+    public function calculateOccupancy(PricingInput $input, OccupancyPricingConfiguration $configuration, array $rules = [], ?\DateTimeImmutable $calculatedAt = null): PricingResult
+    {
+        [$arrival, $departure, $nights] = $this->period($input);
+        if ($input->adults < 1) throw new \InvalidArgumentException('Legalább egy felnőtt szükséges.');
+        foreach ($input->childAges as $age) if ($age < 0 || $age > 17) throw new \InvalidArgumentException('A gyermek életkora 0 és 17 év közötti lehet.');
+        $physical = $input->adults + count($input->childAges);
+        $chargeable = $input->adults + count(array_filter($input->childAges, static fn (int $age): bool => $age >= 4));
+        if ($physical > 5 || $chargeable > 4) throw new \InvalidArgumentException('A szállás legfeljebb 5 vendéget fogad, de az árazási létszám legfeljebb 4 fő lehet.');
+        $band = $configuration->bandFor($chargeable, $nights);
+        $items = [];
+        $nightly = [];
+        $overrideIds = [];
+        $accommodationHuf = 0;
+        for ($day = $arrival; $day < $departure; $day = $day->modify('+1 day')) {
+            $date = $day->format('Y-m-d');
+            $override = $configuration->overrideForNight($date);
+            if ($override !== null) $overrideIds[$override->id] = true;
+            $rate = $override?->priceFor($chargeable) ?? $band->nightlyPrice;
+            $rateHuf = (int) $rate;
+            $accommodationHuf += $rateHuf;
+            $nightly[] = ['date'=>$date,'source'=>$override === null ? 'base_band' : 'date_override','source_id'=>$override?->id ?? $band->id,'chargeable_guests'=>$chargeable,'nightly_price'=>$rate];
+            $items[] = ['type'=>'accommodation','description'=>'Szállásdíj '.$date,'source'=>$override === null ? 'base_band' : 'date_override','source_id'=>$override?->id ?? $band->id,'quantity'=>1,'unit_amount'=>$rate,'total'=>$this->huf($rateHuf),'total_huf'=>$rateHuf];
+        }
+        $surcharge = $nights === 1 ? (int) $configuration->oneNightSurcharge : 0;
+        if ($surcharge > 0) { $accommodationHuf += $surcharge; $items[] = ['type'=>'one_night_surcharge','description'=>'Egyéjszakás felár','quantity'=>1,'unit_amount'=>$configuration->oneNightSurcharge,'total'=>$this->huf($surcharge),'total_huf'=>$surcharge]; }
+        $taxHuf = 0; $otherHuf = 0;
+        foreach ($rules as $rule) {
+            if (!$rule instanceof PricingRule || !$rule->active || $rule->type === 'base' || $rule->type === 'stay_length' || $rule->type === 'weekend' || $rule->type === 'seasonal') continue;
+            if ($rule->type === 'fixed_fee' && $this->overlaps($rule, $arrival, $departure)) {
+                $fee = $this->minor($rule->amount); $otherHuf += $fee; $items[] = ['type'=>'fixed_fee','description'=>$rule->name,'rule_id'=>$rule->id,'quantity'=>1,'unit_amount'=>$rule->amount,'total'=>$this->huf($fee),'total_huf'=>$fee];
+            } elseif ($rule->type === 'tourism_tax' && $this->coversPeriod($rule, $arrival, $departure)) {
+                $quantity = match ($rule->baseUnit) { 'per_person_per_night' => $physical * $nights, 'per_night' => $nights, 'per_booking' => 1, default => throw new PricingConfigurationError('Tourism tax has no valid base unit.') };
+                $taxHuf += $this->minor($rule->amount) * $quantity; $items[] = ['type'=>'tourism_tax','description'=>$rule->name,'rule_id'=>$rule->id,'quantity'=>$quantity,'unit_amount'=>$rule->amount,'total'=>$this->huf($this->minor($rule->amount) * $quantity),'total_huf'=>$this->minor($rule->amount) * $quantity];
+            }
+        }
+        $now = ($calculatedAt ?? new \DateTimeImmutable('now', new \DateTimeZone(self::TIMEZONE)))->setTimezone(new \DateTimeZone(self::TIMEZONE));
+        $totalHuf = $accommodationHuf + $otherHuf + $taxHuf;
+        $snapshot = ['version'=>4,'pricing_mode'=>'occupancy','calculated_at'=>$now->format(DATE_ATOM),'arrival_date'=>$input->arrivalDate,'departure_date'=>$input->departureDate,'nights'=>$nights,'adults'=>$input->adults,'child_ages'=>$input->childAges,'physical_guests'=>$physical,'chargeable_guests'=>$chargeable,'free_children'=>array_values(array_filter($input->childAges, static fn (int $age): bool => $age <= 3)),'chargeable_children'=>array_values(array_filter($input->childAges, static fn (int $age): bool => $age >= 4)),'occupancy_configuration_version'=>$configuration->version,'matched_base_band'=>$band->snapshot(),'one_night_surcharge'=>$this->huf($surcharge),'nightly_breakdown'=>$nightly,'applied_date_override_ids'=>array_map('intval', array_keys($overrideIds)), 'accommodation_fee'=>$this->huf($accommodationHuf),'taxes'=>$this->huf($taxHuf),'other_fees'=>$this->huf($otherHuf),'total'=>$this->huf($totalHuf),'currency'=>'HUF'];
+        return new PricingResult($this->huf($totalHuf), $this->huf($accommodationHuf), $this->huf($taxHuf), 'HUF', $items, [], $snapshot);
+    }
+
     /** @param list<PricingRule> $rules */
     public function calculate(PricingInput $input, array $rules, ?\DateTimeImmutable $calculatedAt = null, ?PersonPricingConfiguration $personConfiguration = null): PricingResult
     {

@@ -14,6 +14,9 @@ use App\Domain\Pricing\PricingEngine;
 use App\Domain\Pricing\PricingInput;
 use App\Domain\Pricing\PricingResult;
 use App\Domain\Pricing\PricingRule;
+use App\Domain\Pricing\OccupancyPricingConfiguration;
+use App\Domain\Pricing\OccupancyStayLengthBand;
+use App\Domain\Pricing\OccupancyDateOverride;
 use JsonException;
 use PDO;
 
@@ -47,6 +50,14 @@ final readonly class PdoPricingEngineAdapter implements BookingPricingProvider, 
     private function calculateResult(PDO $pdo, PricingInput $input): PricingResult
     {
         try {
+            // The occupancy tables are additive to the legacy pricing schema. During
+            // rolling upgrades an older database therefore continues using its
+            // immutable legacy calculation until migration 024 is installed.
+            $occupancy = $this->occupancyConfiguration($pdo);
+            if ($occupancy !== null) {
+                $legacyRows = (new PdoPricingRuleRepository($pdo))->listAll(false);
+                return $this->engine->calculateOccupancy($input, $occupancy, array_map($this->mapRule(...), $legacyRows));
+            }
             $rows = (new PdoPricingRuleRepository($pdo))->listAll(false);
 
             return $this->engine->calculate($input, array_map($this->mapRule(...), $rows), null, (new PdoPersonPricingRepository($pdo))->get());
@@ -56,6 +67,24 @@ final readonly class PdoPricingEngineAdapter implements BookingPricingProvider, 
             throw new \App\Application\Pricing\PersonPricingNotConfiguredException('A személyalapú árak még nincsenek beállítva.', 0, $error);
         } catch (PricingConfigurationError|JsonException|\InvalidArgumentException $error) {
             throw new PricingConfigurationException('The persisted pricing configuration is invalid.', 0, $error);
+        }
+    }
+
+    private function occupancyConfiguration(PDO $pdo): ?OccupancyPricingConfiguration
+    {
+        try {
+            $configuration = $pdo->query('SELECT version, one_night_surcharge FROM occupancy_pricing_configuration WHERE id = 1')->fetch(PDO::FETCH_ASSOC);
+            if ($configuration === false) return null;
+            $bands = [];
+            $statement = $pdo->query('SELECT id, guest_count, min_nights, max_nights, nightly_price, is_active, sort_order FROM occupancy_stay_length_bands ORDER BY guest_count, sort_order, id');
+            foreach ($statement->fetchAll(PDO::FETCH_ASSOC) as $row) $bands[] = new OccupancyStayLengthBand((int)$row['id'], (int)$row['guest_count'], (int)$row['min_nights'], $row['max_nights'] === null ? null : (int)$row['max_nights'], (string)$row['nightly_price'], (bool)$row['is_active'], (int)$row['sort_order']);
+            $overrides = [];
+            $statement = $pdo->query('SELECT id, start_date, end_date, price_1_guest, price_2_guests, price_3_guests, price_4_guests, is_active FROM occupancy_date_overrides ORDER BY start_date, id');
+            foreach ($statement->fetchAll(PDO::FETCH_ASSOC) as $row) $overrides[] = new OccupancyDateOverride((int)$row['id'], (string)$row['start_date'], (string)$row['end_date'], [1=>(string)$row['price_1_guest'],2=>(string)$row['price_2_guests'],3=>(string)$row['price_3_guests'],4=>(string)$row['price_4_guests']], (bool)$row['is_active']);
+            return new OccupancyPricingConfiguration((int)$configuration['version'], (string)$configuration['one_night_surcharge'], $bands, $overrides);
+        } catch (\PDOException $e) {
+            if (stripos($e->getMessage(), 'doesn\'t exist') !== false || stripos($e->getMessage(), 'unknown table') !== false) return null;
+            throw $e;
         }
     }
 
