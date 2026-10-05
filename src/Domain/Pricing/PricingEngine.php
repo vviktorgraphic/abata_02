@@ -38,11 +38,13 @@ final class PricingEngine
         $surcharge = $nights === 1 ? (int) $configuration->oneNightSurcharge : 0;
         if ($surcharge > 0) { $accommodationHuf += $surcharge; $items[] = ['type'=>'one_night_surcharge','description'=>'Egyéjszakás felár','quantity'=>1,'unit_amount'=>$configuration->oneNightSurcharge,'total'=>$this->huf($surcharge),'total_huf'=>$surcharge]; }
         $taxHuf = 0; $otherHuf = 0;
+        $exempt = false;
+        foreach ($rules as $rule) if ($rule instanceof PricingRule && $rule->active && $rule->type === 'exemption' && $rule->exemptionKey !== null && in_array($rule->exemptionKey, $input->exemptionKeys, true) && $this->coversPeriod($rule, $arrival, $departure)) { $exempt = true; break; }
         foreach ($rules as $rule) {
             if (!$rule instanceof PricingRule || !$rule->active || $rule->type === 'base' || $rule->type === 'stay_length' || $rule->type === 'weekend' || $rule->type === 'seasonal') continue;
             if ($rule->type === 'fixed_fee' && $this->overlaps($rule, $arrival, $departure)) {
                 $fee = $this->minor($rule->amount); $otherHuf += $fee; $items[] = ['type'=>'fixed_fee','description'=>$rule->name,'rule_id'=>$rule->id,'quantity'=>1,'unit_amount'=>$rule->amount,'total'=>$this->huf($fee),'total_huf'=>$fee];
-            } elseif ($rule->type === 'tourism_tax' && $this->coversPeriod($rule, $arrival, $departure)) {
+            } elseif ($rule->type === 'tourism_tax' && !$exempt && $this->coversPeriod($rule, $arrival, $departure)) {
                 $quantity = match ($rule->baseUnit) { 'per_person_per_night' => $physical * $nights, 'per_night' => $nights, 'per_booking' => 1, default => throw new PricingConfigurationError('Tourism tax has no valid base unit.') };
                 $taxHuf += $this->minor($rule->amount) * $quantity; $items[] = ['type'=>'tourism_tax','description'=>$rule->name,'rule_id'=>$rule->id,'quantity'=>$quantity,'unit_amount'=>$rule->amount,'total'=>$this->huf($this->minor($rule->amount) * $quantity),'total_huf'=>$this->minor($rule->amount) * $quantity];
             }
