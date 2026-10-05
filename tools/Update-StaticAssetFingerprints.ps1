@@ -16,6 +16,6 @@ $configPath = Join-Path $Root 'config/static-assets.php'
 $config = Get-Content -LiteralPath $configPath -Raw
 $config = [regex]::Replace($config, "'booking_css'\s*=>\s*'[^']+'", "'booking_css' => '$cssPath'")
 $config = [regex]::Replace($config, "'booking_js'\s*=>\s*'[^']+'", "'booking_js' => '$jsPath'")
-Set-Content -LiteralPath $configPath -Value $config -Encoding UTF8
+[IO.File]::WriteAllText($configPath, $config, [Text.UTF8Encoding]::new($false))
 Write-Output $cssPath
 Write-Output $jsPath

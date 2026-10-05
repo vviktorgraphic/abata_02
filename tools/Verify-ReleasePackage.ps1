@@ -25,7 +25,7 @@ try {
     if (-not $cssMatch.Success -or -not $jsMatch.Success) { throw 'Runtime static asset mapping is missing valid fingerprinted paths.' }
     foreach ($pair in @(@{Mapped=$cssMatch.Groups[1].Value; Canonical='public/static/css/booking.css'}, @{Mapped=$jsMatch.Groups[1].Value; Canonical='public/static/js/booking-calendar.js'})) {
         $mappedRelative = $pair.Mapped.TrimStart('/')
-        $mappedPath = Join-Path $stage $mappedRelative
+        $mappedPath = Join-Path (Join-Path $stage 'public') $mappedRelative
         $canonicalPath = Join-Path $stage $pair.Canonical
         if (-not (Test-Path -LiteralPath $mappedPath)) { throw "Mapped asset is missing: $mappedRelative" }
         $hash = (Get-FileHash -LiteralPath $mappedPath -Algorithm SHA256).Hash.ToLowerInvariant().Substring(0,12)

@@ -66,6 +66,7 @@ final class DeploymentArtifactsTest extends TestCase
         self::assertStringContainsString('fingerprinted booking CSS', $this->read('tools/Verify-ReleasePackage.ps1'));
         self::assertStringContainsString('Get-FileHash', $this->read('tools/Verify-ReleasePackage.ps1'));
         self::assertStringContainsString('static-assets.php', $this->read('tools/Update-StaticAssetFingerprints.ps1'));
+        self::assertStringContainsString("Join-Path (Join-Path \$stage 'public')", $this->read('tools/Verify-ReleasePackage.ps1'));
     }
 
     public function testMigrationCompatibilityArtifactsCoverBothSupportedEngines(): void
