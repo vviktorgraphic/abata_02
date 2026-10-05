@@ -43,10 +43,10 @@ final class PricingEngine
         foreach ($rules as $rule) {
             if (!$rule instanceof PricingRule || !$rule->active || $rule->type === 'base' || $rule->type === 'stay_length' || $rule->type === 'weekend' || $rule->type === 'seasonal') continue;
             if ($rule->type === 'fixed_fee' && $this->overlaps($rule, $arrival, $departure)) {
-                $fee = $this->minor($rule->amount); $otherHuf += $fee; $items[] = ['type'=>'fixed_fee','description'=>$rule->name,'rule_id'=>$rule->id,'quantity'=>1,'unit_amount'=>$rule->amount,'total'=>$this->huf($fee),'total_huf'=>$fee];
+                $fee = $this->wholeHuf($rule->amount); $otherHuf += $fee; $items[] = ['type'=>'fixed_fee','description'=>$rule->name,'rule_id'=>$rule->id,'quantity'=>1,'unit_amount'=>$this->huf($fee),'total'=>$this->huf($fee),'total_huf'=>$fee];
             } elseif ($rule->type === 'tourism_tax' && !$exempt && $this->coversPeriod($rule, $arrival, $departure)) {
                 $quantity = match ($rule->baseUnit) { 'per_person_per_night' => $physical * $nights, 'per_night' => $nights, 'per_booking' => 1, default => throw new PricingConfigurationError('Tourism tax has no valid base unit.') };
-                $taxHuf += $this->minor($rule->amount) * $quantity; $items[] = ['type'=>'tourism_tax','description'=>$rule->name,'rule_id'=>$rule->id,'quantity'=>$quantity,'unit_amount'=>$rule->amount,'total'=>$this->huf($this->minor($rule->amount) * $quantity),'total_huf'=>$this->minor($rule->amount) * $quantity];
+                $taxUnit = $this->wholeHuf($rule->amount); $taxTotal = $taxUnit * $quantity; $taxHuf += $taxTotal; $items[] = ['type'=>'tourism_tax','description'=>$rule->name,'rule_id'=>$rule->id,'quantity'=>$quantity,'unit_amount'=>$this->huf($taxUnit),'total'=>$this->huf($taxTotal),'total_huf'=>$taxTotal];
             }
         }
         $now = ($calculatedAt ?? new \DateTimeImmutable('now', new \DateTimeZone(self::TIMEZONE)))->setTimezone(new \DateTimeZone(self::TIMEZONE));
@@ -313,4 +313,11 @@ final class PricingEngine
         return $item;
     }
     private function huf(int $whole): string { return $whole.'.00'; }
+    private function wholeHuf(string $value): int
+    {
+        if (!preg_match('/^(?:0|[1-9][0-9]{0,9})\.00$/D', $value)) {
+            throw new PricingConfigurationError('A konfigurált díj csak egész forint lehet.');
+        }
+        return (int) substr($value, 0, -3);
+    }
 }

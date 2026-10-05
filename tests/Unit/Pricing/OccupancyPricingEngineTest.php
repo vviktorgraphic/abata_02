@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 namespace Tests\Unit\Pricing;
-use App\Domain\Pricing\{OccupancyDateOverride,OccupancyPricingConfiguration,OccupancyStayLengthBand,PricingEngine,PricingInput};
+use App\Domain\Pricing\{OccupancyDateOverride,OccupancyPricingConfiguration,OccupancyStayLengthBand,PricingEngine,PricingInput,PricingRule};
 use PHPUnit\Framework\TestCase;
 final class OccupancyPricingEngineTest extends TestCase
 {
@@ -10,4 +10,5 @@ final class OccupancyPricingEngineTest extends TestCase
     public function testFreeAndChargeableChildrenUseDifferentOccupancyCounts(): void { $engine=new PricingEngine(); self::assertSame(2,$engine->calculateOccupancy(new PricingInput('2026-11-01','2026-11-03',2,[2]),$this->config())->snapshot['chargeable_guests']); self::assertSame(3,$engine->calculateOccupancy(new PricingInput('2026-11-01','2026-11-03',2,[4]),$this->config())->snapshot['chargeable_guests']); }
     public function testOverrideReplacesBaseAndDepartureIsExcluded(): void { $override=new OccupancyDateOverride(9,'2026-11-02','2026-11-03',[1=>'30000',2=>'35000',3=>'45000',4=>'50000']); $r=(new PricingEngine())->calculateOccupancy(new PricingInput('2026-11-01','2026-11-04',2,[]),$this->config([$override])); self::assertSame('97000.00',$r->snapshot['accommodation_fee']); self::assertSame(['base_band','date_override','base_band'],array_column($r->snapshot['nightly_breakdown'],'source')); }
     public function testActiveOverridesCannotOverlap(): void { $this->expectException(\InvalidArgumentException::class); $this->config([new OccupancyDateOverride(1,'2026-11-01','2026-11-03',[1=>'1',2=>'1',3=>'1',4=>'1']),new OccupancyDateOverride(2,'2026-11-03','2026-11-04',[1=>'1',2=>'1',3=>'1',4=>'1'])]); }
+    public function testFixedFeeAndTourismTaxStayWholeHufInOccupancyMode(): void { $rules=[new PricingRule(1,'IFA','tourism_tax',true,'2026-01-01',null,1,'500.00','per_person_per_night'),new PricingRule(2,'Foglalási díj','fixed_fee',true,'2026-01-01',null,1,'2000.00','per_booking','fixed')]; $r=(new PricingEngine())->calculateOccupancy(new PricingInput('2026-11-01','2026-11-02',2,[]),$this->config(),$rules); self::assertSame('1000.00',$r->snapshot['taxes']); self::assertSame('2000.00',$r->snapshot['other_fees']); self::assertSame('38000.00',$r->totalAmount); }
 }
