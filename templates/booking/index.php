@@ -37,6 +37,12 @@
             <div><span>Távozás</span><strong id="departure-summary">Nincs kiválasztva</strong></div>
             <button id="clear-dates" class="text-button" type="button" disabled>Dátumok törlése</button>
         </div>
+        <section id="pricing-quote" class="pricing-quote" aria-live="polite" aria-atomic="true" hidden>
+            <p class="pricing-quote-status"></p>
+            <p class="pricing-quote-total"><strong>Várható végösszeg:</strong> <span class="pricing-quote-total-value"></span></p>
+            <dl class="pricing-quote-breakdown"></dl>
+            <small>A végleges összeg a foglalási igény elküldésekor kerül rögzítésre.</small>
+        </section>
     </section>
 
     <section class="form-panel" aria-labelledby="details-title">

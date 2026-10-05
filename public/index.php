@@ -14,6 +14,7 @@ use App\Application\Mail\BookingRequestOutboxDispatcher;
 use App\Http\Controller\AvailabilityController;
 use App\Http\Controller\BookingCreateController;
 use App\Http\Controller\BookingValidationController;
+use App\Http\Controller\PricingQuoteController;
 use App\Http\SecurityRateLimiterAdapter;
 use App\Infrastructure\Database\ConnectionFactory;
 use App\Infrastructure\Mail\SmtpConfiguration;
@@ -219,6 +220,18 @@ $router->post('/api/booking/validate', static function (): void {
         (new BookingValidationController($handler))->validate($input);
     } catch (Throwable) {
         App\Http\JsonResponse::send(['valid' => false, 'error' => 'Az ellenőrzés átmenetileg nem érhető el.'], 500);
+    }
+});
+$router->post('/api/pricing/quote', static function (): void {
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+    try {
+        $root = dirname(__DIR__);
+        $pdo = ConnectionFactory::create(require $root . '/config/database.php');
+        (new PricingQuoteController(new PdoPricingEngineAdapter($pdo)))->fromJson((string) file_get_contents('php://input'));
+    } catch (Throwable) {
+        App\Http\JsonResponse::send(['error' => 'Az ár jelenleg nem számítható ki.'], 503);
     }
 });
 $router->post('/api/bookings', static function () use ($bookingPolicy, $privacyPolicy, $houseRules, $bookingNotifications): void {

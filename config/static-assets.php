@@ -2,8 +2,8 @@
 declare(strict_types=1);
 $root = dirname(__DIR__);
 $assets = [
-    'booking_css' => '/static/css/booking.539ed48318b9.css',
-    'booking_js' => '/static/js/booking-calendar.0b9c5031b059.js',
+    'booking_css' => '/static/css/booking.b6b99c0dc8a0.css',
+    'booking_js' => '/static/js/booking-calendar.8c622473014c.js',
 ];
 foreach ($assets as $key => $path) {
     if (!is_file($root . '/public' . $path)) {

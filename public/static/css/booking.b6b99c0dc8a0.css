@@ -92,6 +92,11 @@ form { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .submit-button:hover { filter: brightness(1.08); }
 .submit-button:disabled { cursor: not-allowed; opacity: .72; }
 .submit-button[aria-busy="true"] { cursor: wait; }
+.pricing-quote { margin-top: 1.25rem; padding: 1rem; border: 1px solid var(--color-accent, #f5a623); border-radius: .5rem; background: var(--color-background, #fff); }
+.pricing-quote-total { font-size: 1.2rem; margin: .4rem 0; }
+.pricing-quote-breakdown { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .25rem 1rem; margin: .75rem 0; }
+.pricing-quote-breakdown div { display: contents; }
+.pricing-quote-breakdown dd { margin: 0; text-align: right; }
 .notice { padding: 12px 15px; border-radius: 10px; color: var(--color-primary); background: var(--color-warning-soft); font-size: .86rem; line-height: 1.5; }
 .notice-error { margin-bottom: 18px; color: var(--color-error); background: var(--color-error-soft); }
 .notice-success { color: var(--color-success); background: var(--color-success-soft); }

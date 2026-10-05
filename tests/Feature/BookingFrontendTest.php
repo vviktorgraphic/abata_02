@@ -21,8 +21,13 @@ final class BookingFrontendTest extends TestCase
         self::assertStringContainsString('alt="A Bata"', $template);
         self::assertStringContainsString('Ugrás A Bata weboldalra', $template);
         self::assertStringContainsString('https://abata.hu/', $template);
-        self::assertStringContainsString('/static/css/booking.539ed48318b9.css', $template);
-        self::assertStringContainsString('/static/js/booking-calendar.0b9c5031b059.js', $template);
+        self::assertStringContainsString("\$staticAssets['booking_css']", $template);
+        self::assertStringContainsString("\$staticAssets['booking_js']", $template);
+        $assets = require $root . '/config/static-assets.php';
+        self::assertMatchesRegularExpression('~^/static/css/booking\.[0-9a-f]{12}\.css$~', $assets['booking_css']);
+        self::assertMatchesRegularExpression('~^/static/js/booking-calendar\.[0-9a-f]{12}\.js$~', $assets['booking_js']);
+        self::assertFileExists($root . '/public' . $assets['booking_css']);
+        self::assertFileExists($root . '/public' . $assets['booking_js']);
         self::assertStringContainsString("cache: 'no-store'", $javascript);
         self::assertStringContainsString('name="privacy_accepted"', $template);
         self::assertStringContainsString('htmlspecialchars($privacyPolicyUrl', $template);
@@ -33,8 +38,9 @@ final class BookingFrontendTest extends TestCase
         self::assertStringContainsString('id="adult-count" name="adults"', $template);
         self::assertStringContainsString('<option>4</option>', $template);
         self::assertStringNotContainsString('<option>5</option>', $template);
-        self::assertStringContainsString('const MAX_TOTAL_GUESTS = 4', $javascript);
-        self::assertStringContainsString('adults + children > MAX_TOTAL_GUESTS', $javascript);
+        self::assertStringContainsString('const MAX_PHYSICAL_GUESTS = 5', $javascript);
+        self::assertStringContainsString('const MAX_CHARGEABLE_GUESTS = 4', $javascript);
+        self::assertStringContainsString('FREE_CHILD_MAX_AGE = 3', $javascript);
         self::assertStringContainsString('option.disabled = Number(option.value) > maximumChildren', $javascript);
         self::assertStringContainsString('Foglalási szabályzatot', $template);
         $productionEnv = (string) file_get_contents($root . '/.env.production.example');

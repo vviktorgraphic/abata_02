@@ -14,7 +14,11 @@
         available: 'szabad', occupied: 'foglalt', departure_only: 'távozási nap, érkezés lehetséges',
         arrival_only: 'érkezési nap', turnover: 'távozás és érkezés', blocked: 'lezárt', past: 'múltbeli'
     };
-    const MAX_TOTAL_GUESTS = 4;
+    const MAX_PHYSICAL_GUESTS = 5;
+    const MAX_CHARGEABLE_GUESTS = 4;
+    const FREE_CHILD_MAX_AGE = 3;
+    let quoteTimer = null;
+    let quoteController = null;
 
     function startOfMonth(date) { return new Date(date.getFullYear(), date.getMonth(), 1); }
     function addMonths(date, amount) { return new Date(date.getFullYear(), date.getMonth() + amount, 1); }
@@ -126,6 +130,51 @@
         document.querySelector('#arrival-input').value = state.arrival || '';
         document.querySelector('#departure-input').value = state.departure || '';
         clearButton.disabled = !state.arrival;
+        scheduleQuote();
+    }
+
+    function formatQuoteAmount(amount) {
+        const value = String(amount ?? '0').replace(/\.\d+$/, '');
+        return `${value.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} Ft`;
+    }
+
+    function scheduleQuote() {
+        const box = document.querySelector('#pricing-quote');
+        if (!box) return;
+        if (quoteTimer) clearTimeout(quoteTimer);
+        const ages = Array.from(childAges.querySelectorAll('input')).map(input => Number(input.value));
+        const adults = Number(adultCount.value);
+        if (!state.arrival || !state.departure || !Number.isInteger(adults) || adults < 1 || ages.some(age => !Number.isInteger(age) || age < 0 || age > 17) || adults + ages.length > MAX_PHYSICAL_GUESTS || adults + ages.filter(age => age > FREE_CHILD_MAX_AGE).length > MAX_CHARGEABLE_GUESTS) {
+            box.hidden = true;
+            if (quoteController) quoteController.abort();
+            return;
+        }
+        box.hidden = false;
+        box.querySelector('.pricing-quote-status').textContent = 'Ár számítása…';
+        box.querySelector('.pricing-quote-total-value').textContent = '';
+        quoteTimer = setTimeout(() => refreshQuote({ arrival_date: state.arrival, departure_date: state.departure, adults, child_ages: ages }), 250);
+    }
+
+    async function refreshQuote(payload) {
+        if (quoteController) quoteController.abort();
+        quoteController = new AbortController();
+        const box = document.querySelector('#pricing-quote');
+        try {
+            const response = await fetch('/api/pricing/quote', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(payload), cache: 'no-store', signal: quoteController.signal });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(result.error || 'no-price');
+            box.querySelector('.pricing-quote-status').textContent = '';
+            box.querySelector('.pricing-quote-total-value').textContent = formatQuoteAmount(result.total);
+            const lines = [['Szállásdíj', result.accommodation_fee]];
+            if (String(result.one_night_surcharge ?? '0').replace('.00', '') !== '0') lines.push(['Egyéjszakás felár', result.one_night_surcharge]);
+            lines.push(['IFA/adók', result.taxes]);
+            box.querySelector('.pricing-quote-breakdown').innerHTML = lines.map(([label, value]) => `<div><dt>${label}</dt><dd>${formatQuoteAmount(value)}</dd></div>`).join('');
+        } catch (error) {
+            if (error.name === 'AbortError') return;
+            box.querySelector('.pricing-quote-status').textContent = error.message === 'no-price' ? 'Erre a létszámra és tartózkodási időre jelenleg nincs ár beállítva.' : 'Az ár jelenleg nem számítható ki.';
+            box.querySelector('.pricing-quote-total-value').textContent = '';
+            box.querySelector('.pricing-quote-breakdown').replaceChildren();
+        }
     }
 
     previousButton.addEventListener('click', () => { state.month = addMonths(state.month, -1); load(); });
@@ -152,7 +201,7 @@
     function syncGuestSelectors(changed) {
         let adults = Number(adultCount.value) || 1;
         let children = Number(childCount.value) || 0;
-        const maximumChildren = Math.max(0, MAX_TOTAL_GUESTS - adults);
+        const maximumChildren = Math.max(0, MAX_PHYSICAL_GUESTS - adults);
         if (changed === 'adults' && children > maximumChildren) {
             children = maximumChildren;
             childCount.value = String(children);
@@ -162,19 +211,21 @@
             option.disabled = Number(option.value) > maximumChildren;
         });
         Array.from(adultCount.options).forEach(option => {
-            option.disabled = Number(option.value) > MAX_TOTAL_GUESTS - children;
+            option.disabled = Number(option.value) > MAX_PHYSICAL_GUESTS - children;
         });
-        if (adults + children > MAX_TOTAL_GUESTS) {
-            adults = Math.max(1, MAX_TOTAL_GUESTS - children);
+        if (adults + children > MAX_PHYSICAL_GUESTS) {
+            adults = Math.max(1, MAX_PHYSICAL_GUESTS - children);
             adultCount.value = String(adults);
         }
     }
 
-    adultCount.addEventListener('change', () => syncGuestSelectors('adults'));
+    adultCount.addEventListener('change', () => { syncGuestSelectors('adults'); scheduleQuote(); });
     childCount.addEventListener('change', () => {
         syncGuestSelectors('children');
         renderChildAgeFields();
+        scheduleQuote();
     });
+    childAges.addEventListener('input', scheduleQuote);
     syncGuestSelectors();
 
     const bookingForm = document.querySelector('#booking-form');
