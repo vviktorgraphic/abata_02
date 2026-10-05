@@ -37,8 +37,8 @@ final class StaticAssetPathContractTest extends TestCase
 
         foreach (['login.php', 'legacy-booking-import.php'] as $template) {
             $html = $render($template);
-            self::assertStringContainsString('href="/static/css/admin.css"', $html, $template);
-            self::assertStringContainsString('src="/static/js/admin-auth.js"', $html, $template);
+            self::assertMatchesRegularExpression('#href="/static/css/admin\.[0-9a-f]{12}\.css"#', $html, $template);
+            self::assertMatchesRegularExpression('#src="/static/js/admin-auth\.[0-9a-f]{12}\.js"#', $html, $template);
             self::assertStringNotContainsString('/assets/', $html, $template);
         }
     }

@@ -4,6 +4,8 @@
 
 ## Biztonsági előfeltételek
 
+**IMPLEMENTED admin asset fingerprint:** a `config/static-assets.php` négy fizikai mappinget tartalmaz: `booking_css`, `booking_js`, `admin_css`, `admin_js`. A közös admin layout is ezeket használja, HTML-escape-pel; productionben hiányzó fingerprint fájlra nincs unhashed fallback. CSS/JS módosítás után futtasd `.\tools\Update-StaticAssetFingerprints.ps1` parancsot, majd commitold a mappinget és a SHA-256 első 12 hex karakterével elnevezett fájlokat. A generátor megőrzi a kanonikus fájlokat, és csak az adott asset régi, 12-hex fingerprint másolatait takarítja. A release verifier mind a négy mappingnél ellenőrzi az útvonalat, létezést, filename/hash egyezést és a kanonikus forrással való azonosságot; query-string cache busting nincs.
+
 A deploy csak jóváhagyott jogi tartalommal, ellenőrzött backupból visszaállási lehetőséggel, hitelesített SMTP-vel és működő HTTPS-sel végezhető el. A repository nem tartalmaz production credentialt. A `.env.production.example` kizárólag mezőleltár: minden `<...>` értéket a hosting secret store-ban kell kitölteni.
 
 ### Jogi dokumentumverziók

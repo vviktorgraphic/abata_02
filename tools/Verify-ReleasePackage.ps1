@@ -20,13 +20,22 @@ try {
     & tar -xzf $archive -C $stage
     if ($LASTEXITCODE -ne 0) { throw 'Unable to extract archive.' }
     $mapping = Get-Content (Join-Path $stage 'config/static-assets.php') -Raw
-    $cssMatch = [regex]::Match($mapping, "'booking_css'\s*=>\s*'(/static/css/booking\.[0-9a-f]{12}\.css)'")
-    $jsMatch = [regex]::Match($mapping, "'booking_js'\s*=>\s*'(/static/js/booking-calendar\.[0-9a-f]{12}\.js)'")
-    if (-not $cssMatch.Success -or -not $jsMatch.Success) { throw 'Runtime static asset mapping is missing valid fingerprinted paths.' }
-    foreach ($pair in @(@{Mapped=$cssMatch.Groups[1].Value; Canonical='public/static/css/booking.css'}, @{Mapped=$jsMatch.Groups[1].Value; Canonical='public/static/js/booking-calendar.js'})) {
-        $mappedRelative = $pair.Mapped.TrimStart('/')
+    $requiredAssets = [ordered]@{
+        booking_css = '/static/css/booking.css'
+        booking_js = '/static/js/booking-calendar.js'
+        admin_css = '/static/css/admin.css'
+        admin_js = '/static/js/admin-auth.js'
+    }
+    foreach ($key in $requiredAssets.Keys) {
+        $canonical = $requiredAssets[$key]
+        $extension = [IO.Path]::GetExtension($canonical)
+        $stem = $canonical.Substring(0, $canonical.Length - $extension.Length)
+        $pathPattern = [regex]::Escape($stem) + '\.[0-9a-f]{12}' + [regex]::Escape($extension)
+        $matches = [regex]::Matches($mapping, "'$key'\s*=>\s*'($pathPattern)'")
+        if ($matches.Count -ne 1 -or [regex]::Matches($mapping, "'$key'\s*=>").Count -ne 1) { throw "Runtime static asset mapping is missing valid fingerprinted paths: $key" }
+        $mappedRelative = $matches[0].Groups[1].Value.TrimStart('/')
         $mappedPath = Join-Path (Join-Path $stage 'public') $mappedRelative
-        $canonicalPath = Join-Path $stage $pair.Canonical
+        $canonicalPath = Join-Path $stage ('public' + $canonical)
         if (-not (Test-Path -LiteralPath $mappedPath)) { throw "Mapped asset is missing: $mappedRelative" }
         $hash = (Get-FileHash -LiteralPath $mappedPath -Algorithm SHA256).Hash.ToLowerInvariant().Substring(0,12)
         if ([IO.Path]::GetFileName($mappedPath) -notmatch "\.$hash\.") { throw "Asset filename fingerprint does not match bytes: $mappedRelative" }
