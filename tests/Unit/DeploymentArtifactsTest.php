@@ -63,7 +63,8 @@ final class DeploymentArtifactsTest extends TestCase
         self::assertStringContainsString("Join-Path \$payload 'tests'", $script);
         self::assertStringNotContainsString('Compress-Archive', $script);
         self::assertStringContainsString('public/static', $this->read('docs/15_DEPLOYMENT.md'));
-        self::assertStringContainsString('fingerprinted booking CSS', $this->read('tools/Verify-ReleasePackage.ps1'));
+        self::assertStringContainsString('Asset filename fingerprint does not match bytes', $this->read('tools/Verify-ReleasePackage.ps1'));
+        self::assertStringContainsString('Fingerprint copy differs from canonical source', $this->read('tools/Verify-ReleasePackage.ps1'));
         self::assertStringContainsString('Get-FileHash', $this->read('tools/Verify-ReleasePackage.ps1'));
         self::assertStringContainsString('static-assets.php', $this->read('tools/Update-StaticAssetFingerprints.ps1'));
         self::assertStringContainsString("Join-Path (Join-Path \$stage 'public')", $this->read('tools/Verify-ReleasePackage.ps1'));

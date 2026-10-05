@@ -12,8 +12,8 @@ final class PricingAdminUxContractTest extends TestCase
     {
         $root = dirname(__DIR__, 3);
         $index = (string) file_get_contents($root . '/public/index.php');
-        self::assertStringContainsString("get('/admin/pricing', static fn () => \$admin()['person_pricing']->index()", $index);
-        self::assertStringContainsString("post('/admin/pricing', static fn () => \$admin()['person_pricing']->save(", $index);
+        self::assertStringContainsString("get('/admin/pricing', static fn () => \$admin()['occupancy_pricing']->index()", $index);
+        self::assertStringContainsString("post('/admin/pricing', static fn () => \$admin()['occupancy_pricing']->save(", $index);
         self::assertStringNotContainsString("get('/admin/pricing/create'", $index);
         self::assertStringNotContainsString("get('/admin/pricing/{id}/edit'", $index);
 

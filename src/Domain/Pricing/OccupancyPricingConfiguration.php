@@ -5,8 +5,15 @@ namespace App\Domain\Pricing;
 
 final readonly class OccupancyPricingConfiguration
 {
+    public int $version;
+    public string $oneNightSurcharge;
+    /** @var list<OccupancyStayLengthBand> */
+    public array $bands;
+    /** @var list<OccupancyDateOverride> */
+    public array $overrides;
+
     /** @param list<OccupancyStayLengthBand> $bands @param list<OccupancyDateOverride> $overrides */
-    public function __construct(public int $version, public string $oneNightSurcharge, public array $bands, public array $overrides = [])
+    public function __construct(int $version, string $oneNightSurcharge, array $bands, array $overrides = [])
     {
         $ranges = [];
         foreach ($bands as $band) {
@@ -24,6 +31,9 @@ final readonly class OccupancyPricingConfiguration
             $active[] = $override;
         }
         $this->oneNightSurcharge = WholeHuf::normalize($oneNightSurcharge);
+        $this->version = $version;
+        $this->bands = $bands;
+        $this->overrides = $overrides;
     }
     public function bandFor(int $guestCount, int $nights): OccupancyStayLengthBand
     { foreach ($this->bands as $band) if ($band->matches($guestCount,$nights)) return $band; throw new PricingConfigurationError('Erre a létszámra és tartózkodási időre jelenleg nincs ár beállítva.'); }

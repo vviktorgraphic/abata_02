@@ -14,10 +14,12 @@ final readonly class OccupancyDateOverride
             if (!$parsed || $parsed->format('Y-m-d') !== $date) throw new \InvalidArgumentException('Az időszak dátuma érvénytelen.');
         }
         if ($startDate > $endDate) throw new \InvalidArgumentException('A kezdő dátum nem lehet későbbi a záró dátumnál.');
+        $normalizedPrices = [];
         for ($i=1; $i<=4; $i++) {
             if (!array_key_exists($i, $prices)) throw new \InvalidArgumentException('Mind a négy létszám ára kötelező.');
-            $this->prices[$i] = WholeHuf::normalize((string) $prices[$i]);
+            $normalizedPrices[$i] = WholeHuf::normalize((string) $prices[$i]);
         }
+        $this->prices = $normalizedPrices;
     }
     public function covers(string $date): bool { return $this->active && $date >= $this->startDate && $date <= $this->endDate; }
     public function priceFor(int $guestCount): string { return $this->prices[$guestCount] ?? throw new \InvalidArgumentException('Érvénytelen árazási létszám.'); }
