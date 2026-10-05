@@ -149,13 +149,13 @@ $router->post('/admin/blocked-periods/{id}/remove', static fn (array $_query, ar
     $params['id'], $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
     isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
 )->send());
-$router->get('/admin/pricing', static fn () => $admin()['person_pricing']->index()->send());
+$router->get('/admin/pricing', static fn () => $admin()['occupancy_pricing']->index()->send());
 $router->get('/admin/pricing/person', static fn () => (new App\Http\Controller\Admin\RedirectResponse('/admin/pricing'))->send());
 $router->post('/admin/pricing/person', static fn () => $admin()['person_pricing']->save(
     $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
     isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
 )->send());
-$router->post('/admin/pricing', static fn () => $admin()['person_pricing']->save(
+$router->post('/admin/pricing', static fn () => $admin()['occupancy_pricing']->save(
     $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
     isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
 )->send());

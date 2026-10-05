@@ -20,6 +20,7 @@ use App\Http\Controller\Admin\TwoFactorController;
 use App\Http\Controller\Admin\BookingManagementController;
 use App\Http\Controller\Admin\BlockedPeriodController;
 use App\Http\Controller\Admin\PricingAdminController;
+use App\Http\Controller\Admin\OccupancyPricingAdminController;
 use App\Http\Controller\Admin\AdminActionGuard;
 use App\Http\Controller\Admin\CalendarAdminController;
 use App\Http\Controller\Admin\SecurityAdminActionRateLimiter;
@@ -154,6 +155,10 @@ return [
         new PdoPricingRuleRepository($pdo),
         new PdoPricingEngineAdapter($pdo),
         $audit,
+    ),
+    'occupancy_pricing' => new OccupancyPricingAdminController(
+        $workflow, $view, $csrf, $actionGuard,
+        new App\Infrastructure\Persistence\Pricing\PdoOccupancyPricingRepository($pdo, $audit),
     ),
     'calendar' => new CalendarAdminController(
         $workflow, $view, $csrf, $actionGuard, $calendarSources, $calendarLogs,
