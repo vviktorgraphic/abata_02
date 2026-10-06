@@ -70,20 +70,44 @@ final readonly class PdoAdminCredentialRepository implements AdminUserRepository
         return (int) $this->pdo->lastInsertId();
     }
 
-    public function setReceivesBookingNotifications(int $adminId, bool $enabled): bool
+    public function replaceBookingNotificationRecipients(array $selectedAdminIds): array
     {
-        $lookup = $this->pdo->prepare('SELECT receives_booking_notifications FROM admins WHERE id = :id');
-        $lookup->execute(['id' => $adminId]);
-        $current = $lookup->fetchColumn();
-        if ($current === false) {
-            return false;
+        if ($this->pdo->inTransaction()) {
+            throw new \LogicException('A foglalási értesítési beállítások mentése saját tranzakciót igényel.');
         }
-        if ((bool) $current === $enabled) {
-            return true;
+        $selected = array_fill_keys($selectedAdminIds, true);
+        $this->pdo->beginTransaction();
+        try {
+            $rows = $this->pdo->query(
+                'SELECT id, receives_booking_notifications FROM admins ORDER BY id FOR UPDATE'
+            )->fetchAll(PDO::FETCH_ASSOC);
+            $existing = array_fill_keys(array_map(static fn (array $row): int => (int) $row['id'], $rows), true);
+            if (array_diff_key($selected, $existing) !== []) {
+                throw new \InvalidArgumentException('A kijelölt felhasználó nem található.');
+            }
+
+            $update = $this->pdo->prepare(
+                'UPDATE admins SET receives_booking_notifications = :enabled WHERE id = :id'
+            );
+            $changes = [];
+            foreach ($rows as $row) {
+                $id = (int) $row['id'];
+                $old = (bool) $row['receives_booking_notifications'];
+                $new = isset($selected[$id]);
+                if ($old === $new) {
+                    continue;
+                }
+                $update->execute(['enabled' => $new ? 1 : 0, 'id' => $id]);
+                $changes[] = ['id' => $id, 'old' => $old, 'new' => $new];
+            }
+            $this->pdo->commit();
+            return $changes;
+        } catch (\Throwable $error) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $error;
         }
-        $statement = $this->pdo->prepare('UPDATE admins SET receives_booking_notifications = :enabled WHERE id = :id');
-        $statement->execute(['enabled' => $enabled ? 1 : 0, 'id' => $adminId]);
-        return $statement->rowCount() === 1;
     }
 
     /** @return list<string> */

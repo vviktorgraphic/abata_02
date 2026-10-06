@@ -108,22 +108,21 @@ $router->post('/admin/2fa/verify', static fn () => $admin()['two_factor']->verif
 $router->post('/admin/2fa/resend', static fn () => $admin()['two_factor']->resend($_POST, $context())->send());
 $router->get('/admin', static fn () => $admin()['dashboard']->show()->send());
 $router->get('/admin/bookings', static fn (array $query) => $admin()['bookings']->index($query)->send());
-$router->get('/admin/users', static fn () => $admin()['users']->index()->send());
+$router->get('/admin/users', static fn (array $query) => $admin()['users']->index(
+    notificationsUpdated: ($query['notifications-updated'] ?? null) === '1',
+)->send());
 $router->get('/admin/users/create', static fn () => $admin()['users']->createForm()->send());
 $router->post('/admin/users', static fn () => $admin()['users']->create(
     $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
     isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
 )->send());
+$router->post('/admin/users/booking-notifications', static fn () => $admin()['users']->saveBookingNotificationPreferences(
+    $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
+    isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
+)->send());
 $router->post('/admin/users/{id}/{action}', static function (array $_query, array $params) use ($admin): void {
-    if (!in_array($params['action'] ?? '', ['activate', 'deactivate', 'booking-notifications'], true)) {
+    if (!in_array($params['action'] ?? '', ['activate', 'deactivate'], true)) {
         (new App\Http\Controller\Admin\HtmlResponse('Not found', 404))->send();
-        return;
-    }
-    if ($params['action'] === 'booking-notifications') {
-        $admin()['users']->setBookingNotifications(
-            (int) $params['id'], $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
-            isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
-        )->send();
         return;
     }
     $admin()['users']->setActive(

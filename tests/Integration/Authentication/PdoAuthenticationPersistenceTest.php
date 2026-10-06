@@ -83,7 +83,7 @@ final class PdoAuthenticationPersistenceTest extends TestCase
         self::assertFalse($management[0]['receives_booking_notifications']);
         self::assertSame([], $repository->bookingNotificationRecipients());
 
-        self::assertTrue($repository->setReceivesBookingNotifications($this->adminId, true));
+        $this->pdo->prepare('UPDATE admins SET receives_booking_notifications = TRUE WHERE id = :id')->execute(['id' => $this->adminId]);
         self::assertCount(1, $repository->bookingNotificationRecipients());
         self::assertTrue($repository->setActive($this->adminId, false));
         self::assertSame([], $repository->bookingNotificationRecipients());
@@ -106,7 +106,7 @@ final class PdoAuthenticationPersistenceTest extends TestCase
         self::assertFalse($byId[$uncheckedId]['receives_booking_notifications']);
         self::assertTrue($byId[$checkedId]['receives_booking_notifications']);
         self::assertCount(2, $repository->bookingNotificationRecipients());
-        self::assertTrue($repository->setReceivesBookingNotifications($checkedId, false));
+        $this->pdo->prepare('UPDATE admins SET receives_booking_notifications = FALSE WHERE id = :id')->execute(['id' => $checkedId]);
         self::assertCount(1, $repository->bookingNotificationRecipients());
     }
 

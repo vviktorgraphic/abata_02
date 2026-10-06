@@ -7,6 +7,8 @@ namespace App\Http\Controller\Admin;
 use App\Application\Audit\AuditEvent;
 use App\Application\Audit\AuditMetadata;
 use App\Application\Authentication\AdminUserRepository;
+use App\Application\Authentication\AdminBookingNotificationAuditEvents;
+use App\Application\Authentication\BookingNotificationPreferenceSelection;
 use App\Domain\Authentication\EmailNormalizer;
 use App\Infrastructure\Persistence\Auth\AdminSessionRepository;
 use App\Infrastructure\Persistence\Auth\PdoAuditLog;
@@ -29,13 +31,14 @@ final readonly class AdminUserController
         private PdoAuditLog $audit,
     ) {}
 
-    public function index(?string $error = null, int $status = 200): AdminResponse
+    public function index(?string $error = null, int $status = 200, bool $notificationsUpdated = false): AdminResponse
     {
         if ($this->auth->currentAdmin() === null) return new RedirectResponse('/admin/login');
         return new HtmlResponse($this->view->render('users', [
             'users' => $this->repository->allForManagement(),
             'csrfToken' => $this->csrf->token(),
             'error' => $error,
+            'notificationsUpdated' => $notificationsUpdated,
         ]), $status);
     }
 
@@ -96,27 +99,20 @@ final readonly class AdminUserController
         }
     }
 
-    public function setBookingNotifications(int $targetId, array $form, ?string $contentType, ?int $contentLength): AdminResponse
+    public function saveBookingNotificationPreferences(array $form, ?string $contentType, ?int $contentLength): AdminResponse
     {
-        $authorization = $this->guard->authorizeForm('admin_user.booking_notifications', $form, $contentType, $contentLength);
+        $authorization = $this->guard->authorizeForm('admin_user.booking_notifications_bulk', $form, $contentType, $contentLength);
         if (!$authorization->allowed()) return $authorization->rejection;
-        if ($targetId < 1) return $this->index('A felhasználó nem található.', 404);
-        if (isset($form['enabled']) && $form['enabled'] !== '1') {
-            return $this->index('Az értesítési beállítás érvénytelen.', 422);
-        }
-        $enabled = ($form['enabled'] ?? null) === '1';
         try {
-            if (!$this->repository->setReceivesBookingNotifications($targetId, $enabled)) {
-                return $this->index('A felhasználó nem található.', 404);
+            $selectedIds = BookingNotificationPreferenceSelection::fromForm($form['notification_admin_ids'] ?? null);
+            $changes = $this->repository->replaceBookingNotificationRecipients($selectedIds);
+            $now = $this->now();
+            foreach (AdminBookingNotificationAuditEvents::forChanges($changes, $authorization->admin['id'], $now) as $event) {
+                $this->audit->append($event);
             }
-            $this->audit->append(new AuditEvent(
-                'admin_user.booking_notifications_' . ($enabled ? 'enabled' : 'disabled'),
-                'success',
-                $this->now(),
-                new AuditMetadata(['target_type'=>'admin','target_id'=>(string)$targetId,'target_admin_id'=>$targetId]),
-                $authorization->admin['id'],
-            ));
             return new RedirectResponse('/admin/users?notifications-updated=1');
+        } catch (\InvalidArgumentException $error) {
+            return $this->index($error->getMessage(), 422);
         } catch (\Throwable) {
             return $this->index('Az értesítési beállítás nem módosítható.', 422);
         }
