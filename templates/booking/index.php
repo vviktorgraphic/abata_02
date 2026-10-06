@@ -49,7 +49,7 @@
         <div>
             <p class="eyebrow">Foglalási adatok</p>
             <h2 id="details-title">Mesélj magatokról</h2>
-            <p class="intro">Küldd el foglalási igényedet. A foglalás az adminisztrátori jóváhagyás után válik véglegessé.</p>
+            <p class="intro">Küldd el foglalási igényedet. A foglalási igény az előleg beérkezése és az ezt követő visszaigazolásunk után válik véglegessé.</p>
         </div>
 
         <form id="booking-form" novalidate>

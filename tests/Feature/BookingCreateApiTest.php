@@ -47,6 +47,14 @@ final class BookingCreateApiTest extends TestCase
         self::assertSame('36 000 Ft', $response->payload['formatted_total_amount']);
         self::assertSame('HUF', $response->payload['currency']);
         self::assertSame('sent', $response->payload['email_status']);
+        self::assertSame(
+            'A foglalási igény az előleg beérkezése és az ezt követő visszaigazolásunk után válik véglegessé.',
+            $response->payload['next_step'],
+        );
+        self::assertStringNotContainsString(
+            'adminisztrátori jóváhagyás',
+            (string) $response->payload['next_step'],
+        );
         self::assertArrayNotHasKey('booking_id', $response->payload);
         self::assertStringNotContainsString('guest@example.test', json_encode($response->payload, JSON_THROW_ON_ERROR));
     }

@@ -90,7 +90,7 @@ final readonly class BookingCreateController
             'formatted_total_amount' => HufFormatter::format($outcome->totalAmount),
             'currency' => $outcome->currency,
             'email_status' => $outcome->emailStatus,
-            'next_step' => 'A foglalás az adminisztrátori jóváhagyás után válik véglegessé.',
+            'next_step' => 'A foglalási igény az előleg beérkezése és az ezt követő visszaigazolásunk után válik véglegessé.',
         ], $outcome->replayed ? 200 : 201);
     }
 

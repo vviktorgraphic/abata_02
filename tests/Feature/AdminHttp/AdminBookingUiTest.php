@@ -58,8 +58,8 @@ final class AdminBookingUiTest extends TestCase
             'csrfToken' => 'safe-token',
             'cancellationPreview' => new CancellationResult(
                 '2026-07-26T12:00:00+02:00',
-                '0.5000',
-                '20000.00',
+                '0.0000',
+                '0.00',
                 'HUF',
                 1,
                 [
@@ -73,7 +73,10 @@ final class AdminBookingUiTest extends TestCase
             'children_ages'=>[],'notes'=>null,'privacy_accepted_at'=>null,'total_amount'=>'40000','currency'=>'HUF',
             'booking_policy_accepted_at'=>'2026-07-16 10:00:00','booking_policy_version'=>'2026-07-16',
             'booking_policy_url'=>'/booking-policy',
-            'pricing_snapshot'=>$snapshot,'status_history'=>[['old_status'=>null,'status'=>'pending','created_at'=>'2026-07-16','admin_note'=>null]],
+            'pricing_snapshot'=>$snapshot,'status_history'=>[
+                ['old_status'=>null,'status'=>'pending','created_at'=>'2026-07-16','admin_note'=>'Public booking request created'],
+                ['old_status'=>'pending','status'=>'pending','created_at'=>'2026-07-16','admin_note'=>'<egyedi admin megjegyzés>'],
+            ],
             'email_outbox'=>[['type'=>'booking_request','status'=>'failed','attempts'=>1]],'created_at'=>'2026-07-16','updated_at'=>'2026-07-16',
         ]]);
         self::assertStringContainsString('Ár-pillanatkép', $html);
@@ -84,9 +87,14 @@ final class AdminBookingUiTest extends TestCase
         self::assertStringContainsString('/booking-policy', $html);
         self::assertStringContainsString('Díjmentes lemondás határideje', $html);
         self::assertStringContainsString('2026-07-25', $html);
-        self::assertStringContainsString('20 000 Ft', $html);
+        self::assertStringContainsString('<dt>Kötbér mértéke</dt><dd>0%</dd>', $html);
+        self::assertStringNotContainsString('0.0000', $html);
         self::assertStringContainsString('40 000 Ft', $html);
         self::assertStringNotContainsString('40000.00', $html);
+        self::assertStringContainsString('Foglalási igény létrehozva a publikus felületen', $html);
+        self::assertStringNotContainsString('Public booking request created', $html);
+        self::assertStringContainsString('&lt;egyedi admin megjegyzés&gt;', $html);
+        self::assertStringNotContainsString('<egyedi admin megjegyzés>', $html);
         if (isset($snapshot['line_items'])) {
             self::assertStringContainsString('Rögzített ártételek', $html);
             self::assertStringContainsString('10 000 Ft', $html);

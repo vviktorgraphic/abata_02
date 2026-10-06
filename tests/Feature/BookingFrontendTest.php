@@ -21,6 +21,8 @@ final class BookingFrontendTest extends TestCase
         self::assertStringContainsString('alt="A Bata"', $template);
         self::assertStringContainsString('Ugrás A Bata weboldalra', $template);
         self::assertStringContainsString('https://abata.hu/', $template);
+        self::assertStringContainsString('A foglalási igény az előleg beérkezése és az ezt követő visszaigazolásunk után válik véglegessé.', $template);
+        self::assertStringNotContainsString('A foglalás az adminisztrátori jóváhagyás után válik véglegessé.', $template);
         self::assertStringContainsString("\$staticAssets['booking_css']", $template);
         self::assertStringContainsString("\$staticAssets['booking_js']", $template);
         $assets = require $root . '/config/static-assets.php';
