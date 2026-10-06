@@ -21,7 +21,7 @@ Remove-Item .\booking-policy.pdf
 
 Az így kapott sort másold a hosting secret store production `.env` értékébe. A preflight productionben elutasítja az angle-bracket helyőrzőket és a hibás SHA-256 fingerprintet; a repositoryban nem szerepelhet a valódi production `.env`.
 
-A public booking két külön outbox üzenetet hoz létre: a vendégnek `booking_request_received`, az ownernek `booking_request_admin_notification`. Productionben a címzett `BOOKING_NOTIFICATION_EMAIL=foglalas@abata.hu`, az admin link alapja `BOOKING_ADMIN_BASE_URL=https://foglalas.abata.hu/admin/bookings`; az üzenetek külön claimelhetők és idempotens replay esetén nem duplikálódnak.
+A public booking egy vendég `booking_request_received` sort és minden aktív, a Felhasználók oldalon kijelölt adminhoz külön `booking_request_admin_notification` sort hoz létre. Ha nincs aktív kijelölt admin, a `BOOKING_NOTIFICATION_EMAIL=foglalas@abata.hu` rollout/emergency fallback az egyetlen admin címzett; kijelölt adminok mellett nem kap rejtett másolatot. Az admin link alapja `BOOKING_ADMIN_BASE_URL=https://foglalas.abata.hu/admin/bookings`; a sorok címzettenként külön claimelhetők és idempotens replay esetén nem duplikálódnak. A `026` migráció után a meglévő adminok beállítása hamis, ezért a fallback az első kézi kijelölésig folytonosságot biztosít.
 
 ### Candidate release tesztelése
 

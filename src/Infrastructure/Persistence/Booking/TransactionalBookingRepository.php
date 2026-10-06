@@ -11,6 +11,7 @@ use App\Application\Booking\BookingPricingProvider;
 use App\Application\Booking\BookingNotFound;
 use App\Application\Booking\BookingTransitionResult;
 use App\Application\Booking\IdempotencyConflict;
+use App\Application\Mail\BookingNotificationRecipientResolver;
 use App\Domain\Booking\AdminNote;
 use App\Domain\Booking\BookingStateMachine;
 use App\Domain\Booking\BookingTransitionNotAllowed;
@@ -27,7 +28,7 @@ final class TransactionalBookingRepository
         private readonly ?\Closure $transactionProbe = null,
         private readonly ?CancellationPolicy $cancellationPolicy = null,
         private readonly ?\Closure $clock = null,
-        private readonly ?string $bookingNotificationEmail = null,
+        private readonly ?BookingNotificationRecipientResolver $bookingNotificationRecipients = null,
         private readonly ?string $bookingAdminBaseUrl = null,
     ) {
     }
@@ -467,9 +468,11 @@ final class TransactionalBookingRepository
                 'subject' => 'A Bata – Foglalását megkaptuk',
                 'payload' => $outboxPayload,
             ]);
-            if ($this->bookingNotificationEmail !== null) {
+            if ($this->bookingNotificationRecipients !== null) {
                 $owner = $this->pdo->prepare('INSERT INTO email_outbox (booking_id, message_type, recipient, subject, payload, status) VALUES (:booking_id, \'booking_request_admin_notification\', :recipient, :subject, :payload, \'pending\')');
-                $owner->execute(['booking_id' => $bookingId, 'recipient' => $this->bookingNotificationEmail, 'subject' => 'Új foglalási igény érkezett', 'payload' => $outboxPayload]);
+                foreach ($this->bookingNotificationRecipients->recipients() as $recipient) {
+                    $owner->execute(['booking_id' => $bookingId, 'recipient' => $recipient, 'subject' => 'Új foglalási igény érkezett', 'payload' => $outboxPayload]);
+                }
             }
 
             $bindClaim = $this->pdo->prepare(

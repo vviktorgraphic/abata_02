@@ -94,6 +94,33 @@ final class PdoBookingRequestOutboxTest extends TestCase
         self::assertSame('processing', $this->row()['status']);
     }
 
+    public function test_claims_multiple_admin_rows_one_at_a_time_and_preserves_recipient_uniqueness(): void
+    {
+        $insert = $this->pdo->prepare(
+            "INSERT INTO email_outbox (booking_id, message_type, recipient, subject, payload)
+             SELECT booking_id, 'booking_request_admin_notification', :recipient, 'Új foglalási igény érkezett', payload
+             FROM email_outbox WHERE booking_id = :booking_id AND message_type = 'booking_request_received'"
+        );
+        foreach (['admin1@example.invalid', 'admin2@example.invalid'] as $recipient) {
+            $insert->execute(['booking_id' => $this->bookingId, 'recipient' => $recipient]);
+        }
+        $repository = new PdoBookingRequestOutbox($this->pdo);
+        $first = $repository->findForDelivery($this->bookingId, 'booking_request_admin_notification');
+        $second = $repository->findForDelivery($this->bookingId, 'booking_request_admin_notification');
+
+        self::assertNotNull($first);
+        self::assertNotNull($second);
+        self::assertNotSame($first['id'], $second['id']);
+        self::assertNull($repository->findForDelivery($this->bookingId, 'booking_request_admin_notification'));
+
+        try {
+            $insert->execute(['booking_id' => $this->bookingId, 'recipient' => 'admin1@example.invalid']);
+            self::fail('Duplicate booking/message/recipient outbox row was accepted.');
+        } catch (\PDOException $error) {
+            self::assertSame('23000', $error->getCode());
+        }
+    }
+
     public function testRefusesDeliveryLookupInsideDatabaseTransaction(): void
     {
         $this->pdo->beginTransaction();

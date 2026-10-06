@@ -17,17 +17,25 @@ final readonly class BookingRequestOutboxDispatcher
 
     public function dispatchForBooking(int $bookingId): OutboxDeliveryResult
     {
-        foreach (['booking_request_received', 'booking_request_admin_notification'] as $messageType) {
-            $item = $this->outbox->findForDelivery($bookingId, $messageType);
-            if ($item === null) continue;
-            try {
-                $this->mailer->send($this->renderer->render($item['data']));
-                $this->outbox->markSent($item['id']);
-            } catch (Throwable) {
-                // Never persist transport exception text: it may contain hosts, credentials or PII.
-                $this->outbox->markFailed($item['id'], 'E-mail transport failure.');
-            }
+        $guest = $this->outbox->findForDelivery($bookingId, 'booking_request_received');
+        if ($guest !== null) {
+            $this->deliver($guest);
+        }
+        while (($admin = $this->outbox->findForDelivery($bookingId, 'booking_request_admin_notification')) !== null) {
+            $this->deliver($admin);
         }
         return new OutboxDeliveryResult($this->outbox->statusForBooking($bookingId));
+    }
+
+    /** @param array{id:int,data:BookingRequestMailData} $item */
+    private function deliver(array $item): void
+    {
+        try {
+            $this->mailer->send($this->renderer->render($item['data']));
+            $this->outbox->markSent($item['id']);
+        } catch (Throwable) {
+            // Never persist transport exception text: it may contain hosts, credentials or PII.
+            $this->outbox->markFailed($item['id'], 'E-mail transport failure.');
+        }
     }
 }

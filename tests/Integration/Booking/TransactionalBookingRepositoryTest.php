@@ -9,6 +9,8 @@ use App\Application\Booking\BookingPersistenceCommand;
 use App\Application\Booking\BookingPricing;
 use App\Application\Booking\BookingPricingProvider;
 use App\Application\Booking\IdempotencyConflict;
+use App\Application\Mail\BookingNotificationRecipientProvider;
+use App\Application\Mail\BookingNotificationRecipientResolver;
 use App\Infrastructure\Database\ConnectionFactory;
 use App\Infrastructure\Persistence\Booking\TransactionalBookingRepository;
 use PDO;
@@ -93,6 +95,41 @@ final class TransactionalBookingRepositoryTest extends TestCase
         $houseRulesAudit = $this->pdo->prepare("SELECT COUNT(*) FROM audit_logs WHERE event_type = 'house_rules.accepted' AND target_type = 'booking' AND target_id = :id");
         $houseRulesAudit->execute(['id' => (string) $created->bookingId]);
         self::assertSame(1, (int) $houseRulesAudit->fetchColumn());
+    }
+
+    public function test_booking_creation_queues_one_guest_and_one_row_per_resolved_admin_without_replay_duplicates(): void
+    {
+        $provider = new class implements BookingNotificationRecipientProvider {
+            public function bookingNotificationRecipients(): array
+            {
+                return ['admin1@example.invalid', 'Admin2@example.invalid', 'admin1@example.invalid'];
+            }
+        };
+        $repository = new TransactionalBookingRepository(
+            $this->pdo,
+            bookingNotificationRecipients: new BookingNotificationRecipientResolver($provider, 'fallback@example.invalid'),
+            bookingAdminBaseUrl: 'https://booking.example.invalid/admin/bookings',
+        );
+        $command = $this->command('2040-01-20', '2040-01-23');
+
+        $created = $repository->create($command, $this->pricing());
+        $this->bookingIds[] = $created->bookingId;
+        $replayed = $repository->create($command, $this->pricing());
+
+        self::assertTrue($replayed->replayed);
+        $statement = $this->pdo->prepare(
+            'SELECT message_type, recipient, subject, payload FROM email_outbox WHERE booking_id = :id ORDER BY id'
+        );
+        $statement->execute(['id' => $created->bookingId]);
+        $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+        self::assertCount(3, $rows);
+        self::assertSame('booking_request_received', $rows[0]['message_type']);
+        self::assertSame(['admin1@example.invalid', 'admin2@example.invalid'], array_column(array_slice($rows, 1), 'recipient'));
+        foreach (array_slice($rows, 1) as $row) {
+            self::assertSame('booking_request_admin_notification', $row['message_type']);
+            self::assertSame('Új foglalási igény érkezett', $row['subject']);
+            self::assertSame($rows[0]['payload'], $row['payload']);
+        }
     }
 
     public function testSameKeyWithDifferentPayloadIsRejected(): void

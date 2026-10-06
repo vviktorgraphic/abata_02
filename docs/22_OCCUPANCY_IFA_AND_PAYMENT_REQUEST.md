@@ -18,7 +18,7 @@ Occupancy módban IFA = konfigurált egységár × tényleges vendégek × éjsz
 
 Csak pending foglaláshoz indítható díjbekérő. A védett `POST /admin/bookings/{reference}/payment-request` teljes admin sessiont, CSRF-et, form Content-Type/body-limitet és rate limitet igényel. Ugyanez a végpont indítja a sikertelen levél újraküldését. Hiányzó foglalás 404, nem pending foglalás 409, hibás banki/előleg-konfiguráció 422; konfigurációs hibánál nincs SMTP-kísérlet.
 
-A `booking_payment_request` a meglévő `email_outbox` táblába kerül. Foglalás/message-type páronként egy rekord van. A foglalás zárolása, a payload létrehozása és a `processing` claim tranzakciós; SMTP csak commit után fut. A küldés nem vált foglalási státuszt és nem foglal kapacitást. A levél `sent` állapota SMTP-átvételt jelent, nem banki jóváírást vagy garantált inbox-kézbesítést.
+A `booking_payment_request` a meglévő `email_outbox` táblába kerül. A `026` utáni egyediség booking/message-type/recipient alapú; mivel a díjbekérőnek egy vendég címzettje van, ebből továbbra is foglalásonként egy rekord készül. A foglalás zárolása, a payload létrehozása és a `processing` claim tranzakciós; SMTP csak commit után fut. A küldés nem vált foglalási státuszt és nem foglal kapacitást. A levél `sent` állapota SMTP-átvételt jelent, nem banki jóváírást vagy garantált inbox-kézbesítést.
 
 A teljes, tárolt booking végösszeg az előleg alapja, nem csak a szállásdíj és nem az aktuális árlista. Az alapbeállítás 50%; páratlan egész-HUF végösszegből az előleg egész forintra HALF_UP kerekített. A kerekítés egész számokkal történik. A feladat konfigurációs követelményének megfelelően a százalék 1–100 között beállítható; az alapérték és a példafájl értéke 50. A levél a tényleges, payloadba rögzített százalékot mutatja.
 

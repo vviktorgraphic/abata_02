@@ -59,6 +59,8 @@ final class BookingFrontendTest extends TestCase
         self::assertStringContainsString("payload.house_rules_accepted = formData.has('house_rules_accepted')", $javascript);
         self::assertStringContainsString('A Bata – Foglalását megkaptuk', (string) file_get_contents($root . '/src/Application/Mail/BookingRequestMailRenderer.php'));
         self::assertStringContainsString('Foglalási igény elküldve', $javascript);
+        self::assertStringContainsString('az előleg beérkezése és az ezt követő visszaigazolásunk után válik véglegessé', $javascript);
+        self::assertStringNotContainsString('adminisztrátori jóváhagyás szükséges', $javascript);
         self::assertStringContainsString("response.status === 409", $javascript);
         self::assertStringContainsString("result.email_status === 'failed'", $javascript);
         self::assertStringContainsString("submitButton.disabled = true", $javascript);
@@ -87,6 +89,7 @@ final class BookingFrontendTest extends TestCase
             $source,
         );
         self::assertStringContainsString("houseRulesUrl: \$houseRules['url']", $source);
-        self::assertStringContainsString("bookingNotificationEmail: \$bookingNotifications['email']", $source);
+        self::assertStringContainsString('new BookingNotificationRecipientResolver(', $source);
+        self::assertStringContainsString("\$bookingNotifications['email']", $source);
     }
 }

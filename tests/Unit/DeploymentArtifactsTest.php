@@ -74,11 +74,16 @@ final class DeploymentArtifactsTest extends TestCase
     {
         $migration011 = $this->read('database/migrations/011_add_email_outbox_processing_status.sql');
         $migration013 = $this->read('database/migrations/013_add_pricing_policy_and_cancellation.sql');
+        $migration026 = $this->read('database/migrations/026_add_admin_booking_notification_recipients.sql');
         $matrix = $this->read('tools/Invoke-MigrationCompatibility.ps1');
 
         self::assertStringContainsString('DROP CONSTRAINT chk_email_outbox_status', $migration011);
         self::assertStringNotContainsString('DROP CHECK', $migration011);
         self::assertStringContainsString('DROP CONSTRAINT chk_pricing_rule_base_unit', $migration013);
+        self::assertStringContainsString('receives_booking_notifications BOOLEAN NOT NULL DEFAULT FALSE', $migration026);
+        self::assertStringContainsString('DROP INDEX uq_email_outbox_booking_type', $migration026);
+        self::assertStringContainsString('UNIQUE KEY uq_email_outbox_booking_type_recipient', $migration026);
+        self::assertStringContainsString('(booking_id, message_type, recipient)', $migration026);
         self::assertStringContainsString('mysql:8.0', $matrix);
         self::assertStringContainsString('mariadb:10.6.28', $matrix);
         self::assertStringContainsString('MIGRATION_DIRECTORY', $matrix);

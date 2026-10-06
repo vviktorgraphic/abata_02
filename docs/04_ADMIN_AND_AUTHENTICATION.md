@@ -25,7 +25,7 @@
 
 **IMPLEMENTED:** a korábbi JSON placeholdert a Sprint 3 HTML login controller és sablon váltotta fel.
 
-**IMPLEMENTED:** az `admins` tábla tárolja az `email`, `password_hash`, `name`, `is_active` és időbélyeg mezőket. A séma önmagában nem jelent működő autentikációt; részletei az [adatbázis- és domainmodellben](02_DATABASE_AND_DOMAIN_MODEL.md) találhatók.
+**IMPLEMENTED:** az `admins` tábla tárolja az `email`, `password_hash`, `name`, `is_active`, `receives_booking_notifications` és időbélyeg mezőket. A Felhasználók oldalon CSRF- és rate-limit-védett POST-tal állítható, ki kapjon új foglalási admin értesítést; a változás auditált. Csak aktív és kijelölt admin címzett, az inaktív fiók tárolt beállítása későbbi reaktiválásig megmarad. A beállítás nem módosítja a 2FA címzettjét. A séma részletei az [adatbázis- és domainmodellben](02_DATABASE_AND_DOMAIN_MODEL.md) találhatók.
 
 **IMPLEMENTED:** jelszóellenőrzés, 2FA-kód, admin session, logout, CSRF-védelem, rate limit/lockout persistence, audit log port/adapter és a fent felsorolt üzleti adminmodulok. **PLANNED:** kézi booking, settings, kereshető audit UI és esetleges részletesebb jogosultsági modell.
 

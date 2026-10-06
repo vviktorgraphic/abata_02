@@ -11,6 +11,7 @@ use App\Application\Booking\BudapestBookingClock;
 use App\Application\Booking\DefaultBookingCreateWorkflow;
 use App\Application\Mail\BookingRequestMailRenderer;
 use App\Application\Mail\BookingRequestOutboxDispatcher;
+use App\Application\Mail\BookingNotificationRecipientResolver;
 use App\Http\Controller\AvailabilityController;
 use App\Http\Controller\BookingCreateController;
 use App\Http\Controller\BookingValidationController;
@@ -114,8 +115,15 @@ $router->post('/admin/users', static fn () => $admin()['users']->create(
     isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
 )->send());
 $router->post('/admin/users/{id}/{action}', static function (array $_query, array $params) use ($admin): void {
-    if (!in_array($params['action'] ?? '', ['activate', 'deactivate'], true)) {
+    if (!in_array($params['action'] ?? '', ['activate', 'deactivate', 'booking-notifications'], true)) {
         (new App\Http\Controller\Admin\HtmlResponse('Not found', 404))->send();
+        return;
+    }
+    if ($params['action'] === 'booking-notifications') {
+        $admin()['users']->setBookingNotifications(
+            (int) $params['id'], $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
+            isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
+        )->send();
         return;
     }
     $admin()['users']->setActive(
@@ -279,7 +287,14 @@ $router->post('/api/bookings', static function () use ($bookingPolicy, $privacyP
             $smtp,
         ));
         $workflow = new DefaultBookingCreateWorkflow(
-            new TransactionalBookingRepository($pdo, bookingNotificationEmail: $bookingNotifications['email'], bookingAdminBaseUrl: $bookingNotifications['base_url']),
+            new TransactionalBookingRepository(
+                $pdo,
+                bookingNotificationRecipients: new BookingNotificationRecipientResolver(
+                    new App\Infrastructure\Persistence\Auth\PdoAdminCredentialRepository($pdo),
+                    $bookingNotifications['email'],
+                ),
+                bookingAdminBaseUrl: $bookingNotifications['base_url'],
+            ),
             new PdoPricingEngineAdapter($pdo),
             $outbox,
             clock: new BudapestBookingClock(),

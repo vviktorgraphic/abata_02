@@ -207,13 +207,14 @@ final class PdoAdminBookingQueryRepository
     private function emails(int $bookingId): array
     {
         $statement = $this->pdo->prepare(
-            'SELECT message_type AS type, status, attempts, last_error, created_at, updated_at, sent_at
+            'SELECT message_type AS type, recipient, status, attempts, last_error, created_at, updated_at, sent_at
              FROM email_outbox WHERE booking_id = :id ORDER BY created_at DESC, id DESC'
         );
         $statement->execute(['id' => $bookingId]);
 
         return array_map(static fn (array $row): array => [
             'type' => (string) $row['type'],
+            'recipient' => (string) $row['recipient'],
             'status' => (string) $row['status'],
             'attempts' => (int) $row['attempts'],
             'last_error' => $row['last_error'] !== null ? (string) $row['last_error'] : null,

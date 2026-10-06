@@ -77,11 +77,13 @@ final class AdminBookingUiTest extends TestCase
                 ['old_status'=>null,'status'=>'pending','created_at'=>'2026-07-16','admin_note'=>'Public booking request created'],
                 ['old_status'=>'pending','status'=>'pending','created_at'=>'2026-07-16','admin_note'=>'<egyedi admin megjegyzés>'],
             ],
-            'email_outbox'=>[['type'=>'booking_request','status'=>'failed','attempts'=>1]],'created_at'=>'2026-07-16','updated_at'=>'2026-07-16',
+            'email_outbox'=>[['type'=>'booking_request_admin_notification','recipient'=>'admin+<one>@example.test','status'=>'failed','attempts'=>1]],'created_at'=>'2026-07-16','updated_at'=>'2026-07-16',
         ]]);
         self::assertStringContainsString('Ár-pillanatkép', $html);
         self::assertStringContainsString('Státusztörténet', $html);
         self::assertStringContainsString('Küldés sikertelen', $html);
+        self::assertStringContainsString('Admin értesítés új foglalásról (admin+&lt;one&gt;@example.test)', $html);
+        self::assertStringNotContainsString('admin+<one>@example.test', $html);
         self::assertStringContainsString('Foglalási szabályzat', $html);
         self::assertStringContainsString('2026-07-16', $html);
         self::assertStringContainsString('/booking-policy', $html);

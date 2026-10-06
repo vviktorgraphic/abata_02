@@ -20,23 +20,27 @@ final readonly class PdoBookingRequestOutbox implements BookingRequestOutbox
             throw new \LogicException('SMTP delivery must run after the booking transaction commits.');
         }
 
-        // Atomic claim: automatic retry is deliberately not part of this sprint, so
-        // only a never-attempted pending item may transition to processing.
-        $claim = $this->pdo->prepare(
-            'UPDATE email_outbox SET status = \'processing\'
-             WHERE booking_id = :booking_id AND message_type = :message_type AND status = \'pending\''
+        $select = $this->pdo->prepare(
+            'SELECT id FROM email_outbox
+             WHERE booking_id = :booking_id AND message_type = :message_type AND status = \'pending\'
+             ORDER BY id LIMIT 1'
         );
-        $claim->execute(['booking_id' => $bookingId, 'message_type' => $messageType]);
-        if ($claim->rowCount() !== 1) {
-            return null;
-        }
+        $claim = $this->pdo->prepare(
+            'UPDATE email_outbox SET status = \'processing\' WHERE id = :id AND status = \'pending\''
+        );
+        do {
+            $select->execute(['booking_id' => $bookingId, 'message_type' => $messageType]);
+            $id = $select->fetchColumn();
+            if ($id === false) {
+                return null;
+            }
+            $claim->execute(['id' => (int) $id]);
+        } while ($claim->rowCount() !== 1);
 
         $statement = $this->pdo->prepare(
-            'SELECT id, recipient, payload FROM email_outbox
-             WHERE booking_id = :booking_id AND message_type = :message_type AND status = \'processing\'
-             LIMIT 1'
+            'SELECT id, recipient, payload FROM email_outbox WHERE id = :id AND status = \'processing\''
         );
-        $statement->execute(['booking_id' => $bookingId, 'message_type' => $messageType]);
+        $statement->execute(['id' => (int) $id]);
         $row = $statement->fetch(PDO::FETCH_ASSOC);
         if ($row === false) {
             return null;

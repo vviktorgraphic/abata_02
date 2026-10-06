@@ -93,6 +93,7 @@ final class AdminBookingQueryTest extends TestCase
         self::assertSame('confirmed', $detail['status_history'][0]['status']);
         self::assertSame('person_night', $detail['pricing_snapshot']['base_unit']);
         self::assertSame('failed', $detail['email_outbox'][0]['status']);
+        self::assertSame('detail@example.invalid', $detail['email_outbox'][0]['recipient']);
         self::assertSame('SMTP unavailable', $detail['email_outbox'][0]['last_error']);
         self::assertNull($detail['privacy_accepted_at']);
     }

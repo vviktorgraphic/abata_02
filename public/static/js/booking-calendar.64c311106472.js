@@ -295,7 +295,7 @@
                 if (result.email_status === 'failed') {
                     setMessage(`A foglalási igényt rögzítettük.${reference}${total} A visszaigazoló e-mailt most nem sikerült elküldeni; az igény ettől még megmaradt, ne küldd el újra.`, 'warning');
                 } else {
-                    setMessage(`Köszönjük, a foglalási igényt rögzítettük.${reference}${total} Ez még nem végleges foglalás; adminisztrátori jóváhagyás szükséges.`, 'success');
+                    setMessage(`Köszönjük, a foglalási igényt rögzítettük.${reference}${total} Ez még nem végleges foglalás; az előleg beérkezése és az ezt követő visszaigazolásunk után válik véglegessé.`, 'success');
                 }
                 form.querySelectorAll('input, select, textarea, button').forEach(control => { control.disabled = true; });
             } else if (response.status === 409) {

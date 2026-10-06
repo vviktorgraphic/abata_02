@@ -72,6 +72,44 @@ final class PdoAuthenticationPersistenceTest extends TestCase
         self::assertSame($replacement, $row['password_hash']);
     }
 
+    public function test_booking_notification_preference_defaults_false_and_only_active_checked_admins_are_returned(): void
+    {
+        $repository = new PdoAdminCredentialRepository($this->pdo);
+        $management = array_values(array_filter(
+            $repository->allForManagement(),
+            fn (array $admin): bool => $admin['id'] === $this->adminId,
+        ));
+        self::assertCount(1, $management);
+        self::assertFalse($management[0]['receives_booking_notifications']);
+        self::assertSame([], $repository->bookingNotificationRecipients());
+
+        self::assertTrue($repository->setReceivesBookingNotifications($this->adminId, true));
+        self::assertCount(1, $repository->bookingNotificationRecipients());
+        self::assertTrue($repository->setActive($this->adminId, false));
+        self::assertSame([], $repository->bookingNotificationRecipients());
+        self::assertTrue($repository->setActive($this->adminId, true));
+        self::assertCount(1, $repository->bookingNotificationRecipients());
+
+        $uncheckedId = $repository->createAdmin(
+            'Unchecked Admin',
+            'unchecked-' . bin2hex(random_bytes(5)) . '@example.invalid',
+            password_hash('integration-only-password', PASSWORD_DEFAULT),
+        );
+        $checkedId = $repository->createAdmin(
+            'Checked Admin',
+            'checked-' . bin2hex(random_bytes(5)) . '@example.invalid',
+            password_hash('integration-only-password', PASSWORD_DEFAULT),
+            true,
+        );
+        $rows = $repository->allForManagement();
+        $byId = array_column($rows, null, 'id');
+        self::assertFalse($byId[$uncheckedId]['receives_booking_notifications']);
+        self::assertTrue($byId[$checkedId]['receives_booking_notifications']);
+        self::assertCount(2, $repository->bookingNotificationRecipients());
+        self::assertTrue($repository->setReceivesBookingNotifications($checkedId, false));
+        self::assertCount(1, $repository->bookingNotificationRecipients());
+    }
+
     public function testReplacingTwoFactorCodeInvalidatesPreviousAndNeverStoresPlainCode(): void
     {
         $store = new PdoTwoFactorCodeStore($this->pdo);

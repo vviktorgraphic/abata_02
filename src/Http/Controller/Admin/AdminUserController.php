@@ -51,7 +51,11 @@ final readonly class AdminUserController
     {
         $authorization = $this->guard->authorizeForm('admin_user.create', $form, $contentType, $contentLength);
         if (!$authorization->allowed()) return $authorization->rejection;
-        $old = ['name' => trim((string)($form['name'] ?? '')), 'email' => trim((string)($form['email'] ?? ''))];
+        $old = [
+            'name' => trim((string)($form['name'] ?? '')),
+            'email' => trim((string)($form['email'] ?? '')),
+            'receives_booking_notifications' => ($form['receives_booking_notifications'] ?? null) === '1',
+        ];
         try {
             $name = trim((string)($form['name'] ?? ''));
             if ($name === '' || mb_strlen($name, 'UTF-8') > 190) throw new \InvalidArgumentException('A név kötelező és legfeljebb 190 karakter lehet.');
@@ -62,7 +66,8 @@ final readonly class AdminUserController
             if (strlen($password) < 12) throw new \InvalidArgumentException('A jelszó legalább 12 karakter legyen.');
             if (!hash_equals($password, $confirmation)) throw new \InvalidArgumentException('A jelszó és megerősítése nem egyezik.');
             if ($this->repository->findByNormalizedEmail($email) !== null) throw new \InvalidArgumentException('Az e-mail-cím már használatban van.');
-            $id = $this->repository->createAdmin($name, $email, password_hash($password, PASSWORD_DEFAULT));
+            $receivesNotifications = ($form['receives_booking_notifications'] ?? null) === '1';
+            $id = $this->repository->createAdmin($name, $email, password_hash($password, PASSWORD_DEFAULT), $receivesNotifications);
             $this->audit->append(new AuditEvent('admin_user.created', 'success', $this->now(), new AuditMetadata(['target_type'=>'admin','target_id'=>(string)$id,'target_admin_id'=>$id,'target_email'=>$email]), $authorization->admin['id']));
             return new RedirectResponse('/admin/users?created=1');
         } catch (PDOException) {
@@ -88,6 +93,32 @@ final readonly class AdminUserController
             return new RedirectResponse('/admin/users?updated=1');
         } catch (\Throwable) {
             return $this->index('A felhasználó állapota nem módosítható.', 422);
+        }
+    }
+
+    public function setBookingNotifications(int $targetId, array $form, ?string $contentType, ?int $contentLength): AdminResponse
+    {
+        $authorization = $this->guard->authorizeForm('admin_user.booking_notifications', $form, $contentType, $contentLength);
+        if (!$authorization->allowed()) return $authorization->rejection;
+        if ($targetId < 1) return $this->index('A felhasználó nem található.', 404);
+        if (isset($form['enabled']) && $form['enabled'] !== '1') {
+            return $this->index('Az értesítési beállítás érvénytelen.', 422);
+        }
+        $enabled = ($form['enabled'] ?? null) === '1';
+        try {
+            if (!$this->repository->setReceivesBookingNotifications($targetId, $enabled)) {
+                return $this->index('A felhasználó nem található.', 404);
+            }
+            $this->audit->append(new AuditEvent(
+                'admin_user.booking_notifications_' . ($enabled ? 'enabled' : 'disabled'),
+                'success',
+                $this->now(),
+                new AuditMetadata(['target_type'=>'admin','target_id'=>(string)$targetId,'target_admin_id'=>$targetId]),
+                $authorization->admin['id'],
+            ));
+            return new RedirectResponse('/admin/users?notifications-updated=1');
+        } catch (\Throwable) {
+            return $this->index('Az értesítési beállítás nem módosítható.', 422);
         }
     }
 

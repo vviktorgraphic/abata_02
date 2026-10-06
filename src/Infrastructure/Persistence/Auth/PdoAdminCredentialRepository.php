@@ -51,21 +51,55 @@ final readonly class PdoAdminCredentialRepository implements AdminUserRepository
         return $row === false ? null : ['id' => (int) $row['id'], 'name' => (string) $row['name'], 'email' => (string) $row['email']];
     }
 
-    /** @return list<array{id:int,name:string,email:string,is_active:bool,created_at:string}> */
+    /** @return list<array{id:int,name:string,email:string,is_active:bool,receives_booking_notifications:bool,created_at:string}> */
     public function allForManagement(): array
     {
-        $rows = $this->pdo->query('SELECT id, name, email, is_active, created_at FROM admins ORDER BY name, id')->fetchAll();
+        $rows = $this->pdo->query('SELECT id, name, email, is_active, receives_booking_notifications, created_at FROM admins ORDER BY name, id')->fetchAll();
         return array_map(static fn (array $row): array => [
             'id' => (int) $row['id'], 'name' => (string) $row['name'], 'email' => (string) $row['email'],
-            'is_active' => (bool) $row['is_active'], 'created_at' => (string) $row['created_at'],
+            'is_active' => (bool) $row['is_active'],
+            'receives_booking_notifications' => (bool) $row['receives_booking_notifications'],
+            'created_at' => (string) $row['created_at'],
         ], $rows);
     }
 
-    public function createAdmin(string $name, string $email, string $passwordHash): int
+    public function createAdmin(string $name, string $email, string $passwordHash, bool $receivesBookingNotifications = false): int
     {
-        $statement = $this->pdo->prepare('INSERT INTO admins (email, password_hash, name, is_active) VALUES (:email, :password_hash, :name, TRUE)');
-        $statement->execute(['email' => $email, 'password_hash' => $passwordHash, 'name' => $name]);
+        $statement = $this->pdo->prepare('INSERT INTO admins (email, password_hash, name, is_active, receives_booking_notifications) VALUES (:email, :password_hash, :name, TRUE, :receives)');
+        $statement->execute(['email' => $email, 'password_hash' => $passwordHash, 'name' => $name, 'receives' => $receivesBookingNotifications ? 1 : 0]);
         return (int) $this->pdo->lastInsertId();
+    }
+
+    public function setReceivesBookingNotifications(int $adminId, bool $enabled): bool
+    {
+        $lookup = $this->pdo->prepare('SELECT receives_booking_notifications FROM admins WHERE id = :id');
+        $lookup->execute(['id' => $adminId]);
+        $current = $lookup->fetchColumn();
+        if ($current === false) {
+            return false;
+        }
+        if ((bool) $current === $enabled) {
+            return true;
+        }
+        $statement = $this->pdo->prepare('UPDATE admins SET receives_booking_notifications = :enabled WHERE id = :id');
+        $statement->execute(['enabled' => $enabled ? 1 : 0, 'id' => $adminId]);
+        return $statement->rowCount() === 1;
+    }
+
+    /** @return list<string> */
+    public function bookingNotificationRecipients(): array
+    {
+        $rows = $this->pdo->query(
+            'SELECT email FROM admins WHERE is_active = TRUE AND receives_booking_notifications = TRUE ORDER BY id'
+        )->fetchAll(PDO::FETCH_COLUMN);
+        $recipients = [];
+        foreach ($rows as $email) {
+            $normalized = mb_strtolower(trim((string) $email), 'UTF-8');
+            if ($normalized !== '') {
+                $recipients[$normalized] = $normalized;
+            }
+        }
+        return array_values($recipients);
     }
 
     public function setActive(int $adminId, bool $active): bool

@@ -3,7 +3,7 @@ declare(strict_types=1);
 $root = dirname(__DIR__);
 $assets = [
     'booking_css' => '/static/css/booking.b6b99c0dc8a0.css',
-    'booking_js' => '/static/js/booking-calendar.8c622473014c.js',
+    'booking_js' => '/static/js/booking-calendar.64c311106472.js',
     'admin_css' => '/static/css/admin.fea988542492.css',
     'admin_js' => '/static/js/admin-auth.67fef7d8207e.js',
 ];
