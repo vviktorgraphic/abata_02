@@ -7,7 +7,7 @@ namespace App\Http\Controller\Admin;
 use App\Application\Audit\AuditEvent;
 use App\Application\Audit\AuditMetadata;
 use App\Application\Authentication\AdminUserRepository;
-use App\Application\Authentication\AdminBookingNotificationAuditEvents;
+use App\Application\Authentication\AdminBookingNotificationPreferenceRepository;
 use App\Application\Authentication\BookingNotificationPreferenceSelection;
 use App\Domain\Authentication\EmailNormalizer;
 use App\Infrastructure\Persistence\Auth\AdminSessionRepository;
@@ -26,6 +26,7 @@ final readonly class AdminUserController
         private CsrfTokenManager $csrf,
         private AdminActionGuard $guard,
         private AdminUserRepository $repository,
+        private AdminBookingNotificationPreferenceRepository $notificationPreferences,
         private AdminSessionRepository $sessions,
         private PdoTwoFactorCodeStore $codes,
         private PdoAuditLog $audit,
@@ -105,11 +106,12 @@ final readonly class AdminUserController
         if (!$authorization->allowed()) return $authorization->rejection;
         try {
             $selectedIds = BookingNotificationPreferenceSelection::fromForm($form['notification_admin_ids'] ?? null);
-            $changes = $this->repository->replaceBookingNotificationRecipients($selectedIds);
             $now = $this->now();
-            foreach (AdminBookingNotificationAuditEvents::forChanges($changes, $authorization->admin['id'], $now) as $event) {
-                $this->audit->append($event);
-            }
+            $this->notificationPreferences->replaceBookingNotificationRecipients(
+                $selectedIds,
+                $authorization->admin['id'],
+                $now,
+            );
             return new RedirectResponse('/admin/users?notifications-updated=1');
         } catch (\InvalidArgumentException $error) {
             return $this->index($error->getMessage(), 422);

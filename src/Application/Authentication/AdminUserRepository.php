@@ -6,7 +6,7 @@ namespace App\Application\Authentication;
 
 use App\Application\Mail\BookingNotificationRecipientProvider;
 
-interface AdminUserRepository extends AdminCredentialRepository, BookingNotificationRecipientProvider, AdminBookingNotificationPreferenceRepository
+interface AdminUserRepository extends AdminCredentialRepository, BookingNotificationRecipientProvider
 {
     /** @return list<array{id:int,name:string,email:string,is_active:bool,receives_booking_notifications:bool,created_at:string}> */
     public function allForManagement(): array;

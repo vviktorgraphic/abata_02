@@ -32,8 +32,9 @@ final class AdminUserManagementContractTest extends TestCase
         self::assertStringContainsString('Foglalási értesítések', $users);
         self::assertStringContainsString('Inaktív – jelenleg nem kap értesítést', $users);
         self::assertStringContainsString("authorizeForm('admin_user.booking_notifications_bulk'", $controller);
-        self::assertStringContainsString('replaceBookingNotificationRecipients($selectedIds)', $controller);
-        self::assertStringContainsString('AdminBookingNotificationAuditEvents::forChanges($changes', $controller);
+        self::assertStringContainsString('$this->notificationPreferences->replaceBookingNotificationRecipients(', $controller);
+        self::assertStringNotContainsString('AdminBookingNotificationAuditEvents::forChanges(', $controller);
+        self::assertStringNotContainsString('$this->audit->append($event)', $controller);
         self::assertStringContainsString('admin_user.booking_notifications_', $auditEvents);
         self::assertStringContainsString('.user-notification-checkbox { width:1.25rem; height:1.25rem; min-height:0;', $css);
         self::assertStringContainsString('.users-table { min-width:64rem;', $css);

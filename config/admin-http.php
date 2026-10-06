@@ -38,6 +38,7 @@ use App\Infrastructure\Mail\SmtpConfiguration;
 use App\Infrastructure\Mail\SmtpMailer;
 use App\Infrastructure\Persistence\Auth\AdminSessionRepository;
 use App\Infrastructure\Persistence\Auth\PdoAdminCredentialRepository;
+use App\Infrastructure\Persistence\Auth\PdoAdminBookingNotificationPreferenceRepository;
 use App\Infrastructure\Persistence\Auth\PdoAuditLog;
 use App\Infrastructure\Persistence\Auth\PdoRateLimitRepository;
 use App\Infrastructure\Persistence\Auth\PdoTwoFactorCodeStore;
@@ -154,6 +155,7 @@ return [
     ),
     'users' => new AdminUserController(
         $workflow, $view, $csrf, $actionGuard, $admins,
+        new PdoAdminBookingNotificationPreferenceRepository($pdo, $audit),
         new AdminSessionRepository($pdo, $authConfig['session_absolute_timeout_seconds']),
         $codes, $audit,
     ),
