@@ -7,6 +7,7 @@ namespace App\Http\Controller;
 use App\Application\Pricing\PricingConfigurationException;
 use App\Application\Pricing\PricingPreviewer;
 use App\Domain\Pricing\PricingInput;
+use App\Domain\Pricing\OccupancyStayLengthViolation;
 use App\Http\JsonResponse;
 use App\Presentation\HufFormatter;
 use JsonException;
@@ -39,9 +40,9 @@ final readonly class PricingQuoteController
             $physical = $payload['adults'] + count($ages);
             $chargeable = $payload['adults'] + count(array_filter($ages, static fn (mixed $age): bool => is_int($age) && $age >= 4));
             if ($physical > 5) {
-                $errors['guests'] = 'A szállás legfeljebb 5 vendéget fogad.';
+                $errors['guests'] = 'A szállás legfeljebb 5 vendéget fogad, a gyermekeket is beleszámítva.';
             } elseif ($chargeable > 4) {
-                $errors['guests'] = 'Az árazási létszám legfeljebb 4 fő lehet.';
+                $errors['guests'] = 'Legfeljebb 4 fizető vendég foglalható; a 4 éves vagy idősebb gyermekek beleszámítanak.';
             }
         }
         if ($errors !== []) {
@@ -73,6 +74,8 @@ final readonly class PricingQuoteController
                 'total' => $result->totalAmount,
                 'nightly_breakdown' => $snapshot['nightly_breakdown'] ?? [],
             ]);
+        } catch (OccupancyStayLengthViolation $error) {
+            JsonResponse::send(['error' => $error->getMessage(), 'errors' => ['departure_date' => $error->getMessage()]], 422);
         } catch (PricingConfigurationException|\InvalidArgumentException $error) {
             JsonResponse::send(['error' => 'Erre a létszámra és tartózkodási időre jelenleg nincs ár beállítva.'], 503);
         } catch (\Throwable) {

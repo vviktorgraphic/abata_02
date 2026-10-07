@@ -72,7 +72,7 @@ final class AdminAuthenticationWorkflowTest extends TestCase
             new VerifyTwoFactorCode(new PdoTwoFactorCodeStore($pdo), $clock),
             $mailer,
             new TwoFactorMailRenderer(dirname(__DIR__, 3) . '/templates/email', 'no-reply@example.invalid'),
-            new AdminSession($storage, new NativeSessionIdRotator(), new SystemClock(), 900),
+            new AdminSession($storage, new NativeSessionIdRotator(), new SystemClock(), 1800),
             $sessions,
             new RateLimiter(new WorkflowRateLimitRepository(), $clock, 'integration-rate-limit-pepper'),
             new AuthenticationRateLimitPolicies(
@@ -85,7 +85,7 @@ final class AdminAuthenticationWorkflowTest extends TestCase
             new AuditMetadataSanitizer(),
             $pdo,
             'integration-audit-pepper',
-            900,
+            1800,
         );
 
         session_id('test-' . bin2hex(random_bytes(16)));

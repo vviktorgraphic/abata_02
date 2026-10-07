@@ -3,6 +3,14 @@
 declare(strict_types=1);
 
 $environment = getenv('APP_ENV') ?: 'production';
+$idleLifetime = getenv('ADMIN_SESSION_IDLE_TIMEOUT_SECONDS');
+if ($idleLifetime === false || trim($idleLifetime) === '') {
+    $idleLifetime = '1800';
+}
+if (filter_var($idleLifetime, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1800]]) === false) {
+    throw new RuntimeException('ADMIN_SESSION_IDLE_TIMEOUT_SECONDS must be an integer of at least 1800 seconds.');
+}
+$idleLifetime = (int) $idleLifetime;
 $absoluteLifetime = getenv('ADMIN_SESSION_ABSOLUTE_TIMEOUT_SECONDS');
 if ($absoluteLifetime === false || trim($absoluteLifetime) === '') {
     if ($environment === 'production') {
@@ -10,12 +18,12 @@ if ($absoluteLifetime === false || trim($absoluteLifetime) === '') {
     }
     $absoluteLifetime = '28800';
 }
-if (filter_var($absoluteLifetime, FILTER_VALIDATE_INT, ['options' => ['min_range' => 901]]) === false) {
-    throw new RuntimeException('ADMIN_SESSION_ABSOLUTE_TIMEOUT_SECONDS must be an integer greater than the 900 second idle timeout.');
+if (filter_var($absoluteLifetime, FILTER_VALIDATE_INT) === false || (int) $absoluteLifetime <= $idleLifetime) {
+    throw new RuntimeException('ADMIN_SESSION_ABSOLUTE_TIMEOUT_SECONDS must be an integer greater than the configured idle timeout.');
 }
 
 return [
-    'session_idle_timeout_seconds' => 900,
+    'session_idle_timeout_seconds' => $idleLifetime,
     'session_absolute_timeout_seconds' => (int) $absoluteLifetime,
     'two_factor_ttl_seconds' => 600,
     'two_factor_max_attempts' => 5,

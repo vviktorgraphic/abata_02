@@ -40,7 +40,7 @@ final readonly class DefaultAdminAuthWorkflow implements AdminAuthWorkflow
         private AuditMetadataSanitizer $auditMetadata,
         private PDO $pdo,
         private string $privacyPepper,
-        private int $idleSeconds = 900,
+        private int $idleSeconds = 1800,
     ) {}
 
     public function login(string $email, string $password, array $requestContext = []): bool

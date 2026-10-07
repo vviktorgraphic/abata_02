@@ -86,18 +86,35 @@ final class PdoOccupancyPricingRepositoryTest extends TestCase
     public function testFullYearOverrideSavesAllFourPricesAndRejectsOverlap(): void
     {
         $prices=[1=>'22000',2=>'27000',3=>'37000',4=>'42000'];
-        $id=$this->repository->saveOverride(new OccupancyDateOverride(0,'2027-01-01','2027-12-31',$prices),1,1);
+        $id=$this->repository->saveOverride(new OccupancyDateOverride(0,'2027-01-01','2027-12-31',$prices,true,3,5),1,1);
         $stored=$this->repository->get()->overrides[0];
         self::assertSame($id,$stored->id);
+        self::assertSame(3,$stored->minNights);
+        self::assertSame(5,$stored->maxNights);
         foreach ($prices as $guests=>$price) self::assertSame($price.'.00',$stored->priceFor($guests));
+        $this->repository->saveOverride(new OccupancyDateOverride($id,'2027-01-01','2027-12-31',$prices,true,2,8),2,1);
+        $stored=$this->repository->get()->overrides[0];
+        self::assertSame(2,$stored->minNights);
+        self::assertSame(8,$stored->maxNights);
         try {
-            $this->repository->saveOverride(new OccupancyDateOverride(0,'2027-12-31','2028-01-02',$prices),2,1);
+            $this->repository->saveOverride(new OccupancyDateOverride(0,'2027-12-31','2028-01-02',$prices),3,1);
             self::fail('An overlapping active override must fail.');
         } catch (\InvalidArgumentException $e) {
             self::assertStringContainsString('nem fedhetik át egymást',$e->getMessage());
-            self::assertSame(2,$this->repository->get()->version);
+            self::assertSame(3,$this->repository->get()->version);
             self::assertCount(1,$this->repository->get()->overrides);
         }
+    }
+
+    public function testExistingOverrideRowsReceiveMigrationDefaults(): void
+    {
+        $this->pdo->exec("INSERT INTO occupancy_date_overrides
+            (start_date,end_date,price_1_guest,price_2_guests,price_3_guests,price_4_guests,is_active)
+            VALUES ('2028-01-01','2028-01-03',1,2,3,4,1)");
+
+        $stored = $this->repository->get()->overrides[0];
+        self::assertSame(1, $stored->minNights);
+        self::assertNull($stored->maxNights);
     }
 
     public function testBaseOverlapPreservesExistingBandAndGivesUsefulMessage(): void

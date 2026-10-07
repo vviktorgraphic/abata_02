@@ -125,28 +125,35 @@ final class CalendarPersistenceTest extends TestCase
         $this->sourceIds = array_values(array_filter($this->sourceIds, static fn (int $id): bool => $id !== $sourceId));
     }
 
-    public function testConfirmedBookingProducesConflictWithoutChangingBookingOrCreatingBlock(): void
+    public function testPendingAndConfirmedBookingsProduceConflictWithoutChangingBookingOrCreatingBlock(): void
     {
         $sourceId = $this->source();
-        $reference = 'ICAL-' . bin2hex(random_bytes(4));
-        $this->bookingReferences[] = $reference;
         $insert = $this->pdo->prepare(
             "INSERT INTO bookings (reference, status, arrival_date, departure_date, guest_name, guest_email, adults)
-             VALUES (:reference, 'confirmed', '2027-09-10', '2027-09-13', 'Guest', 'guest@example.invalid', 1)"
+             VALUES (:reference, :status, :arrival, :departure, 'Guest', 'guest@example.invalid', 1)"
         );
-        $insert->execute(['reference' => $reference]);
         $before = (int) $this->pdo->query('SELECT COUNT(*) FROM blocked_periods')->fetchColumn();
+        foreach (['pending' => 10, 'confirmed' => 20] as $status => $day) {
+            $reference = 'ICAL-' . $status . '-' . bin2hex(random_bytes(4));
+            $this->bookingReferences[] = $reference;
+            $arrival = sprintf('2027-09-%02d', $day);
+            $departure = sprintf('2027-09-%02d', $day + 3);
+            $insert->execute(compact('reference', 'status', 'arrival', 'departure'));
 
-        $result = (new PdoExternalCalendarEventRepository($this->pdo))->importEvent(
-            $sourceId, 'conflicting-event', null, null, $this->date('2027-09-11'), $this->date('2027-09-12'), hash('sha256', 'conflict'), $this->now()
-        );
+            $result = (new PdoExternalCalendarEventRepository($this->pdo))->importEvent(
+                $sourceId, 'conflicting-' . $status, null, null,
+                $this->date(sprintf('2027-09-%02d', $day + 1)),
+                $this->date(sprintf('2027-09-%02d', $day + 2)),
+                hash('sha256', 'conflict-' . $status), $this->now()
+            );
 
-        self::assertSame(ImportedEventPersistenceResult::CONFLICT, $result->outcome);
-        self::assertNull($result->blockedPeriodId);
+            self::assertSame(ImportedEventPersistenceResult::CONFLICT, $result->outcome);
+            self::assertNull($result->blockedPeriodId);
+            $stored = $this->pdo->prepare('SELECT status FROM bookings WHERE reference = :reference');
+            $stored->execute(['reference' => $reference]);
+            self::assertSame($status, $stored->fetchColumn());
+        }
         self::assertSame($before, (int) $this->pdo->query('SELECT COUNT(*) FROM blocked_periods')->fetchColumn());
-        $status = $this->pdo->prepare('SELECT status FROM bookings WHERE reference = :reference');
-        $status->execute(['reference' => $reference]);
-        self::assertSame('confirmed', $status->fetchColumn());
     }
 
     public function testSyncLogStoresCountsButRejectsUrls(): void

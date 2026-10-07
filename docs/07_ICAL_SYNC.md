@@ -8,15 +8,15 @@
 
 **IMPLEMENTED:** A belső foglalási modell naptári napokat és fél-nyitott `[arrival_date, departure_date)` intervallumot használ. A Sprint 7 RFC 5545 parsert és exportert, Google Calendar és Szallas.hu importforrást, külön külsőesemény/blocked-period leképezést, szinkronnaplót, admin forráskezelést és kézi szinkront, valamint tokenes publikus exportot ad. Külső esemény soha nem booking, és import nem módosít belső bookingot.
 
-Az export URL `GET /calendar/export.ics?token=...`. Csak `confirmed` booking és aktív blocked period exportálódik; `pending`, `rejected`, `cancelled` és `invalidated` booking nem. A token capability secret, csak SHA-256 hashként tárolódik, rotálható, érvénytelen tokenre megkülönböztethetetlen `404` érkezik, a válasz pedig `private, no-store`. A feed nem tartalmaz vendégadatot.
+Az export URL `GET /calendar/export.ics?token=...`. A `pending` és `confirmed` booking, valamint az aktív belső blocked period exportálódik; `rejected`, `cancelled` és `invalidated` booking nem. A token capability secret, csak SHA-256 hashként tárolódik, rotálható, érvénytelen tokenre megkülönböztethetetlen `404` érkezik, a válasz pedig `private, no-store`. A feed nem tartalmaz vendégadatot.
 
-Az import kézzel indítható. Azonos `(source_id, UID)` és változatlan payload idempotens; confirmed bookinggal való átfedés figyelmeztetésként naplózódik és nem hoz létre duplikált blocked periodot. A napló a kezdést/befejezést, import/export darabszámot, figyelmeztetéseket és hibákat tárolja. Minden üzleti nap `Europe/Budapest` szerint, a távozási nap exkluzívan értendő.
+Az import kézzel indítható. Azonos `(source_id, UID)` és változatlan payload idempotens; pending vagy confirmed bookinggal való átfedés figyelmeztetésként naplózódik és nem hoz létre duplikált blocked periodot. A napló a kezdést/befejezést, import/export darabszámot, figyelmeztetéseket és hibákat tárolja. Minden üzleti nap `Europe/Budapest` szerint, a távozási nap exkluzívan értendő.
 
 **HISTORICAL Sprint 7:** cron/retry/grace akkor még nem volt implementált. **IMPLEMENTED Sprint 10:** CLI worker, forrásonkénti MySQL lock, korlátozott retry/backoff, legalább 24 órás eltűnési grace és futásmetrikák. Manuális konfliktusfeloldás és export-token rotációs grace továbbra is PLANNED.
 
 **IMPLEMENTED:** Az 1.0 alaphatókör külső RFC 5545 naptárakból kézi indítással foglaltságot importál, és tokennel védett, személyes adatot nem tartalmazó export feedet ad. A sync **nem valós idejű**, ezért mentéskor a belső foglalhatóságot mindig újra kell ellenőrizni. **PLANNED:** automatikus időzítés. A domainmodell részletei: [adatbázis- és domainmodell](02_DATABASE_AND_DOMAIN_MODEL.md), a kapcsolódó fenyegetések: [biztonság](09_SECURITY.md).
 
-> **RESOLVED:** támogatott szolgáltatók: Google Calendar és Szallas.hu; `pending` nem exportálódik. **DECISION REQUIRED:** cron gyakoriság és eseményeltűrés türelmi ideje.
+> **RESOLVED / Phase 1B:** támogatott szolgáltatók: Google Calendar és Szallas.hu; `pending` és `confirmed` exportálódik. A stabil UID a booking referenciájából származik, ezért a megerősítés nem hoz létre második eseményt.
 
 ## RFC 5545 eseménymodell
 
@@ -133,9 +133,9 @@ Példa: ha egy partner a rendszer exportját visszaadja saját feedjében, a saj
 
 ## Konfliktuskezelés
 
-**IMPLEMENTED alap:** Import előtt a fél-nyitott overlap formula alkalmazandó: `incoming_start < existing_end AND incoming_end > existing_start`. A külső esemény és a belső foglalás külön rekord marad. Confirmed bookinggal ütközés figyelmeztetés és nem módosít bookingot; manuális konfliktusfeloldás **PLANNED**.
+**IMPLEMENTED alap:** Import előtt a fél-nyitott overlap formula alkalmazandó: `incoming_start < existing_end AND incoming_end > existing_start`. A külső esemény és a belső foglalás külön rekord marad. Pending vagy confirmed bookinggal ütközés figyelmeztetés és nem módosít bookingot; manuális konfliktusfeloldás **PLANNED**.
 
-- külső esemény ütközik `confirmed` bookinggal: egyik sem törlődik; magas prioritású konfliktus készül és az admin értesítést kap;
+- külső esemény ütközik `pending` vagy `confirmed` bookinggal: egyik sem törlődik; magas prioritású konfliktus készül és az admin értesítést kap;
 - külső esemény ütközik `blocked_period` rekorddal: konfliktus naplózandó, a nap továbbra is blokkolt;
 - két külső forrás eseménye ütközik: mindkettő megmarad, deduplikálás csak bizonyított közös azonosító alapján lehetséges;
 - határnapos egymásutániság (`A.DTEND = B.DTSTART`) nem konfliktus;

@@ -29,7 +29,7 @@ final class PdoCalendarExportFeedRepositoryTest extends TestCase
         }
     }
 
-    public function testFeedIncludesOnlyConfirmedAndLocallyManagedActivePeriods(): void
+    public function testFeedIncludesPendingConfirmedAndLocallyManagedActivePeriods(): void
     {
         $booking = $this->pdo->prepare(
             'INSERT INTO bookings
@@ -69,11 +69,39 @@ final class PdoCalendarExportFeedRepositoryTest extends TestCase
             ['2027-05-01', '2027-05-04', '2027-05-07', '2027-05-10', '2027-05-13', '2027-06-01', '2027-06-04', '2027-06-07'],
             true,
         )));
-        self::assertCount(2, $ours);
-        self::assertSame(['2027-05-01', '2027-06-01'], array_map(static fn ($event) => $event->startDate->format('Y-m-d'), $ours));
-        self::assertSame(['2027-05-03', '2027-06-03'], array_map(static fn ($event) => $event->endDate->format('Y-m-d'), $ours));
+        self::assertCount(3, $ours);
+        self::assertSame(['2027-05-01', '2027-05-04', '2027-06-01'], array_map(static fn ($event) => $event->startDate->format('Y-m-d'), $ours));
+        self::assertSame(['2027-05-03', '2027-05-06', '2027-06-03'], array_map(static fn ($event) => $event->endDate->format('Y-m-d'), $ours));
         self::assertSame('Europe/Budapest', $ours[0]->startDate->getTimezone()->getName());
         self::assertStringNotContainsString('Private Guest', implode(' ', array_map(static fn ($event) => $event->uid, $events)));
         self::assertMatchesRegularExpression('/^[a-f0-9]{64}@calendar\.local$/', $ours[1]->uid);
+    }
+
+    public function testBookingUidRemainsStableWhenPendingBecomesConfirmed(): void
+    {
+        $reference = 'ICAL-STABLE-' . bin2hex(random_bytes(4));
+        $insert = $this->pdo->prepare(
+            "INSERT INTO bookings
+             (reference,status,arrival_date,departure_date,guest_name,guest_email,adults,children,total_amount,currency)
+             VALUES (:reference,'pending','2028-01-10','2028-01-12','Private','private@example.invalid',1,0,1000,'HUF')"
+        );
+        $insert->execute(['reference' => $reference]);
+        $repository = new PdoCalendarExportFeedRepository($this->pdo);
+        $pendingUid = $this->uidForStart($repository->exportableEvents(), '2028-01-10');
+
+        $this->pdo->prepare("UPDATE bookings SET status='confirmed' WHERE reference=:reference")
+            ->execute(['reference' => $reference]);
+        $confirmedUid = $this->uidForStart($repository->exportableEvents(), '2028-01-10');
+
+        self::assertSame($pendingUid, $confirmedUid);
+    }
+
+    /** @param list<\App\Domain\Calendar\IcalExportEvent> $events */
+    private function uidForStart(array $events, string $start): string
+    {
+        foreach ($events as $event) {
+            if ($event->startDate->format('Y-m-d') === $start) return $event->uid;
+        }
+        self::fail('Expected booking event was not exported.');
     }
 }

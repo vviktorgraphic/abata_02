@@ -127,7 +127,7 @@ flowchart TD
     L --> M[Commit utáni naplózott e-mailek]
 ```
 
-Szövegesen: **IMPLEMENTED** a naptár, a szervervalidáció és az írási ág. A szerver tranzakción belül újraellenőrzi a confirmed/blocked ütközést, idempotensen ment, ugyanott snapshotot és outboxot ír, majd csak commit után kísérli meg az SMTP-küldést.
+Szövegesen: **IMPLEMENTED** a naptár, a szervervalidáció és az írási ág. A szerver tranzakción belül újraellenőrzi a pending/confirmed/blocked ütközést, idempotensen ment, ugyanott snapshotot és outboxot ír, majd csak commit után kísérli meg az SMTP-küldést.
 
 ## Admin authentikáció
 
@@ -178,7 +178,7 @@ Szövegesen: a biztonságos HTTPS fetch, parser, kézi és automatikus sync, UID
 
 - a Docker Compose ugyanazon `.env` `DB_*` változóiból adja át az app és MySQL inicializáló credentialjeit;
 - a `config/database.php` minden DB-változót kötelezően ellenőriz, a portot `1..65535` tartományra validálja;
-- a `config/booking.php` kódban rögzíti a minimum 1, maximum 30 éjszakát, 365 napos horizontot, 93 napos API maximumot és a `confirmed` blokkoló státuszt;
+- a `config/booking.php` kódban rögzíti a minimum 1, maximum 30 éjszakát, 365 napos horizontot, 93 napos API maximumot és a `pending`, `confirmed` blokkoló státuszokat;
 - a CLI scriptek egyszerűen beolvassák a lokális `.env` fájlt, ha a folyamat környezete még nem adott értéket;
 - a `db:check` hostot, adatbázist és felhasználót jelezhet, jelszót nem.
 

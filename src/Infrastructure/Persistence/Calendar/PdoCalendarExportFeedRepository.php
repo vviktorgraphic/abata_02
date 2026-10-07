@@ -6,6 +6,7 @@ namespace App\Infrastructure\Persistence\Calendar;
 
 use App\Application\Calendar\CalendarExportFeedRepository;
 use App\Domain\Calendar\IcalExportEvent;
+use App\Domain\Booking\BookingStatus;
 use DateTimeImmutable;
 use DateTimeZone;
 use PDO;
@@ -21,9 +22,12 @@ final readonly class PdoCalendarExportFeedRepository implements CalendarExportFe
     public function exportableEvents(): array
     {
         $events = [];
-        $bookings = $this->pdo->query(
-            "SELECT reference, arrival_date, departure_date, updated_at FROM bookings WHERE status = 'confirmed' ORDER BY arrival_date, reference"
+        $statusPlaceholders = implode(', ', array_fill(0, count(BookingStatus::BLOCKING_VALUES), '?'));
+        $bookings = $this->pdo->prepare(
+            "SELECT reference, arrival_date, departure_date, updated_at FROM bookings
+             WHERE status IN ({$statusPlaceholders}) ORDER BY arrival_date, reference"
         );
+        $bookings->execute(BookingStatus::BLOCKING_VALUES);
         foreach ($bookings->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $events[] = $this->event(
                 'booking:' . (string) $row['reference'],

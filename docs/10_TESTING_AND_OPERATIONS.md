@@ -32,7 +32,7 @@ A piramis alsó szintjein sok gyors, determinisztikus teszt szükséges, feljebb
 ### Dátum és availability
 
 - **IMPLEMENTED:** egymást követő `[arrival, departure)` foglalások nem ütköznek; azonos napi és közrefogott időszak ütközik; múltbeli érkezés és nem pozitív időtartam elutasítható.
-- **IMPLEMENTED:** turnover és napi availability állapotok közvetlenül unit szinten teszteltek; az availability JSON alapszerződés controller/use-case feature tesztet kapott; az integrációs teszt a PDO repository `confirmed`/`pending`/`cancelled` szűrését és PII-mentes kimenetét ellenőrzi.
+- **IMPLEMENTED:** turnover és napi availability állapotok közvetlenül unit szinten teszteltek; az availability JSON alapszerződés controller/use-case feature tesztet kapott; az integrációs teszt a PDO repository `pending`/`confirmed` blokkolását, lezárt státuszainak kizárását és PII-mentes kimenetét ellenőrzi.
 - **PLANNED – P1 teszthiány:** a `POST /api/booking/validate` kötelező mezői, `privacy`, Content-Type és hibás JSON, minimum/maximum éjszaka, booking horizon, foglaltsági elutasítás és 500-as ág automatizált szerződés- és HTTP tesztje. Ez a jelenlegi üzleti szabályok teljes lefedéséhez szükséges.
 - **PLANNED:** Europe/Budapest dátumhatár, szökőnap, hónap-/évváltás és booking horizon szélsőértékek teljes mátrixa.
 
@@ -44,7 +44,7 @@ Példa: `[2026-08-01, 2026-08-05)` és `[2026-08-05, 2026-08-08)` nem ütközik;
 
 ### Párhuzamos foglalás és idempotencia
 
-**IMPLEMENTED:** két külön kérés azonos időszakra külön kulccsal pendingként sikerülhet; confirmed vagy blocked átfedés elutasított. Nincs részleges booking/child/history/snapshot/outbox rekord. Azonos idempotenciakulcs ismétlése ugyanazt az eredményt adja, eltérő payload `409`.
+**IMPLEMENTED:** két külön kérés azonos időszakra külön kulccsal nem sikerülhet egyszerre: a készletzár után csak az első pending menthető; pending, confirmed vagy blocked átfedés elutasított. Nincs részleges booking/child/history/snapshot/outbox rekord. Azonos idempotenciakulcs ismétlése ugyanazt az eredményt adja, eltérő payload `409`.
 
 ### Státuszváltás
 
@@ -56,7 +56,7 @@ Példa: `[2026-08-01, 2026-08-05)` és `[2026-08-05, 2026-08-08)` nem ütközik;
 
 ### iCal import/export
 
-**IMPLEMENTED Sprint 7:** RFC 5545 parser line foldinggal és erőforráslimitekkel; `DATE DTSTART`, exkluzív `DTEND`, Budapest DATE-TIME naposítás; exporter UID/DTSTAMP/DTSTART/DTEND/SUMMARY/DESCRIPTION/LAST-MODIFIED mezőkkel; token valid/invalid szerződés; Google/Szallas.hu provider; idempotens import, confirmed konfliktus, blocked-period kapcsolat és sync log persistence; confirmed/blocked export és pending/status kizárás. Részletek: [iCal szinkron](07_ICAL_SYNC.md).
+**IMPLEMENTED Sprint 7 + Phase 1B:** RFC 5545 parser line foldinggal és erőforráslimitekkel; `DATE DTSTART`, exkluzív `DTEND`, Budapest DATE-TIME naposítás; exporter UID/DTSTAMP/DTSTART/DTEND/SUMMARY/DESCRIPTION/LAST-MODIFIED mezőkkel; token valid/invalid szerződés; Google/Szallas.hu provider; idempotens import, pending/confirmed konfliktus, blocked-period kapcsolat és sync log persistence; pending/confirmed/belső blocked export és lezárt státuszok kizárása. Részletek: [iCal szinkron](07_ICAL_SYNC.md).
 
 **PLANNED:** cron, retry/backoff, eltűnési grace, cancellation reconciliation, loop prevention teljes lánca és tokenrotációs átfedés. Ezekhez jelenleg nincs elfogadott üzleti paraméter.
 
@@ -133,7 +133,7 @@ Ha a tárhelyen Composer nem futtatható, ugyanazon PHP-platformkövetelményekk
 4. Web rooton kívüli `.env` létrehozása jogosultságszűkítéssel; DB, `APP_ENV=production`, `APP_DEBUG=false`, `APP_TIMEZONE=Europe/Budapest`, SMTP és későbbi iCal secret beállítása. Értéket nem szabad terminálba vagy naplóba írni.
 5. Adatbázismentés és visszaállíthatóság ellenőrzése, majd `php bin/migrate.php`. A migráció csak előrefelé fut, ezért előzetes kompatibilitási terv kötelező.
 6. Szükséges web rooton kívüli log/cache könyvtár létrehozása legszűkebb jogosultsággal; általános `777` tilos.
-7. HTTPS átirányítás, security headerek, secure cookie, SMTP és cron beállítása. Productionben add meg a pozitív `HSTS_MAX_AGE_SECONDS` és `ADMIN_SESSION_ABSOLUTE_TIMEOUT_SECONDS` értékeket; `TRUSTED_PROXY_IPS` csak saját, ellenőrzött reverse proxy pontos IP-címeit tartalmazhatja.
+7. HTTPS átirányítás, security headerek, secure cookie, SMTP és cron beállítása. Productionben az `ADMIN_SESSION_IDLE_TIMEOUT_SECONDS` értéke legalább 1800 legyen, az `ADMIN_SESSION_ABSOLUTE_TIMEOUT_SECONDS` pedig ennél nagyobb; add meg továbbá a pozitív `HSTS_MAX_AGE_SECONDS` értéket. A `TRUSTED_PROXY_IPS` csak saját, ellenőrzött reverse proxy pontos IP-címeit tartalmazhatja.
 8. Atomikus release-váltás vagy cPanel által támogatott, rövid karbantartási ablak; opcache ürítése a hosting lehetősége szerint.
 9. Staging/production smoke és logellenőrzés; sikertelenségnél rollback.
 
@@ -259,7 +259,7 @@ Release előtt igazolni kell, hogy a cPanel PHP sessionkönyvtára nem osztott m
 
 ## Sprint 4 ellenőrzési mátrix
 
-**AUTOMATIZÁLTAN LEFEDETT:** booking request validáció és kanonikus hash; pending/confirmed overlap szabály; pricing rule kiválasztás, éjszakaszám és immutable snapshot; tranzakciós booking/history/child age/idempotencia/snapshot/outbox mentés és rollback; idempotens replay és payload-konfliktus; confirmed/blocked konfliktus; API Content-Type, JSON, body limit, Origin, rate limit és PII-mentes válasz; HTML/plain booking e-mail, SMTP-hiba utáni booking-megőrzés; branding audit.
+**AUTOMATIZÁLTAN LEFEDETT:** booking request validáció és kanonikus hash; pending/confirmed overlap szabály; pricing rule kiválasztás, érkezési override min/max, éjszakánkénti árforrás és immutable snapshot; tranzakciós booking/history/child age/idempotencia/snapshot/outbox mentés és rollback; idempotens replay és payload-konfliktus; pending/confirmed/blocked konfliktus és valós kétprocesszes create race; API Content-Type, JSON, body limit, Origin, rate limit és PII-mentes válasz; HTML/plain booking e-mail, SMTP-hiba utáni booking-megőrzés; branding audit.
 
 **HELYI POWERSHELL RELEASE ELLENŐRZÉS:**
 

@@ -54,7 +54,7 @@ Accept: application/json
 }
 ```
 
-A `days` minden napot tartalmaz `[from,to)` között. Lehetséges státusz: `available`, `occupied`, `arrival_only`, `departure_only`, `turnover`, `blocked`, `past`. A horizonton túli nap mindkét `selectable_*` értéke `false`, státuszától függetlenül. Az `arrival_restricted=true` a Budapest szerinti ma/holnap egyébként szabad napjain jelzi, hogy érkezésként a minimum 2 naptári napos előfoglalás miatt nem választhatók; távozásként választhatók maradnak. Csak `confirmed` booking blokkol a jelenlegi konfigurációban.
+A `days` minden napot tartalmaz `[from,to)` között. Lehetséges státusz: `available`, `occupied`, `arrival_only`, `departure_only`, `turnover`, `blocked`, `past`. A horizonton túli nap mindkét `selectable_*` értéke `false`, státuszától függetlenül. Az `arrival_restricted=true` a Budapest szerinti ma/holnap egyébként szabad napjain jelzi, hogy érkezésként a minimum 2 naptári napos előfoglalás miatt nem választhatók; távozásként választhatók maradnak. A `pending` és `confirmed` booking blokkol a jelenlegi konfigurációban.
 
 A publikus árlekérdezés az immutable `accommodation_fee` mellett `public_accommodation_total` mezőt is ad. Ez a megjelenítési célú, teljes nem-adó részösszeg (`total - taxes`), így a publikus `Szállásdíj + IFA/adók = végösszeg` bontás akkor is pontos, ha konfigurált fix díj aktív. A lemondási alap továbbra is az immutable `accommodation_fee`; az új mező azt nem írja felül.
 
@@ -236,7 +236,7 @@ Publikus, same-origin JSON foglalási igény létrehozása. `Content-Type: appli
 
 Első siker: `201 Created`. Azonos kulcs és azonos kanonikus payload ismétlése: `200 OK`, ugyanazzal a referenciával. A válasz mezői: `reference`, `status` (`pending`), `total_amount`, `currency` (`HUF`), `email_status` és `next_step`; PII és belső adatbázis-ID nincs benne.
 
-Hibák: malformed JSON `400`; idegen Origin `403`; túl nagy body `413`; hibás Content-Type `415`; mezővalidáció, köztük hiányzó `privacy_accepted` vagy `booking_policy_accepted`, `422`; confirmed/blocked ütközés vagy azonos kulcs eltérő payloadja `409`; rate limit `429` és `Retry-After`; hiányzó/ellentmondásos pricing vagy átmeneti infrastruktúrahiba `503`. Minden válasz `Cache-Control: no-store`.
+Hibák: malformed JSON `400`; idegen Origin `403`; túl nagy body `413`; hibás Content-Type `415`; mezővalidáció, köztük hiányzó `privacy_accepted` vagy `booking_policy_accepted`, `422`; pending/confirmed/blocked ütközés vagy azonos kulcs eltérő payloadja `409`; rate limit `429` és `Retry-After`; hiányzó/ellentmondásos pricing vagy átmeneti infrastruktúrahiba `503`. Minden válasz `Cache-Control: no-store`.
 
 PowerShell smoke:
 
@@ -245,7 +245,7 @@ $body = @{ arrival_date='2026-08-10'; departure_date='2026-08-13'; contact_name=
 Invoke-RestMethod -Method Post -Uri 'http://localhost:8080/api/bookings' -ContentType 'application/json' -Body $body
 ```
 
-A pending igény nem blokkol másik pendinget és nem jár le; confirmed és blocked period blokkol. A szerver tranzakcióban újraellenőriz, snapshotot és outboxot ment. SMTP-hiba nem rollbackeli a bookingot.
+A pending igény azonnal blokkolja a készletet, iCalban exportálódik és nem jár le; confirmed és blocked period szintén blokkol. A szerver tranzakcióban újraellenőriz, snapshotot és outboxot ment. SMTP-hiba nem rollbackeli a bookingot.
 
 ### Admin login és 2FA – PLANNED
 
@@ -285,7 +285,7 @@ A pending igény nem blokkol másik pendinget és nem jár le; confirmed és blo
 
 **Auth:** hosszú, kriptográfiailag véletlen capability token a `token` query paraméterben. Hiányzó, tömb vagy érvénytelen tokenre üres `404` érkezik. Érvényes tokennél `200`, `Content-Type: text/calendar; charset=utf-8`, inline `calendar.ics`, `Cache-Control: private, no-store, max-age=0` és `Referrer-Policy: no-referrer` a válasz.
 
-A feed RFC 5545 `VEVENT` rekordjai egész napos, fél-nyitott időszakok. Csak confirmed booking és aktív blocked period kerül bele; pending/rejected/cancelled/invalidated booking és minden vendégadat kimarad.
+A feed RFC 5545 `VEVENT` rekordjai egész napos, fél-nyitott időszakok. Pending és confirmed booking, valamint aktív belső blocked period kerül bele; rejected/cancelled/invalidated booking, importált külső block és minden vendégadat kimarad.
 
 ```powershell
 $token = Read-Host "iCal export token"

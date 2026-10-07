@@ -14,6 +14,7 @@ use App\Application\Booking\IdempotencyConflict;
 use App\Application\Mail\BookingNotificationRecipientResolver;
 use App\Domain\Booking\AdminNote;
 use App\Domain\Booking\BookingStateMachine;
+use App\Domain\Booking\BookingStatus;
 use App\Domain\Booking\BookingTransitionNotAllowed;
 use App\Domain\Booking\CancellationPolicy;
 use App\Domain\Booking\CancellationResult;
@@ -206,14 +207,15 @@ final class TransactionalBookingRepository
 
     private function assertAvailableForConfirmation(int $bookingId, string $arrival, string $departure): void
     {
-        $confirmed = $this->pdo->prepare(
+        $placeholders = implode(', ', array_fill(0, count(BookingStatus::BLOCKING_VALUES), '?'));
+        $blocking = $this->pdo->prepare(
             "SELECT id FROM bookings
-             WHERE id <> :booking_id AND status = 'confirmed'
-               AND arrival_date < :departure AND departure_date > :arrival LIMIT 1"
+             WHERE id <> ? AND status IN ({$placeholders})
+               AND arrival_date < ? AND departure_date > ? LIMIT 1"
         );
-        $confirmed->execute(['booking_id' => $bookingId, 'arrival' => $arrival, 'departure' => $departure]);
-        if ($confirmed->fetchColumn() !== false) {
-            throw new BookingConflict('The requested period overlaps a confirmed booking.');
+        $blocking->execute([$bookingId, ...BookingStatus::BLOCKING_VALUES, $departure, $arrival]);
+        if ($blocking->fetchColumn() !== false) {
+            throw new BookingConflict('The requested period overlaps a blocking booking.');
         }
 
         $blocked = $this->pdo->prepare(
@@ -533,16 +535,17 @@ final class TransactionalBookingRepository
 
     private function assertAvailable(string $arrival, string $departure): void
     {
-        $confirmed = $this->pdo->prepare(
-            'SELECT id FROM bookings
-             WHERE status = \'confirmed\'
-               AND arrival_date < :departure
-               AND departure_date > :arrival
-             LIMIT 1'
+        $placeholders = implode(', ', array_fill(0, count(BookingStatus::BLOCKING_VALUES), '?'));
+        $blocking = $this->pdo->prepare(
+            "SELECT id FROM bookings
+             WHERE status IN ({$placeholders})
+               AND arrival_date < ?
+               AND departure_date > ?
+             LIMIT 1"
         );
-        $confirmed->execute(['arrival' => $arrival, 'departure' => $departure]);
-        if ($confirmed->fetchColumn() !== false) {
-            throw new BookingConflict('The requested period overlaps a confirmed booking.');
+        $blocking->execute([...BookingStatus::BLOCKING_VALUES, $departure, $arrival]);
+        if ($blocking->fetchColumn() !== false) {
+            throw new BookingConflict('The requested period overlaps a blocking booking.');
         }
 
         $blocked = $this->pdo->prepare(

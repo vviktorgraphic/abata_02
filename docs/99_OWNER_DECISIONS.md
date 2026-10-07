@@ -12,7 +12,7 @@
 
 ## Admin hitelesítés
 
-- **RESOLVED:** admin session inaktivitási ideje 15 perc.
+- **RESOLVED / Phase 1B:** admin session inaktivitási idejének alapértéke és minimuma 30 perc (1800 másodperc).
 - **RESOLVED:** e-mailes 2FA kód érvényessége 10 perc.
 - **RESOLVED:** a 2FA-kód 6 számjegyű és legfeljebb 5 próbálkozást enged.
 - **RESOLVED:** új 2FA-kód legkorábban 60 másodperc után kérhető.
@@ -35,7 +35,7 @@
 ## iCal
 
 - **RESOLVED:** Szallas.hu és Google Calendar import/export támogatandó.
-- **RESOLVED:** csak confirmed booking és aktív blocked period exportálódik; pending/rejected/cancelled/invalidated booking nem.
+- **RESOLVED / Phase 1B:** pending és confirmed booking, valamint aktív belső blocked period exportálódik; rejected/cancelled/invalidated és importált külső block nem.
 - **RESOLVED:** az exporttoken query paraméterben van: `/calendar/export.ics?token=...`.
 - **RESOLVED:** Sprint 7-ben kézi sync van; cron/retry/grace nincs feltételezve.
 
@@ -49,8 +49,8 @@
 
 ## Sprint 4 booking persistence, pricing és e-mail
 
-- **RESOLVED:** minden publikus igény `pending`; pending nem blokkol másik igényt és admin beavatkozásig marad, automatikus lejárat vagy cleanup cron nélkül.
-- **RESOLVED:** a `confirmed` booking és a blocked period blokkol; mentéskor tranzakcióban újraellenőrzendő. A későbbi admin megerősítéskor ugyanez az invariáns kötelező.
+- **RESOLVED / Phase 1B:** minden publikus igény `pending`; azonnal blokkol másik igényt és admin beavatkozásig marad, automatikus lejárat vagy cleanup cron nélkül.
+- **RESOLVED / Phase 1B:** a `pending`, `confirmed` booking és a blocked period blokkol; mentéskor tranzakcióban újraellenőrzendő. A későbbi admin megerősítéskor ugyanez az invariáns kötelező, a saját booking kizárásával.
 - **RESOLVED:** további vendégnevek nem szükségesek. A kapcsolattartó a bookingon, a gyermekek életkora külön rekordokban tárolódik; mesterséges név és életkorból születési dátum nem készül.
 - **RESOLVED:** az idempotenciakulcs és request hash hash-elve, a bookinghoz kötve, időalapú automatikus törlés nélkül marad meg.
 - **RESOLVED:** bookingonként immutable ár-pillanatkép készül, és sikeres commit után foglalásiigény-e-mail küldése indul. SMTP-hiba nem törli a bookingot.
@@ -76,14 +76,14 @@
 ## Sprint 5 admin booking management
 
 - **RESOLVED:** az öt explicit státuszátmenet; minden más tiltott.
-- **RESOLVED:** confirmkor confirmed és aktív blocked overlap recheck; más pending változatlan.
+- **RESOLVED / Phase 1B:** confirmkor más pending, confirmed és aktív blocked overlap recheck; a megerősítendő saját booking ki van zárva.
 - **RESOLVED:** confirmed/rejected/cancelled levél commit után; invalidated nem küld.
-- **RESOLVED:** blocked period confirmed bookinggal nem ütközhet, pendinggel figyelmeztetéssel igen; eltávolítása soft delete.
+- **RESOLVED / Phase 1B:** blocked period pending vagy confirmed bookinggal nem ütközhet; eltávolítása soft delete.
 - **OPEN:** automatikus retry/max-attempt/stale reclaim paraméterei.
 
 ## Sprint 7 iCal sync
 
-- **RESOLVED:** külső esemény külön entitás és blocked period, soha nem booking; confirmed konfliktus bookingot nem módosít.
+- **RESOLVED / Phase 1B:** külső esemény külön entitás és blocked period, soha nem booking; pending/confirmed konfliktus bookingot nem módosít.
 - **RESOLVED:** admin forráskezelés és kézi sync; automatikus cron nincs implementálva.
 - **OPEN:** cron gyakoriság, retry/backoff, eltűnési grace és tokenrotációs átfedés.
 
@@ -116,7 +116,7 @@
 - **IMPLEMENTED:** az IFA mennyisége minden pricing módban kizárólag felnőttek × éjszakák; a 0–17 éves gyermekek ezt nem növelik. Régi snapshot nem számolódik újra.
 - **IMPLEMENTED:** a publikus árösszesítő a már beépített egyéjszakás felárat nem ismétli külön soron; az admin/snapshot bontás megmarad.
 - **IMPLEMENTED:** kontrasztosabb publikus foglaltsági jelölés, angol kommunikációs megjegyzés és egyértelmű „Technikai érvénytelenítés” adminszöveg.
-- **CONFLICT – NOT IMPLEMENTED:** a pending booking blokkolása és iCal-exportja ellentmond a repository kötelező szabályának, amely szerint pending kérés nem blokkol; emiatt a pendingre épülő havi foglaltsági nézet sem készült el.
-- **REQUIRES EXPLICIT SECURITY APPROVAL:** a 15 perces admin idle timeout 30 percre emelése gyengítené a jelenlegi kontrollt, ezért változatlan.
+- **OWNER APPROVED / IMPLEMENTED Phase 1B:** a pending booking blokkolja a kapacitást és bekerül az iCal exportba. A havi admin foglaltsági nézet továbbra sincs ebben a fázisban implementálva.
+- **OWNER APPROVED / IMPLEMENTED Phase 1B:** az admin idle timeout konfigurálható, biztonságos alapértéke és minimuma 1800 másodperc; a 2FA és rate-limit értékek változatlanok.
 - **NOT IMPLEMENTED / DECISION REQUIRED:** a confirmed-booking módosítás teljes tranzakciós folyamata, az aktuális vagy eredeti tarifa A/B döntése, az új snapshot- és módosítástörténet-verziózás, valamint a módosító e-mail.
-- **DECISION/INPUT REQUIRED:** egyedi időszak min/max szabálya, rövid payment reference szerződése, új e-mail template-ek és ütemezési/retry szabályok. Az automatikus `completed` állapotváltás külön production automatizálási jóváhagyást igényel.
+- **RESOLVED / IMPLEMENTED Phase 1B:** az egyedi időszak min/max szabályát az érkezési dátum választja ki; az éjszakánkénti ár továbbra is a tényleges nap alapján oldódik fel. **DECISION/INPUT REQUIRED:** rövid payment reference szerződése, új e-mail template-ek és ütemezési/retry szabályok. Az automatikus `completed` állapotváltás külön production automatizálási jóváhagyást igényel.

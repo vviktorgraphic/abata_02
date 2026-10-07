@@ -12,6 +12,7 @@ use App\Application\Booking\BlockedPeriodCreation;
 use App\Application\Booking\BlockedPeriodManagementRepository;
 use App\Application\Booking\BlockedPeriodNotFound;
 use App\Domain\Booking\BlockedPeriod;
+use App\Domain\Booking\BookingStatus;
 use DateTimeImmutable;
 use DateTimeZone;
 use PDO;
@@ -31,22 +32,16 @@ final readonly class PdoBlockedPeriodRepository implements BlockedPeriodManageme
         $this->pdo->beginTransaction();
         try {
             $this->pdo->query('SELECT id FROM booking_inventory_locks WHERE id = 1 FOR UPDATE')->fetchColumn();
-            $confirmed = $this->pdo->prepare(
-                'SELECT id FROM bookings WHERE status = \'confirmed\'
-                 AND arrival_date < :end_date AND departure_date > :start_date LIMIT 1'
+            $statusPlaceholders = implode(', ', array_fill(0, count(BookingStatus::BLOCKING_VALUES), '?'));
+            $blocking = $this->pdo->prepare(
+                "SELECT id FROM bookings WHERE status IN ({$statusPlaceholders})
+                 AND arrival_date < ? AND departure_date > ? LIMIT 1"
             );
             $dates = ['start_date' => $period->startDate->format('Y-m-d'), 'end_date' => $period->endDate->format('Y-m-d')];
-            $confirmed->execute($dates);
-            if ($confirmed->fetchColumn() !== false) {
-                throw new BlockedPeriodConflict('The blocked period overlaps a confirmed booking.');
+            $blocking->execute([...BookingStatus::BLOCKING_VALUES, $dates['end_date'], $dates['start_date']]);
+            if ($blocking->fetchColumn() !== false) {
+                throw new BlockedPeriodConflict('The blocked period overlaps a blocking booking.');
             }
-
-            $pending = $this->pdo->prepare(
-                'SELECT reference FROM bookings WHERE status = \'pending\'
-                 AND arrival_date < :end_date AND departure_date > :start_date ORDER BY reference'
-            );
-            $pending->execute($dates);
-            $warnings = array_map('strval', $pending->fetchAll(PDO::FETCH_COLUMN));
 
             $insert = $this->pdo->prepare(
                 'INSERT INTO blocked_periods
@@ -62,7 +57,7 @@ final readonly class PdoBlockedPeriodRepository implements BlockedPeriodManageme
             $this->auditLog->append($this->event('blocked_period.created', $id, $adminId, $dates));
             $this->pdo->commit();
 
-            return new BlockedPeriodCreation($id, $warnings);
+            return new BlockedPeriodCreation($id, []);
         } catch (Throwable $error) {
             if ($this->pdo->inTransaction()) {
                 $this->pdo->rollBack();

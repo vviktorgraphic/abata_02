@@ -154,7 +154,10 @@
         if (quoteTimer) clearTimeout(quoteTimer);
         const ages = Array.from(childAges.querySelectorAll('input')).map(input => Number(input.value));
         const adults = Number(adultCount.value);
-        if (!state.arrival || !state.departure || !Number.isInteger(adults) || adults < 1 || ages.some(age => !Number.isInteger(age) || age < 0 || age > 17) || adults + ages.length > MAX_PHYSICAL_GUESTS || adults + ages.filter(age => age > FREE_CHILD_MAX_AGE).length > MAX_CHARGEABLE_GUESTS) {
+        const capacityError = guestCapacityError(adults, ages);
+        const guestError = document.querySelector('[data-error-for="guests"]');
+        if (guestError) guestError.textContent = capacityError;
+        if (!state.arrival || !state.departure || !Number.isInteger(adults) || adults < 1 || ages.some(age => !Number.isInteger(age) || age < 0 || age > 17) || capacityError) {
             box.hidden = true;
             if (quoteController) quoteController.abort();
             return;
@@ -172,7 +175,7 @@
         try {
             const response = await fetch('/api/pricing/quote', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(payload), cache: 'no-store', signal: quoteController.signal });
             const result = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(result.error || 'no-price');
+            if (!response.ok) throw new Error(response.status === 422 && result.error ? result.error : 'no-price');
             box.querySelector('.pricing-quote-status').textContent = '';
             box.querySelector('.pricing-quote-total-value').textContent = formatQuoteAmount(result.total);
             const lines = [['Szállásdíj', result.public_accommodation_total ?? result.accommodation_fee]];
@@ -180,7 +183,9 @@
             box.querySelector('.pricing-quote-breakdown').innerHTML = lines.map(([label, value]) => `<div><dt>${label}</dt><dd>${formatQuoteAmount(value)}</dd></div>`).join('');
         } catch (error) {
             if (error.name === 'AbortError') return;
-            box.querySelector('.pricing-quote-status').textContent = error.message === 'no-price' ? 'Erre a létszámra és tartózkodási időre jelenleg nincs ár beállítva.' : 'Az ár jelenleg nem számítható ki.';
+            box.querySelector('.pricing-quote-status').textContent = error.message === 'no-price'
+                ? 'Erre a létszámra és tartózkodási időre jelenleg nincs ár beállítva.'
+                : (error.message.startsWith('Erre az érkezési dátumra') ? error.message : 'Az ár jelenleg nem számítható ki.');
             box.querySelector('.pricing-quote-total-value').textContent = '';
             box.querySelector('.pricing-quote-breakdown').replaceChildren();
         }
@@ -207,30 +212,28 @@
         }
     }
 
-    function syncGuestSelectors(changed) {
-        let adults = Number(adultCount.value) || 1;
-        let children = Number(childCount.value) || 0;
+    function guestCapacityError(adults, ages) {
+        if (!Number.isInteger(adults) || adults < 1 || ages.some(age => !Number.isInteger(age) || age < 0 || age > 17)) return '';
+        if (adults + ages.length > MAX_PHYSICAL_GUESTS) return 'A szállás legfeljebb 5 vendéget fogad, a gyermekeket is beleszámítva.';
+        if (adults + ages.filter(age => age > FREE_CHILD_MAX_AGE).length > MAX_CHARGEABLE_GUESTS) return 'Legfeljebb 4 fizető vendég foglalható; a 4 éves vagy idősebb gyermekek beleszámítanak.';
+        return '';
+    }
+
+    function syncGuestSelectors() {
+        const adults = Number(adultCount.value) || 1;
+        const children = Number(childCount.value) || 0;
         const maximumChildren = Math.max(0, MAX_PHYSICAL_GUESTS - adults);
-        if (changed === 'adults' && children > maximumChildren) {
-            children = maximumChildren;
-            childCount.value = String(children);
-            renderChildAgeFields();
-        }
         Array.from(childCount.options).forEach(option => {
             option.disabled = Number(option.value) > maximumChildren;
         });
         Array.from(adultCount.options).forEach(option => {
             option.disabled = Number(option.value) > MAX_PHYSICAL_GUESTS - children;
         });
-        if (adults + children > MAX_PHYSICAL_GUESTS) {
-            adults = Math.max(1, MAX_PHYSICAL_GUESTS - children);
-            adultCount.value = String(adults);
-        }
     }
 
-    adultCount.addEventListener('change', () => { syncGuestSelectors('adults'); scheduleQuote(); });
+    adultCount.addEventListener('change', () => { syncGuestSelectors(); scheduleQuote(); });
     childCount.addEventListener('change', () => {
-        syncGuestSelectors('children');
+        syncGuestSelectors();
         renderChildAgeFields();
         scheduleQuote();
     });
@@ -283,6 +286,12 @@
         payload.booking_policy_accepted = formData.has('booking_policy_accepted');
         payload.house_rules_accepted = formData.has('house_rules_accepted');
         payload.child_ages = formData.getAll('child_ages[]').map(Number);
+        const capacityError = guestCapacityError(payload.adults, payload.child_ages);
+        if (capacityError) {
+            showValidationErrors(form, { guests: capacityError });
+            setMessage('Kérjük, javítsd a megjelölt adatokat.', 'error');
+            return;
+        }
         state.idempotencyKey ||= newIdempotencyKey();
         payload.idempotency_key = state.idempotencyKey;
         state.submitting = true;

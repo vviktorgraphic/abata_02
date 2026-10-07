@@ -15,13 +15,13 @@
 
 **IMPLEMENTED:** kriptográfiailag generált hatjegyű e-mailes 2FA, hash-elt tárolás, 10 perces TTL, maximum öt hibás próbálkozás, egyszer használhatóság és 60 másodperces resend-várakozás. A kódot a mailer kapja meg, adatbázisba és audit metadata-ba nem kerül plaintextként.
 
-**IMPLEMENTED:** pending és authenticated sessionállapot, rotáció a biztonsági határokon, 15 perces csúszó idle timeout, konfigurálható abszolút session-élettartam, logout és szerveroldali visszavonás; sessionhöz kötött CSRF minden admin POST controllerben; konfigurálható login/2FA rate limit és szigorúan szűrt audit események.
+**IMPLEMENTED:** pending és authenticated sessionállapot, rotáció a biztonsági határokon, konfigurálható, legalább 30 perces csúszó idle timeout, konfigurálható abszolút session-élettartam, logout és szerveroldali visszavonás; sessionhöz kötött CSRF minden admin POST controllerben; konfigurálható login/2FA rate limit és szigorúan szűrt audit események.
 
 **IMPLEMENTED UI:** login-, 2FA-, dashboard-, logout-, booking lista/részlet/státusz-, blocked-period-, pricing- és iCal-controller, szerveroldali sablonok, A Bata design (`#19194B`, `#F0A236`, `#FFFFFF`). Kézi booking, általános settings és kereshető auditnapló UI nincs.
 
 **IMPLEMENTED HTTP-integráció:** a front controller beköti a login, 2FA verify/resend, dashboard és logout route-okat. A release-kapuhoz Docker/Mailpit smoke továbbra is szükséges.
 
-**IMPLEMENTED:** az abszolút session maximumot az `ADMIN_SESSION_ABSOLUTE_TIMEOUT_SECONDS` adja meg. Productionben kötelező és a 15 perces idle timeoutnál nagyobb pozitív egész; fejlesztésben a dokumentált alapérték 28 800 másodperc. A rate-limit küszöbök konfigurálható fejlesztési alapértékek, véglegesítésük nyitott.
+**IMPLEMENTED:** az idle timeoutot az `ADMIN_SESSION_IDLE_TIMEOUT_SECONDS` adja meg, alapértéke és minimuma 1800 másodperc. Az abszolút session maximumot az `ADMIN_SESSION_ABSOLUTE_TIMEOUT_SECONDS` adja meg; productionben kötelező és a tényleges idle timeoutnál nagyobb pozitív egész, fejlesztésben a dokumentált alapérték 28 800 másodperc. A rate-limit küszöbök változatlan, konfigurálható fejlesztési alapértékek.
 
 **IMPLEMENTED:** a korábbi JSON placeholdert a Sprint 3 HTML login controller és sablon váltotta fel.
 

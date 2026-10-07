@@ -9,7 +9,8 @@ use DateTimeZone;
 
 final readonly class BookingCreateRequestValidator
 {
-    public const MAX_TOTAL_GUESTS = 4;
+    public const MAX_PHYSICAL_GUESTS = 5;
+    public const MAX_CHARGEABLE_GUESTS = 4;
 
     public function __construct(
         private DateTimeImmutable $today,
@@ -17,8 +18,8 @@ final readonly class BookingCreateRequestValidator
         private int $maximumNights = 30,
         private int $bookingHorizonDays = 365,
         private int $minimumAdvanceDays = 2,
-        private int $maximumAdults = self::MAX_TOTAL_GUESTS,
-        private int $maximumChildren = self::MAX_TOTAL_GUESTS,
+        private int $maximumAdults = self::MAX_CHARGEABLE_GUESTS,
+        private int $maximumChildren = self::MAX_CHARGEABLE_GUESTS,
         private int $maximumNotesLength = 2000,
     ) {
         if ($minimumAdvanceDays < 2) {
@@ -63,15 +64,6 @@ final readonly class BookingCreateRequestValidator
             $errors['children'] = sprintf('A gyermekek száma 0 és %d között lehet.', $this->maximumChildren);
         }
 
-        if ($adults !== null && $children !== null && $adults >= 1 && $children >= 0
-            && $adults <= $this->maximumAdults && $children <= $this->maximumChildren
-            && $adults + $children > self::MAX_TOTAL_GUESTS) {
-            $errors['guests'] = sprintf(
-                'A szállás maximális befogadóképessége %d fő, a gyermekeket is beleszámítva.',
-                self::MAX_TOTAL_GUESTS,
-            );
-        }
-
         $childAges = $payload['child_ages'] ?? [];
         if (!is_array($childAges) || $children === null || count($childAges) !== $children) {
             $errors['child_ages'] = 'Minden gyermekhez pontosan egy életkor szükséges.';
@@ -85,6 +77,16 @@ final readonly class BookingCreateRequestValidator
                 }
             }
             $childAges = array_map(static fn (mixed $age): int => (int) $age, $childAges);
+        }
+
+        if ($adults !== null && $children !== null && !isset($errors['adults'], $errors['children'], $errors['child_ages'])) {
+            $physicalGuests = $adults + count($childAges);
+            $chargeableGuests = $adults + count(array_filter($childAges, static fn (int $age): bool => $age >= 4));
+            if ($physicalGuests > self::MAX_PHYSICAL_GUESTS) {
+                $errors['guests'] = 'A szállás legfeljebb 5 vendéget fogad, a gyermekeket is beleszámítva.';
+            } elseif ($chargeableGuests > self::MAX_CHARGEABLE_GUESTS) {
+                $errors['guests'] = 'Legfeljebb 4 fizető vendég foglalható; a 4 éves vagy idősebb gyermekek beleszámítanak.';
+            }
         }
 
         $notes = trim((string) ($payload['notes'] ?? ''));

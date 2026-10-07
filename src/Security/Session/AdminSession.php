@@ -14,7 +14,7 @@ final class AdminSession
         private readonly SessionStorage $storage,
         private readonly SessionIdRotator $idRotator,
         private readonly Clock $clock,
-        private readonly int $inactivityTimeoutSeconds = 900,
+        private readonly int $inactivityTimeoutSeconds = 1800,
     ) {
         if ($this->inactivityTimeoutSeconds < 1) {
             throw new \InvalidArgumentException('The inactivity timeout must be positive.');

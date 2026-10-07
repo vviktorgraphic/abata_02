@@ -29,7 +29,7 @@ A naptár egyszerre két egymást követő hónapot kér le és jelenít meg. In
 | `blocked` | adminisztratív lezárás `[start_date, end_date)` szerint | nem | nem | szürke |
 | `past` | a budapesti mai napnál korábbi nap | nem | nem | szürke |
 
-Csak a konfigurált `confirmed` booking státusz blokkol; a `pending` és `cancelled` rekordok jelenleg nem. A lezárás elsőbbséget élvez a foglalási jelölésekkel szemben. A fél napos színezés CSS `linear-gradient`; a jelentés nem kizárólag színnel jelenik meg, mert minden nap `title` és `aria-label` szöveget is kap.
+A konfigurált `pending` és `confirmed` booking státusz blokkol; a `rejected`, `cancelled` és `invalidated` rekordok nem. A lezárás elsőbbséget élvez a foglalási jelölésekkel szemben. A fél napos színezés CSS `linear-gradient`; a jelentés nem kizárólag színnel jelenik meg, mert minden nap `title` és `aria-label` szöveget is kap.
 
 A modell fél-nyitott: az érkezés inkluzív, a távozás exkluzív. Példa: egy `[2026-08-01, 2026-08-03)` foglalás augusztus 1. és 2. éjszakáját foglalja; augusztus 3-án új vendég érkezhet.
 
@@ -56,6 +56,8 @@ Az űrlap mezői:
 - a megjegyzéshez kapcsolt angol nyelvű segítség jelzi, hogy angol kommunikációs igény itt adható meg; ez nem indít külön automatikus angol e-mail workflow-t;
 - kötelező `privacy` checkbox;
 - rejtett `arrival_date` és `departure_date`.
+
+**IMPLEMENTED kapacitási szabály:** legalább egy felnőtt szükséges, a fizikai létszám legfeljebb 5 fő, az árazási létszám pedig legfeljebb 4 fő. A fizikai létszám minden felnőttet és gyermeket tartalmaz. Az árazási létszámba a felnőttek és a 4–17 éves gyermekek számítanak; a 0–3 éves gyermekek ingyenesek és csak a fizikai kapacitást növelik. A backend a gyermekéletkorok feldolgozása után külön ellenőrzi mindkét korlátot. A kliens nem módosít csendben létszámot vagy életkort, hanem mezőszintű hibaüzenetet jelenít meg.
 
 > **IMPLEMENTED:** a booking create szerveroldalon validálja az `adults`, `children`, `child_ages` és `notes` mezőket és konzisztenciájukat. Az `/adatkezelesi_tajekoztato` technikai oldal és a privacy snapshot elkészült. **RELEASE GATE:** az oldalon jelenleg egyértelmű, `noindex` fejlesztői placeholder látható; production előtt jóváhagyott jogi tartalom és végleges verzióazonosító szükséges.
 
@@ -99,7 +101,7 @@ Siker esetén is csak `valid: true`, `submission_enabled: false` érkezik: rekor
 **Elfogadási feltételek – foglalás létrehozása:**
 
 - ugyanazok a domain-dátumszabályok érvényesek a preview/validate és create műveletben;
-- több párhuzamos, átfedő pending kérés létrejöhet; confirmed vagy blocked átfedésnél egyik új pending sem menthető;
+- két párhuzamos, átfedő kérésből a készletzár miatt csak egy pending menthető; pending, confirmed vagy blocked átfedés konfliktus;
 - hiba esetén nincs részlegesen mentett booking, guest, history vagy price snapshot;
 - a sikeres válasz nem tartalmaz belső adatbázis-azonosítót vagy más vendég PII-jét;
 - automatizált feature és valódi MySQL concurrency teszt igazolja a folyamatot;
@@ -150,7 +152,7 @@ A végleges beküldéshez CSRF-védelem (azonos originű böngészős flow), rat
 
 Az űrlap JSON-ként hívja a `POST /api/bookings` végpontot, kliens által generált `idempotency_key` mezővel. A szerver validálja a dátumokat, vendégszámokat és gyermekéletkorokat, privacy elfogadást, body méretet, Content-Type-ot és a honeypot mezőt; same-origin böngészőkérésnél Origin/Referer allowlistet és IP-alapú rate limitet alkalmaz.
 
-Minden új igény `pending`. Több átfedő pending elfogadható és automatikus lejárat nincs. Mentéskor a szerver tranzakciós készletzár mellett újraellenőrzi a `confirmed` bookingokat és blocked periodokat. A kapcsolattartó adatai a bookingon maradnak; további vendégnevek nem szükségesek, külön csak a gyermekéletkorok tárolódnak.
+Minden új igény `pending`, azonnal blokkolja a saját fél-nyitott időszakát, és automatikus lejárat nincs. Mentéskor a szerver tranzakciós készletzár mellett újraellenőrzi a `pending`, `confirmed` bookingokat és blocked periodokat. A kapcsolattartó adatai a bookingon maradnak; további vendégnevek nem szükségesek, külön csak a gyermekéletkorok tárolódnak.
 
 Commit után a rendszer megkísérli az e-mail kézbesítését. SMTP-hibánál a booking megmarad, a válasz `email_status=failed`. Ugyanazzal a kulccsal és payload-dal az ismétlés ugyanazt a referenciát adja, nem hoz létre új bookingot.
 ## Sprint 6 policy acceptance — IMPLEMENTED

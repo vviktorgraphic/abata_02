@@ -81,6 +81,7 @@
                 </select>
             </div>
             <div id="child-ages" class="child-ages full" aria-live="polite"></div>
+            <span id="guests-error" class="field-error full" data-error-for="guests" aria-live="polite"></span>
             <div class="field full">
                 <label for="guest-notes">Megjegyzés <span>(opcionális)</span></label>
                 <p class="field-help" id="guest-notes-help">*Please leave a short note if you would like to communicate in English.</p>

@@ -81,6 +81,25 @@ final class TransactionalStateChangesTest extends TestCase
         ], json_decode($outbox['payload'], true, 512, JSON_THROW_ON_ERROR));
     }
 
+    public function testConfirmationExcludesTheBookingBeingConfirmedButRejectsAnotherPending(): void
+    {
+        $candidate = $this->booking('pending', '2042-01-20', '2042-01-23');
+        $this->paymentSent($candidate);
+        $other = $this->booking('pending', '2042-01-22', '2042-01-25');
+        $repository = new TransactionalBookingRepository($this->pdo);
+
+        try {
+            $repository->transition($this->reference($candidate), 'confirmed', $this->adminId);
+            self::fail('Another overlapping pending booking must block confirmation.');
+        } catch (BookingConflict) {
+            self::assertSame('pending', $this->bookingStatus($candidate));
+        }
+
+        $repository->transition($this->reference($other), 'rejected', $this->adminId);
+        $result = $repository->transition($this->reference($candidate), 'confirmed', $this->adminId);
+        self::assertSame('confirmed', $result->newStatus);
+    }
+
     /** @return iterable<string, array{string, string, string, bool}> */
     public static function validTransitions(): iterable
     {
@@ -201,8 +220,10 @@ final class TransactionalStateChangesTest extends TestCase
 
     public function testFailuresAfterHistoryAndAuditRollBackEverything(): void
     {
-        foreach (['transition_history_inserted', 'transition_audit_inserted'] as $stage) {
-            $id = $this->booking('pending', '2042-05-10', '2042-05-13');
+        foreach (['transition_history_inserted', 'transition_audit_inserted'] as $index => $stage) {
+            $arrival = $index === 0 ? '2042-05-10' : '2042-05-20';
+            $departure = $index === 0 ? '2042-05-13' : '2042-05-23';
+            $id = $this->booking('pending', $arrival, $departure);
             $this->paymentSent($id);
             $repository = new TransactionalBookingRepository($this->pdo, static function (string $seen) use ($stage): void {
                 if ($seen === $stage) {
@@ -222,7 +243,7 @@ final class TransactionalStateChangesTest extends TestCase
         }
     }
 
-    public function testParallelOverlappingConfirmationsProduceExactlyOneWinner(): void
+    public function testParallelOverlappingPendingBookingsCannotBeConfirmedUntilOneIsClosed(): void
     {
         if (!function_exists('proc_open')) {
             self::markTestSkipped('proc_open is required for the real concurrency test.');
@@ -256,12 +277,12 @@ final class TransactionalStateChangesTest extends TestCase
         unlink($barrier);
 
         sort($outputs);
-        self::assertSame(['CONFIRMED', 'CONFLICT'], $outputs);
+        self::assertSame(['CONFLICT', 'CONFLICT'], $outputs);
         $statement = $this->pdo->prepare(
             "SELECT COUNT(*) FROM bookings WHERE id IN (:first, :second) AND status = 'confirmed'"
         );
         $statement->execute(['first' => $first, 'second' => $second]);
-        self::assertSame(1, (int) $statement->fetchColumn());
+        self::assertSame(0, (int) $statement->fetchColumn());
     }
 
     public function testConfirmationRequiresSentPaymentRequestAndAuditsDenial(): void

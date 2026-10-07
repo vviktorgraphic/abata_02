@@ -112,11 +112,12 @@ require __DIR__ . '/_layout_start.php';
 <p>Adott évre vagy szezonra itt állíthat be árakat. Az időszak minden éjszakáján ez az ár helyettesíti az alapárat, a záró dátumot is beleértve. Az aktív időszakok nem fedhetik át egymást.</p>
 <div class="table-scroll" tabindex="0" role="region" aria-label="Egyedi időszakos árak">
 <table>
-<thead><tr><th>Időszak</th><th>1 fő</th><th>2 fő</th><th>3 fő</th><th>4 fő</th><th>Állapot</th><th>Művelet</th></tr></thead>
+<thead><tr><th>Időszak</th><th>Tartózkodás</th><th>1 fő</th><th>2 fő</th><th>3 fő</th><th>4 fő</th><th>Állapot</th><th>Művelet</th></tr></thead>
 <tbody>
 <?php foreach ($c->overrides as $o): ?>
 <tr>
 <td><?= $e($o->startDate) ?> – <?= $e($o->endDate) ?></td>
+<td><?= $o->maxNights === null ? $o->minNights . ' éjtől' : $o->minNights . '–' . $o->maxNights . ' éj' ?></td>
 <?php for ($i = 1; $i <= 4; $i++): ?><td><?= $e(HufFormatter::format($o->priceFor($i))) ?></td><?php endfor ?>
 <td><?= $o->active ? 'Aktív' : 'Inaktív' ?></td>
 <td>
@@ -130,7 +131,7 @@ require __DIR__ . '/_layout_start.php';
 </form>
 </td>
 </tr>
-<tr class="pricing-edit-row"><td colspan="7">
+<tr class="pricing-edit-row"><td colspan="8">
 <details class="pricing-editor">
 <summary>Szerkesztés<span class="sr-only">: <?= $e($o->startDate) ?> – <?= $e($o->endDate) ?></span></summary>
 <form method="post" action="/admin/pricing" aria-label="Időszakos ár szerkesztése">
@@ -142,6 +143,8 @@ require __DIR__ . '/_layout_start.php';
 <div class="field-grid">
 <label>Kezdő dátum<input type="date" name="start_date" value="<?= $e($o->startDate) ?>" required></label>
 <label>Záró dátum<input type="date" name="end_date" value="<?= $e($o->endDate) ?>" required></label>
+<label>Minimum éjszaka<input type="number" name="min_nights" min="1" max="30" value="<?= $o->minNights ?>" required></label>
+<label>Maximum éjszaka<input type="number" name="max_nights" min="1" max="30" value="<?= $o->maxNights ?? '' ?>" aria-describedby="override-max-help-<?= $o->id ?>"><small id="override-max-help-<?= $o->id ?>">Hagyja üresen, ha korlátlan.</small></label>
 <?php for ($i = 1; $i <= 4; $i++): ?><label><?= $i ?> fő ára (Ft / éj)<input name="price_<?= $i ?>" inputmode="numeric" value="<?= $e(HufFormatter::groupedInput($o->priceFor($i))) ?>" required></label><?php endfor ?>
 </div>
 <button class="pricing-save" type="submit">Mentés</button>
@@ -150,7 +153,7 @@ require __DIR__ . '/_layout_start.php';
 </td>
 </tr>
 <?php endforeach ?>
-<?php if ($c->overrides === []): ?><tr><td colspan="7">Még nincs egyedi időszakos ár beállítva.</td></tr><?php endif ?>
+<?php if ($c->overrides === []): ?><tr><td colspan="8">Még nincs egyedi időszakos ár beállítva.</td></tr><?php endif ?>
 </tbody>
 </table>
 </div>
@@ -166,6 +169,8 @@ require __DIR__ . '/_layout_start.php';
 <div class="field-grid">
 <label>Kezdő dátum<input type="date" name="start_date" required></label>
 <label>Záró dátum<input type="date" name="end_date" required></label>
+<label>Minimum éjszaka<input type="number" name="min_nights" min="1" max="30" value="1" required></label>
+<label>Maximum éjszaka<input type="number" name="max_nights" min="1" max="30" aria-describedby="new-override-max-help"><small id="new-override-max-help">Hagyja üresen, ha korlátlan.</small></label>
 <?php for ($i = 1; $i <= 4; $i++): ?><label><?= $i ?> fő ára (Ft / éj)<input name="price_<?= $i ?>" inputmode="numeric" required></label><?php endfor ?>
 </div>
 <button type="submit">Időszak hozzáadása</button>

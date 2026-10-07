@@ -10,6 +10,7 @@ use App\Application\Pricing\PricingPreviewer;
 use App\Application\Pricing\PricingRuleRepository;
 use App\Domain\Pricing\PricingInput;
 use App\Domain\Pricing\PricingResult;
+use App\Domain\Pricing\OccupancyStayLengthViolation;
 use App\Http\Controller\Admin\AdminActionGuard;
 use App\Http\Controller\Admin\AdminActionRateLimiter;
 use App\Http\Controller\Admin\AdminAuthWorkflow;
@@ -104,6 +105,23 @@ final class PricingAdminControllerTest extends TestCase
         self::assertSame('pricing.previewed',end($this->audit->events)->eventType);
     }
 
+    public function test_preview_renders_override_stay_length_violation_as_422(): void
+    {
+        $previewer = new class implements PricingPreviewer {
+            public function preview(PricingInput $input): PricingResult
+            {
+                throw new OccupancyStayLengthViolation('Erre az érkezési dátumra minimum 3 éjszaka foglalható.');
+            }
+        };
+        $response = $this->controller(previewer: $previewer)->preview([
+            '_csrf'=>$this->csrf->token(), 'arrival_date'=>'2026-08-01', 'departure_date'=>'2026-08-02',
+            'adults'=>'2', 'child_ages'=>'', 'exemption_keys'=>'',
+        ], 'application/x-www-form-urlencoded', 200);
+
+        self::assertSame(422, $response->status);
+        self::assertStringContainsString('minimum 3 éjszaka', $response->body);
+    }
+
     public function testPercentageRulesAreNotPresentedAsForintsAndIntegerFormHasNoDecimalSuffix(): void
     {
         $this->repository->rows[] = $this->rule(['rule_type' => 'weekend', 'adjustment_mode' => 'percent', 'amount' => '12.50']);
@@ -138,10 +156,10 @@ final class PricingAdminControllerTest extends TestCase
         }
     }
 
-    private function controller(?array $admin=['id'=>7,'name'=>'Admin']): PricingAdminController
+    private function controller(?array $admin=['id'=>7,'name'=>'Admin'], ?PricingPreviewer $previewer=null): PricingAdminController
     {
         $auth=new PricingAuth($admin); $guard=new AdminActionGuard($auth,$this->csrf,new PricingLimiter());
-        return new PricingAdminController($auth,new AdminView(dirname(__DIR__,3).'/templates'),$this->csrf,$guard,$this->repository,new PricingFakePreviewer(),$this->audit);
+        return new PricingAdminController($auth,new AdminView(dirname(__DIR__,3).'/templates'),$this->csrf,$guard,$this->repository,$previewer ?? new PricingFakePreviewer(),$this->audit);
     }
     /** @param array<string,mixed> $replace @return array<string,mixed> */
     private function form(array $replace=[]):array { return array_replace(['name'=>'Nyári alapár','rule_type'=>'base','valid_from'=>'2026-06-01','valid_until'=>'2026-09-01','amount'=>'10000.00','adjustment_mode'=>'fixed','base_unit'=>'per_person_per_night','minimum_nights'=>'1','maximum_nights'=>'','applicable_weekdays'=>'','exemption_key'=>'','priority'=>'10','is_active'=>'1'],$replace); }

@@ -143,15 +143,14 @@ final class TransactionalBookingRepositoryTest extends TestCase
         $repository->create($this->command('2040-02-11', '2040-02-14', 'stable-key'), $this->pricing());
     }
 
-    public function testOverlappingPendingBookingsAreAccepted(): void
+    public function testOverlappingPendingBookingIsRejected(): void
     {
         $repository = new TransactionalBookingRepository($this->pdo);
         $first = $repository->create($this->command('2040-03-10', '2040-03-13'), $this->pricing());
-        $second = $repository->create($this->command('2040-03-11', '2040-03-14'), $this->pricing());
         $this->bookingIds[] = $first->bookingId;
-        $this->bookingIds[] = $second->bookingId;
 
-        self::assertNotSame($first->bookingId, $second->bookingId);
+        $this->expectException(BookingConflict::class);
+        $repository->create($this->command('2040-03-11', '2040-03-14'), $this->pricing());
     }
 
     public function testConfirmedAndBlockedOverlapsAreRejected(): void
@@ -295,6 +294,28 @@ final class TransactionalBookingRepositoryTest extends TestCase
         self::assertSame($firstResult['booking_id'], $secondResult['booking_id']);
         self::assertNotSame($firstResult['replayed'], $secondResult['replayed']);
         $this->bookingIds[] = (int) $firstResult['booking_id'];
+    }
+
+    public function testConcurrentSameDateRequestsWithDifferentKeysProduceOnePendingWinner(): void
+    {
+        if (!function_exists('proc_open')) self::markTestSkipped('proc_open is required for the real concurrency test.');
+        $first = $this->startWorker(
+            'inventory-a-' . bin2hex(random_bytes(8)), hash('sha256', 'inventory-a-' . random_bytes(8)),
+            'INVENTORY-A-' . strtoupper(bin2hex(random_bytes(5))), '2041-01-20', '2041-01-23',
+        );
+        $second = $this->startWorker(
+            'inventory-b-' . bin2hex(random_bytes(8)), hash('sha256', 'inventory-b-' . random_bytes(8)),
+            'INVENTORY-B-' . strtoupper(bin2hex(random_bytes(5))), '2041-01-20', '2041-01-23',
+        );
+
+        $results = [$this->finishWorker($first), $this->finishWorker($second)];
+        $winners = array_values(array_filter($results, static fn (array $result): bool => $result['ok']));
+        $losers = array_values(array_filter($results, static fn (array $result): bool => !$result['ok']));
+
+        self::assertCount(1, $winners);
+        self::assertCount(1, $losers);
+        self::assertSame(BookingConflict::class, $losers[0]['exception']);
+        $this->bookingIds[] = (int) $winners[0]['booking_id'];
     }
 
     public function testInventoryLockMakesConcurrentCreateObserveNewConfirmedBooking(): void

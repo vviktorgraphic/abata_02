@@ -114,6 +114,8 @@ Backup után a normál `php bin/migrate.php` belépési ponttal futtasd a követ
 
 Az iCal workert először kézzel, kétszer egymás után futtasd ugyanabban a védett CLI environmentben. Ellenőrizd a JSON outputot, exit kódot, duplikációmentességet és admin sync metrikákat; csak ezután vedd fel a [monitoring runbook](14_MONITORING_AND_CRON.md) helyőrzős 15 perces cronját. A PHP- és release-útvonalat a hosting adja.
 
+**Phase 1B kötelező aktiválási kapu:** az owner a production aktiválás előtt áttekinti az összes korábban importált `pending` foglalást, és a stale rekordokat `rejected` vagy `invalidated` állapotba helyezi. A release nem módosítja automatikusan ezek státuszát és nem futtat destruktív cleanupot; jóváhagyás után a megmaradó pending rekordok azonnal blokkolnak és exportálódnak.
+
 Rollback előtt tiltsd le az új cront, az új kóddal állítsd a pricing módot legacyra, majd válts az előző release-re. A forward-only 017–020 változásokat és v3 snapshotokat ne töröld; maintenance + restore vagy forward-fix szükséges, ha az előző kód mégsem kompatibilis.
 
 Alkalmazáskód rollbackhez állítsd vissza a document rootot/symlinket az előző ellenőrzött release-re, majd ismételd meg a health és HTTPS smoke-ot. Az adatbázismigrációk forward-only-k: SQL-t kézzel visszavonni tilos. Inkompatibilis migráció esetén állítsd maintenance módba a forgalmat, őrizd meg a hibás állapot bizonyítékát, és kizárólag jóváhagyott restore/forward-fix eljárást használj. A rollback után az új release-ből elindult cronokat kapcsold ki, ellenőrizd az outbox/idempotencia állapotot, és dokumentáld az incidenst.

@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Application\Pricing\PricingPreviewer;
 use App\Domain\Pricing\OccupancyPricingConfiguration;
+use App\Domain\Pricing\OccupancyStayLengthViolation;
 use App\Domain\Pricing\OccupancyStayLengthBand;
 use App\Domain\Pricing\PricingEngine;
 use App\Domain\Pricing\PricingInput;
@@ -16,6 +17,30 @@ use PHPUnit\Framework\TestCase;
 
 final class PricingQuoteControllerTest extends TestCase
 {
+    public function testOverrideStayLengthViolationIsReturnedAsFieldScoped422(): void
+    {
+        $previewer = new class() implements PricingPreviewer {
+            public function preview(PricingInput $input): PricingResult
+            {
+                throw new OccupancyStayLengthViolation('Erre az érkezési dátumra minimum 3 éjszaka foglalható.');
+            }
+        };
+
+        http_response_code(200);
+        ob_start();
+        (new PricingQuoteController($previewer))->quote([
+            'arrival_date' => '2026-11-01',
+            'departure_date' => '2026-11-02',
+            'adults' => 2,
+            'child_ages' => [],
+        ]);
+        $payload = json_decode((string) ob_get_clean(), true, flags: JSON_THROW_ON_ERROR);
+
+        self::assertSame(422, http_response_code());
+        self::assertSame($payload['error'], $payload['errors']['departure_date']);
+        self::assertStringContainsString('minimum 3 éjszaka', $payload['error']);
+    }
+
     public function testPublicQuoteUsesAdultOnlyIfaAndAnExactNonTaxSubtotal(): void
     {
         [$status, $payload] = $this->quote('2026-11-01', '2026-11-04');

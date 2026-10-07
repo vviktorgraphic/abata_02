@@ -21,7 +21,7 @@ Ez a dokumentum az 1.0 árkalkuláció implementálható keretét rögzíti. Nem
 
 ## 2. Számítási modell — IMPLEMENTED és PLANNED elemek
 
-**IMPLEMENTED:** éjszakaszám, stay-length sáv, három base unit, szezonális és konfigurált hétvégi adjustment, fix díj, IFA/exemption és egész-HUF HALF_UP line-item kerekítés. **PLANNED / DECISION REQUIRED az alábbi célmodellben:** gyermek-kategória és kedvezmény, egyedi dátum override, cleaning fee mint külön üzleti típus, általános discount és manuális ár-override. A következő alpontok normatív célmodellje csak az explicit IMPLEMENTED listáig tekinthető elkészültnek.
+**IMPLEMENTED:** éjszakaszám, stay-length sáv, occupancy alapár és egyedi dátum override, override-onkénti tartózkodási minimum/maximum, három legacy base unit, szezonális és konfigurált hétvégi adjustment, fix díj, IFA/exemption és egész-HUF HALF_UP line-item kerekítés. **PLANNED / DECISION REQUIRED az alábbi célmodellben:** általános gyermek-kedvezmény, cleaning fee mint külön üzleti típus, általános discount és manuális booking-ár override. A következő alpontok normatív célmodellje csak az explicit IMPLEMENTED listáig tekinthető elkészültnek.
 
 ### 2.1 Alapfogalmak és invariánsok
 
@@ -33,7 +33,7 @@ Ez a dokumentum az 1.0 árkalkuláció implementálható keretét rögzíti. Nem
 - Ugyanazon bemenet és szabályverzió mindig ugyanazt a tételes eredményt adja.
 - Az availability és az ár két külön kérdés: az árkalkuláció nem jelent foglalást vagy kapacitás-zárat.
 
-> **DECISION REQUIRED:** minimum és maximum éjszakaszám, minimum és maximum összlétszám, valamint hogy a csecsemő beleszámít-e a kapacitásba.
+> **IMPLEMENTED:** a publikus foglalás legfeljebb 30 éjszakás. A fizikai kapacitás 5 fő, az árazási kapacitás 4 fő; minden gyermek növeli a fizikai létszámot, a 0–3 éves gyermek nem növeli az árazási létszámot, a 4–17 éves gyermek igen. Az egyedi időszak minimum/maximum éjszakaszabályát az érkezési nap választja ki.
 
 ### 2.2 Éjszakaszám-alapú ársáv
 
@@ -60,6 +60,8 @@ guest_nightly = adult_count × adult_unit_price
 
 ### 2.4 Szezon, hétvége és egyedi dátum
 
+**IMPLEMENTED occupancy szabály:** az érkezési napot fedő aktív override minimum/maximum éjszakája irányítja az egész tartózkodás érvényességét. Ha az érkezést nem fedi override, az occupancy alapársáv normál tartózkodáshossz-szabálya irányadó. A díj minden éjszakára a tényleges dátum szerint készül: fedett éjhez az override teljes szállására vonatkozó ára, más éjhez az alapársáv ára tartozik. Az override dátumtartomány mindkét vége inkluzív, míg a booking távozási napja továbbra is exkluzív.
+
 Tervezett éjszakánkénti sorrend:
 
 1. dátumhoz illő alap/szezon szabály kiválasztása;
@@ -68,7 +70,7 @@ Tervezett éjszakánkénti sorrend:
 4. egyedi dátum override alkalmazása, ha van;
 5. vendégtípusonkénti részösszeg képzése.
 
-Az egyedi dátum override vagy teljesen helyettesíti az adott napi árat, vagy módosítóként halmozódik; a kettő egyszerre nem megengedett.
+Az occupancy egyedi dátum override teljesen helyettesíti az adott napi alapárat; nem halmozódó módosító.
 
 > **DECISION REQUIRED:** szezonhatárok, a hétvége napjai (például péntek/szombat éjszaka), százalékos vagy fix módosítás, kombinálhatóság és prioritás. Ünnepnapkezeléshez külön, verziózott naptárforrás szükséges.
 
@@ -100,7 +102,7 @@ Javasolt technikai szabály: minden tétel nagy pontosságú decimális értékk
 
 ## 3. Ár-pillanatkép és életciklus — IMPLEMENTED és PLANNED elemek
 
-**IMPLEMENTED snapshot:** kalkulációs időpont, dátumok/éjszakák/vendégszám, alkalmazott szabályazonosítók, base unit, line itemek, accommodation fee, tax, total és HUF; a korábbi booking snapshotot későbbi szabálymódosítás nem írja át. **PLANNED:** gyermek-kategória, discount/cleaning/manual override mezők, explicit újraszámítás és snapshot-verziótörténet. Az alábbi teljes célmezőlista ezeket a tervezett elemeket is tartalmazza.
+**IMPLEMENTED snapshot:** kalkulációs időpont, dátumok/éjszakák/vendégszám, alkalmazott szabályazonosítók, line itemek, accommodation fee, tax, total és HUF. Az occupancy v5 snapshot ezen felül rögzíti az érkezési override azonosítóját és min/max korlátját, a governing stay rule-t, az éjszakánkénti árforrást és az alkalmazott override-azonosítókat. A korábbi booking snapshotot későbbi szabálymódosítás nem írja át. **PLANNED:** általános discount/cleaning/manual override mezők, explicit újraszámítás és snapshot-verziótörténet. Az alábbi teljes célmezőlista ezeket a tervezett elemeket is tartalmazza.
 
 Árajánlat vagy foglalás létrehozásakor megváltoztathatatlan snapshot készüljön legalább ezekkel:
 

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Persistence\Calendar;
 
+use App\Domain\Booking\BookingStatus;
+
 use App\Application\Calendar\ExternalCalendarEventRepository;
 use App\Application\Calendar\ImportedEventPersistenceResult;
 use DateTimeImmutable;
@@ -105,12 +107,13 @@ final readonly class PdoExternalCalendarEventRepository implements ExternalCalen
                 return new ImportedEventPersistenceResult(ImportedEventPersistenceResult::REMOVED, $eventId, $row === false || $row['blocked_period_id'] === null ? null : (int) $row['blocked_period_id'], inactivated: $inactivated);
             }
 
-            $confirmed = $this->pdo->prepare(
-                "SELECT id FROM bookings WHERE status = 'confirmed'
-                 AND arrival_date < :end_date AND departure_date > :start_date LIMIT 1"
+            $statusPlaceholders = implode(', ', array_fill(0, count(BookingStatus::BLOCKING_VALUES), '?'));
+            $blocking = $this->pdo->prepare(
+                "SELECT id FROM bookings WHERE status IN ({$statusPlaceholders})
+                 AND arrival_date < ? AND departure_date > ? LIMIT 1"
             );
-            $confirmed->execute($dates);
-            if ($confirmed->fetchColumn() !== false) {
+            $blocking->execute([...BookingStatus::BLOCKING_VALUES, $dates['end_date'], $dates['start_date']]);
+            if ($blocking->fetchColumn() !== false) {
                 $inactivated = false;
                 if ($row !== false && $row['blocked_period_id'] !== null) {
                     $inactive = $this->pdo->prepare(

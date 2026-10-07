@@ -42,41 +42,81 @@ final class BookingDomainTest extends TestCase
     }
 
     #[DataProvider('validCapacities')]
-    public function testTotalCapacityIncludesChildren(int $adults, int $children): void
+    public function testPhysicalAndChargeableCapacityAcceptsDocumentedCombinations(int $adults, array $childAges): void
     {
         $payload = $this->payload();
         $payload['adults'] = $adults;
-        $payload['children'] = $children;
-        $payload['child_ages'] = array_fill(0, $children, 6);
+        $payload['children'] = count($childAges);
+        $payload['child_ages'] = $childAges;
 
         self::assertSame($adults, $this->validator->validate($payload)->adults);
     }
 
-    /** @return iterable<string, array{int, int}> */
+    /** @return iterable<string, array{int, list<int>}> */
     public static function validCapacities(): iterable
     {
-        yield 'four adults' => [4, 0];
-        yield 'three adults one child' => [3, 1];
-        yield 'two adults two children' => [2, 2];
-        yield 'one adult three children' => [1, 3];
+        yield 'four adults' => [4, []];
+        yield 'four adults and one free child' => [4, [3]];
+        yield 'three adults and two free children' => [3, [2, 3]];
+        yield 'three adults, one chargeable and one free child' => [3, [3, 5]];
     }
 
-    public function testTotalCapacityRejectsFivePeopleIncludingChildren(): void
+    public function testPhysicalCapacityRejectsMoreThanFivePeople(): void
     {
         $payload = $this->payload();
-        $payload['adults'] = 3;
+        $payload['adults'] = 4;
         $payload['children'] = 2;
-        $payload['child_ages'] = [6, 10];
+        $payload['child_ages'] = [2, 3];
 
         try {
             $this->validator->validate($payload);
             self::fail('Validation should have failed.');
         } catch (BookingValidationFailed $exception) {
             self::assertSame(
-                'A szállás maximális befogadóképessége 4 fő, a gyermekeket is beleszámítva.',
+                'A szállás legfeljebb 5 vendéget fogad, a gyermekeket is beleszámítva.',
                 $exception->errors()['guests'],
             );
         }
+    }
+
+    public function testChargeableCapacityRejectsMoreThanFourPeople(): void
+    {
+        $payload = $this->payload();
+        $payload['adults'] = 4;
+        $payload['children'] = 1;
+        $payload['child_ages'] = [4];
+
+        try {
+            $this->validator->validate($payload);
+            self::fail('Validation should have failed.');
+        } catch (BookingValidationFailed $exception) {
+            self::assertSame(
+                'Legfeljebb 4 fizető vendég foglalható; a 4 éves vagy idősebb gyermekek beleszámítanak.',
+                $exception->errors()['guests'],
+            );
+        }
+    }
+
+    public function testTwoChargeableChildrenWithThreeAdultsAreRejected(): void
+    {
+        $payload = $this->payload();
+        $payload['adults'] = 3;
+        $payload['children'] = 2;
+        $payload['child_ages'] = [5, 7];
+
+        $this->expectException(BookingValidationFailed::class);
+        $this->validator->validate($payload);
+    }
+
+    public function testSixPhysicalGuestsAreRejectedEvenWhenChildrenAreFree(): void
+    {
+        $payload = $this->payload();
+        $payload['adults'] = 3;
+        $payload['children'] = 3;
+        $payload['child_ages'] = [1, 2, 3];
+
+        $this->expectException(BookingValidationFailed::class);
+        $this->validator->validate($payload);
     }
 
     #[DataProvider('invalidPayloads')]
@@ -111,14 +151,40 @@ final class BookingDomainTest extends TestCase
         yield 'short key' => ['idempotency_key', 'short', 'idempotency_key'];
     }
 
-    public function testPendingOverlapIsAcceptedButConfirmedOverlapIsRejected(): void
+    #[DataProvider('blockingStatuses')]
+    public function testPendingAndConfirmedOverlapAreRejected(BookingStatus $status): void
     {
         $policy = new BookingOverlapPolicy(new AvailabilityService(new DateTimeImmutable('2026-07-16')));
         $requested = $this->period('2026-08-10', '2026-08-13');
-        $policy->assertPublicRequestAllowed($requested, [['period' => $this->period('2026-08-11', '2026-08-12'), 'status' => BookingStatus::Pending]]);
 
         $this->expectException(BookingOverlap::class);
-        $policy->assertPublicRequestAllowed($requested, [['period' => $this->period('2026-08-12', '2026-08-14'), 'status' => BookingStatus::Confirmed]]);
+        $policy->assertPublicRequestAllowed($requested, [['period' => $this->period('2026-08-11', '2026-08-12'), 'status' => $status]]);
+    }
+
+    /** @return iterable<string, array{BookingStatus}> */
+    public static function blockingStatuses(): iterable
+    {
+        yield 'pending' => [BookingStatus::Pending];
+        yield 'confirmed' => [BookingStatus::Confirmed];
+    }
+
+    #[DataProvider('nonBlockingStatuses')]
+    public function testClosedBookingStatusesDoNotBlockPublicRequests(BookingStatus $status): void
+    {
+        $policy = new BookingOverlapPolicy(new AvailabilityService(new DateTimeImmutable('2026-07-16')));
+        $policy->assertPublicRequestAllowed(
+            $this->period('2026-08-10', '2026-08-13'),
+            [['period' => $this->period('2026-08-11', '2026-08-12'), 'status' => $status]],
+        );
+        self::assertTrue(true);
+    }
+
+    /** @return iterable<string, array{BookingStatus}> */
+    public static function nonBlockingStatuses(): iterable
+    {
+        yield 'rejected' => [BookingStatus::Rejected];
+        yield 'cancelled' => [BookingStatus::Cancelled];
+        yield 'invalidated' => [BookingStatus::Invalidated];
     }
 
     public function testArrivalRequiresTwoBudapestCalendarDaysAdvanceNotice(): void
@@ -169,6 +235,13 @@ final class BookingDomainTest extends TestCase
     {
         $policy = new BookingOverlapPolicy(new AvailabilityService(new DateTimeImmutable('2026-07-16')));
         $policy->assertPublicRequestAllowed($this->period('2026-08-10', '2026-08-13'), [['period' => $this->period('2026-08-13', '2026-08-15'), 'status' => BookingStatus::Confirmed]]);
+        self::assertTrue(true);
+    }
+
+    public function testAdjacentPendingBookingIsAccepted(): void
+    {
+        $policy = new BookingOverlapPolicy(new AvailabilityService(new DateTimeImmutable('2026-07-16')));
+        $policy->assertPublicRequestAllowed($this->period('2026-08-10', '2026-08-13'), [['period' => $this->period('2026-08-13', '2026-08-15'), 'status' => BookingStatus::Pending]]);
         self::assertTrue(true);
     }
 

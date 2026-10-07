@@ -33,14 +33,14 @@ Skála: valószínűség és hatás `Alacsony`, `Közepes` vagy `Magas`. A tört
 | 4 | Jelszó brute-force | admin login | Magas | Magas | IP- és fiókalapú rate limit és lockout | Küszöb- és időablak teszt; staging terhelési próba | IMPLEMENTED konfigurálható alapértékekkel; production küszöb OPEN |
 | 5 | 2FA-kód találgatása | 2FA verify | Közepes | Magas | 6 számjegy, 10 perc, max. 5 próbálkozás, atomi számláló, rate limit | Határérték-, lejárat- és persistence teszt | IMPLEMENTED |
 | 6 | Session fixation | admin session | Közepes | Magas | Session ID rotation a pending és authenticated határon | Feature teszt régi ID érvénytelenségével | IMPLEMENTED komponensszinten |
-| 7 | Session theft | admin cookie, kliens | Közepes | Magas | HTTPS, Secure/HttpOnly/SameSite, 15 perc idle és revoke | Cookie-header és visszavonási teszt stagingen | Idle/revoke IMPLEMENTED; HTTPS staging és abszolút maximum OPEN |
+| 7 | Session theft | admin cookie, kliens | Közepes | Magas | HTTPS, Secure/HttpOnly/SameSite, legalább 30 perc konfigurálható idle és revoke | Cookie-header és visszavonási teszt stagingen | Idle/revoke IMPLEMENTED; HTTPS staging és abszolút maximum OPEN |
 | 8 | Credential stuffing / fiók-enumeráció | admin login | Magas | Magas | Általános hiba, dummy-hash időzítés, rate limit | Ismeretlen/inaktív/hibás fiók teszt | IMPLEMENTED alap |
 | 9 | Spam vagy automatizált booking | booking create | Magas | Közepes | Rate limit, idempotency key, honeypot, szervervalidáció | API abuse teszt és metrika/riasztás | IMPLEMENTED alap; production küszöb OPEN |
 | 10 | E-mail header injection | SMTP feladó/címzett/tárgy | Közepes | Magas | SMTP adapter, címvalidáció, CR/LF tiltás, sablon allowlist; `mail()` tilos | Unit teszt CR/LF payloadokkal | IMPLEMENTED 2FA mailerben |
 | 11 | iCal feed token kiszivárgása | export URL, log, analytics | Közepes | Magas | Nagy entrópiájú rotálható token, URL/log redaction, PII-mentes feed, cache szabály | Token- és jogosulatlan endpoint teszt; staging access-log scan | IMPLEMENTED alkalmazási kontroll; log smoke PENDING |
 | 12 | SSRF külső iCal URL-lel | iCal importer, belső hálózat | Magas | Magas | Csak HTTPS, DNS/IP validáció minden redirectnél, privát/link-local/metadata cím tiltása, port allowlist | SSRF tesztek loopback, RFC1918, IPv6 és redirect célokra | IMPLEMENTED automatizált tesztekkel |
 | 13 | Rosszindulatú vagy túlméretes ICS | parser, memória/CPU, DB | Közepes | Magas | Méret-, redirect- és eseménykorlát, biztonságos parser, validáció, tranzakció | Size/redirect és hibás ICS tesztek; további fuzz stagingen | IMPLEMENTED core; teljes fuzz PENDING |
-| 14 | Race condition / double booking | booking create, MySQL | Magas | Magas | Készlet-sorzár, tranzakciós confirmed/blocked újraellenőrzés és idempotencia | Párhuzamos integration teszt; pending overlap engedett | IMPLEMENTED |
+| 14 | Race condition / double booking | booking create, MySQL | Magas | Magas | Készlet-sorzár, tranzakciós pending/confirmed/blocked újraellenőrzés és idempotencia | Párhuzamos integration teszt; csak egy átfedő pending jöhet létre | IMPLEMENTED |
 | 15 | PII vagy secret a logokban | app, audit, SMTP/iCal log | Közepes | Magas | Strukturált allowlist log, redaction, korrelációs ID; body/token/jelszó tiltása | Automata logscan ismert canary értékekkel | PLANNED egységesen; jelenlegi API hiba általános |
 | 16 | Secret commit/repository history | Git, `.env`, config | Közepes | Magas | `.env` ignore, `.env.example` csak placeholder, secret scanner, rotációs eljárás | CI secret scan és release előtti history ellenőrzés | IMPLEMENTED ignore/példa szabály; PLANNED automata scan |
 | 17 | Jogosulatlan adminművelet / IDOR | admin route-ok és objektumok | Magas | Magas | Minden kérésen szerveroldali auth, deny-by-default, CSRF és audit | Feature teszt anonim/lejárt sessionnel és hibás célazonosítóval | IMPLEMENTED a jelenlegi HTML admin route-okon; JSON admin API PLANNED |
@@ -120,7 +120,7 @@ Secret incidensnél nem elég a fájl törlése: credential azonnali visszavoná
 
 1. HTTPS és a dokumentált headerek staging/production smoke teszten megfelelnek.
 2. Admin auth, 2FA, session, CSRF, rate limit, lockout és authz negatív tesztjei sikeresek.
-3. Booking concurrency tesztben azonos időszakra több pending sikerülhet, de confirmed/blocked intervallum nem kerülhető meg; azonos idempotenciakulcs csak egy bookingot eredményez.
+3. Booking concurrency tesztben azonos időszakra csak egy pending sikerülhet; pending/confirmed/blocked intervallum nem kerülhető meg, azonos idempotenciakulcs csak egy bookingot eredményez.
 4. Minden SQL value prepared statement; dinamikus identifier allowlistelt, kódreview-val igazolva.
 5. XSS, SSRF, malicious ICS, CORS, clickjacking, MIME sniffing és header injection teszt lefut.
 6. Secret scanner és dependency audit nem jelez kezeletlen magas kockázatot.
@@ -144,20 +144,20 @@ Secret incidensnél nem elég a fájl törlése: credential azonnali visszavoná
 
 - A jelszó PHP password API-val ellenőrzött; az ismeretlen és hibás credential általános eredményt és dummy-hash ellenőrzést kap.
 - A 2FA-kód hat számjegyű, hash-elve tárolt, 10 percig és legfeljebb öt próbáig érvényes; plaintext kód nem auditálható.
-- A sessionazonosító pending és authenticated határon rotálható; a szerveroldali token hash-elve tárolt; 15 perc inaktivitás után lejár.
+- A sessionazonosító pending és authenticated határon rotálható; a szerveroldali token hash-elve tárolt; alapértelmezetten 1800 másodperc inaktivitás után lejár.
 - Minden admin POST sessionhöz kötött, timing-safe CSRF-ellenőrzést kap.
 - A rate-limit kulcsok secret pepperrel HMAC-pszeudonimizáltak; a login és 2FA policy külön konfigurálható.
 - Az audit metadata allowlistelt; jelszó, 2FA/CSRF/session token, nyers e-mail és nyers IP nem engedett.
 - Az SMTP adapter nem használ `mail()` fallbacket és nem teszi kivételbe a provider nyers válaszát.
 
-**DECISION REQUIRED:** az abszolút session-élettartam hiánya tudatos nyitott döntés; a 15 perces idle timeout nem helyettesíti. A production SMTP port/TLS/auth és a végleges rate-limit küszöbök release előtt lezárandók.
+**IMPLEMENTED:** az idle timeout a legalább 1800 másodperces `ADMIN_SESSION_IDLE_TIMEOUT_SECONDS`; az abszolút session-élettartam külön, ennél nagyobb korlát. A konkrét production abszolút érték, SMTP port/TLS/auth és a végleges rate-limit küszöbök környezeti döntések.
 
 ## Sprint 4 publikus write kontrollok – IMPLEMENTED
 
 - Kizárólag JSON objektum, explicit DTO/mezővalidáció, body- és mezőlimitek, privacy követelmény és honeypot.
 - Böngészőkérésnél konfigurált Origin/Referer allowlist; header nélküli nem böngészős kliens engedett. CORS wildcard nincs.
 - IP-alapú konfigurálható rate limit; `429` válasz nyers IP vagy secret visszaadása nélkül.
-- Készletzárral védett tranzakciós confirmed/blocked újraellenőrzés; pending átfedés szándékosan megengedett.
+- Készletzárral védett tranzakciós pending/confirmed/blocked újraellenőrzés; átfedő pending nem engedett.
 - Hash-elt idempotenciakulcs és request hash; ugyanaz a kulcs eltérő payloadnál `409`.
 - PDO prepared statement minden értékhez, publikus válaszban nincs belső ID, stack trace vagy PII-visszatükrözés.
 - SMTP kizárólag commit után; credential és nyers provider válasz nem kerül publikus hibába.

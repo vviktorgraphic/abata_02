@@ -52,6 +52,10 @@ $check('legal document URLs', static function () use ($root): void {
 $check('booking notification configuration', static function () use ($root): void { require $root . '/config/booking-notifications.php'; });
 $check('admin session configuration', static function () use ($root): void {
     $config = require $root . '/config/auth.php';
+    if (($config['session_idle_timeout_seconds'] ?? 0) < 1800
+        || ($config['session_absolute_timeout_seconds'] ?? 0) <= $config['session_idle_timeout_seconds']) {
+        throw new RuntimeException('Admin session idle/absolute timeout relationship is invalid.');
+    }
     if (($config['rate_limit_pepper'] ?? '') === '' || str_contains((string) $config['rate_limit_pepper'], '<')) {
         throw new RuntimeException('AUTH_RATE_LIMIT_PEPPER is required.');
     }

@@ -14,6 +14,7 @@ use App\Application\Pricing\PricingConfigurationException;
 use App\Application\Pricing\MissingChildPriceBandException;
 use App\Domain\Booking\BookingCreateRequestValidator;
 use App\Domain\Booking\BookingValidationFailed;
+use App\Domain\Pricing\OccupancyStayLengthViolation;
 use App\Http\BookingApiResponse;
 use App\Http\BookingRequestRateLimiter;
 use App\Presentation\HufFormatter;
@@ -66,6 +67,8 @@ final readonly class BookingCreateController
             $outcome = $this->workflow->create($request);
         } catch (BookingValidationFailed $error) {
             return new BookingApiResponse(['error' => 'A megadott adatok hibásak.', 'errors' => $error->errors()], 422);
+        } catch (OccupancyStayLengthViolation $error) {
+            return new BookingApiResponse(['error' => 'A megadott adatok hibásak.', 'errors' => ['departure_date' => $error->getMessage()]], 422);
         } catch (BookingConflict) {
             return $this->error(409, 'A kiválasztott időszak már nem foglalható.');
         } catch (IdempotencyConflict) {

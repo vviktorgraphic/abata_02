@@ -107,7 +107,7 @@ final readonly class CalendarImportService
                     } elseif ($result->outcome === ImportedEventPersistenceResult::DUPLICATE) {
                         ++$duplicates;
                     } elseif ($result->outcome === ImportedEventPersistenceResult::CONFLICT) {
-                        $warnings[] = sprintf('External event [%s] overlaps a confirmed booking; no blocked period was created.', $this->fingerprint($event->uid));
+                        $warnings[] = sprintf('External event [%s] overlaps a blocking booking; no blocked period was created.', $this->fingerprint($event->uid));
                     }
                     $inactivated += $result->inactivated ? 1 : 0;
                     $seenUids[] = $event->uid;

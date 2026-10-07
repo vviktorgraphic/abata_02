@@ -9,7 +9,7 @@ A lezárt döntések forrása a [tulajdonosi döntési napló](99_OWNER_DECISION
 ## P0 – production előtt kötelező
 
 1. **SMTP production értékek:** port, TLS mód, felhasználónév, jelszó és feladó e-mail. A production fail-fast authenticated TLS/SSL kényszerítés IMPLEMENTED; a konkrét credential deployment secret.
-2. **Admin session:** a production abszolút maximális élettartam konkrét tulajdonosi értéke. A konfigurálható, pending és authenticated állapoton átívelő szerveroldali korlát IMPLEMENTED; a 15 perces idle timeout RESOLVED.
+2. **Admin session:** a production abszolút maximális élettartam konkrét tulajdonosi értéke. A konfigurálható, pending és authenticated állapoton átívelő szerveroldali korlát IMPLEMENTED; az idle timeout alapértéke és minimuma 1800 másodperc.
 3. **Rate limit:** login IP/fiók végleges küszöbei, időablak és lockout idő. A Sprint 3 konfigurálható **IMPLEMENTED DEVELOPMENT DEFAULT** értékeket használ (`10/IP`, `5/fiók`, 15 perces ablak és 15 perces lockout); ezek nem production üzleti döntések.
 4. **Adatmegőrzés:** login attempt, audit, session és 2FA rekordok konkrét retentionje.
 5. **Backup:** a checksumolt backup/restore eszköz és staging mérési eljárás IMPLEMENTED; az 5 perces RTO tényleges cPanel staging mérése, retention és ütemezés OPEN.
@@ -23,13 +23,13 @@ A lezárt döntések forrása a [tulajdonosi döntési napló](99_OWNER_DECISION
 3. Maximális vendégszám és csecsemőszabály.
 4. IFA konkrét értéke és a jogilag alkalmazható mentességi kategóriák. A szerkeszthető exemption modell és HALF_UP egész-HUF kerekítés RESOLVED/IMPLEMENTED.
 5. Előleg és online beszedés. A lemondási szabály RESOLVED: legalább 7 nappal érkezés előtt 0, később az immutable accommodation fee 50%-a.
-6. **RESOLVED:** a `pending` booking nem kerül iCal exportba.
+6. **RESOLVED / Phase 1B:** a `pending` és `confirmed` booking egyaránt bekerül az iCal exportba.
 7. Szallas.hu és Google Calendar production interoperabilitási smoke és szinkrongyakoriság; a két szolgáltató támogatása RESOLVED/IMPLEMENTED.
 
 ## RESOLVED hivatkozások
 
 - Projekt neve és színek: [99 – Projekt és design](99_OWNER_DECISIONS.md#projekt-és-design).
-- 15 perces idle session és 10 perces 2FA: [99 – Admin hitelesítés](99_OWNER_DECISIONS.md#admin-hitelesítés).
+- 30 perces alapértelmezett idle session és változatlan 10 perces 2FA: [99 – Admin hitelesítés](99_OWNER_DECISIONS.md#admin-hitelesítés).
 - SMTP host: [99 – SMTP](99_OWNER_DECISIONS.md#smtp).
 - RPO/RTO célok: [99 – Backup](99_OWNER_DECISIONS.md#backup).
 - Pending/confirmed, vendégadat, idempotencia, snapshot és request e-mail: [99 – Sprint 4 booking](99_OWNER_DECISIONS.md#sprint-4-booking-persistence-pricing-és-e-mail).
@@ -63,7 +63,7 @@ A lezárt döntések forrása a [tulajdonosi döntési napló](99_OWNER_DECISION
 - Exporttoken-rotáció esetleges átfedési ideje.
 - Google Calendar és Szallas.hu production fixture/smoke.
 
-**RESOLVED Sprint 7:** query exporttoken; pending kizárása; manuális sync; policy `/foglalasi-szabalyzat`; privacy `/adatkezelesi_tajekoztato`; hétvége péntek/szombat éjszaka; IFA admin-konfigurált, a rendszer számolja.
+**RESOLVED Sprint 7, Phase 1B-ben módosítva:** query exporttoken; pending és confirmed exportja; manuális sync; policy `/foglalasi-szabalyzat`; privacy `/adatkezelesi_tajekoztato`; hétvége péntek/szombat éjszaka; IFA admin-konfigurált, a rendszer számolja.
 
 ## Sprint 8 után nyitott
 

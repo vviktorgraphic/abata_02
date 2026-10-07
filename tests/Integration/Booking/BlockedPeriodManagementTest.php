@@ -44,34 +44,40 @@ final class BlockedPeriodManagementTest extends TestCase
         $this->pdo->prepare('DELETE FROM admins WHERE id = :id')->execute(['id' => $this->adminId]);
     }
 
-    public function testCreationWarnsForPendingAndRemovalUpdatesAvailabilityStateAndAudit(): void
+    public function testCreationAndRemovalUpdateAvailabilityStateAndAudit(): void
     {
-        $reference = 'BP-' . bin2hex(random_bytes(5));
-        $this->booking($reference, 'pending', '2027-04-11', '2027-04-13');
-        try {
-            $result = $this->service->create('2027-04-10', '2027-04-12', 'Maintenance', 'Internal only', $this->adminId);
-            self::assertSame([$reference], $result->overlappingPendingReferences);
-            $repository = new PdoBlockedPeriodRepository($this->pdo, new PdoAuditLog($this->pdo));
-            self::assertContains($result->id, array_column($repository->active(), 'id'));
-            $this->service->remove($result->id, $this->adminId);
-            self::assertNotContains($result->id, array_column($repository->active(), 'id'));
-            $events = $this->pdo->prepare('SELECT event_type FROM audit_logs WHERE target_type = \'blocked_period\' AND target_id = :id ORDER BY id');
-            $events->execute(['id' => $result->id]);
-            self::assertSame(['blocked_period.created', 'blocked_period.removed'], $events->fetchAll(PDO::FETCH_COLUMN));
-        } finally {
-            $this->pdo->prepare('DELETE FROM bookings WHERE reference = :reference')->execute(['reference' => $reference]);
-        }
+        $result = $this->service->create('2027-04-10', '2027-04-12', 'Maintenance', 'Internal only', $this->adminId);
+        self::assertSame([], $result->overlappingPendingReferences);
+        $repository = new PdoBlockedPeriodRepository($this->pdo, new PdoAuditLog($this->pdo));
+        self::assertContains($result->id, array_column($repository->active(), 'id'));
+        $this->service->remove($result->id, $this->adminId);
+        self::assertNotContains($result->id, array_column($repository->active(), 'id'));
+        $events = $this->pdo->prepare('SELECT event_type FROM audit_logs WHERE target_type = \'blocked_period\' AND target_id = :id ORDER BY id');
+        $events->execute(['id' => $result->id]);
+        self::assertSame(['blocked_period.created', 'blocked_period.removed'], $events->fetchAll(PDO::FETCH_COLUMN));
+    }
+
+    public function testPendingOverlapRollsBackPeriodAndAudit(): void
+    {
+        $this->assertBlockingBookingPreventsPeriod('pending', '2027-04-21', '2027-04-23');
     }
 
     public function testConfirmedOverlapRollsBackPeriodAndAudit(): void
     {
+        $this->assertBlockingBookingPreventsPeriod('confirmed', '2027-05-11', '2027-05-13');
+    }
+
+    private function assertBlockingBookingPreventsPeriod(string $status, string $arrival, string $departure): void
+    {
         $reference = 'BC-' . bin2hex(random_bytes(5));
-        $this->booking($reference, 'confirmed', '2027-05-11', '2027-05-13');
+        $this->booking($reference, $status, $arrival, $departure);
         try {
             $before = (int) $this->pdo->query('SELECT COUNT(*) FROM blocked_periods')->fetchColumn();
             try {
-                $this->service->create('2027-05-10', '2027-05-12', 'Maintenance', null, $this->adminId);
-                self::fail('Expected confirmed overlap conflict.');
+                $start = (new \DateTimeImmutable($arrival))->modify('-1 day')->format('Y-m-d');
+                $end = (new \DateTimeImmutable($arrival))->modify('+1 day')->format('Y-m-d');
+                $this->service->create($start, $end, 'Maintenance', null, $this->adminId);
+                self::fail('Expected blocking booking overlap conflict.');
             } catch (BlockedPeriodConflict) {
                 self::assertSame($before, (int) $this->pdo->query('SELECT COUNT(*) FROM blocked_periods')->fetchColumn());
                 $audit = $this->pdo->prepare("SELECT COUNT(*) FROM audit_logs WHERE event_type = 'blocked_period.created' AND admin_id = :admin_id");

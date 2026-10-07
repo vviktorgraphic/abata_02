@@ -6,6 +6,9 @@ namespace App\Domain\Booking;
 
 enum BookingStatus: string
 {
+    /** @var list<string> */
+    public const BLOCKING_VALUES = ['pending', 'confirmed'];
+
     case Pending = 'pending';
     case Confirmed = 'confirmed';
     case Rejected = 'rejected';
@@ -14,7 +17,7 @@ enum BookingStatus: string
 
     public function blocksPublicBooking(): bool
     {
-        return $this === self::Confirmed;
+        return in_array($this->value, self::BLOCKING_VALUES, true);
     }
 
     public function label(): string

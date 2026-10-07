@@ -34,18 +34,18 @@ final class PdoAvailabilityRepositoryTest extends TestCase
         }
     }
 
-    public function testOnlyConfirmedDatabaseBookingBlocksApiCalendar(): void
+    public function testPendingAndConfirmedBookingsBlockApiCalendarWithoutExposingPii(): void
     {
         $this->pdo->exec(
             "UPDATE blocked_periods SET is_active = FALSE
-             WHERE is_active = TRUE AND start_date < '2027-01-23' AND end_date > '2027-01-09'"
+             WHERE is_active = TRUE AND start_date < '2027-01-31' AND end_date > '2027-01-09'"
         );
         $statement = $this->pdo->prepare(
             'INSERT INTO bookings
                 (reference, status, arrival_date, departure_date, guest_name, guest_email, adults, children)
              VALUES (:reference, :status, :arrival, :departure, :name, :email, 1, 0)'
         );
-        foreach (['confirmed', 'pending', 'cancelled'] as $index => $status) {
+        foreach (['confirmed', 'pending', 'cancelled', 'rejected', 'invalidated'] as $index => $status) {
             $statement->execute([
                 'reference' => sprintf('INTEGRATION-%s-%s', strtoupper($status), bin2hex(random_bytes(4))),
                 'status' => $status,
@@ -56,12 +56,14 @@ final class PdoAvailabilityRepositoryTest extends TestCase
             ]);
         }
 
+        $bookingConfig = require dirname(__DIR__, 2) . '/config/booking.php';
+        self::assertSame(['pending', 'confirmed'], $bookingConfig['blocking_statuses']);
         $handler = new GetAvailabilityHandler(
-            new PdoBookingReadRepository($this->pdo, ['confirmed']),
+            new PdoBookingReadRepository($this->pdo, $bookingConfig['blocking_statuses']),
             new PdoBlockedPeriodReadRepository($this->pdo),
             today: $this->date('2026-07-16'),
         );
-        $result = $handler->handle('2027-01-09', '2027-01-23');
+        $result = $handler->handle('2027-01-09', '2027-01-31');
         $statuses = [];
         foreach ($result['days'] as $day) {
             $statuses[$day['date']] = $day['status'];
@@ -70,8 +72,12 @@ final class PdoAvailabilityRepositoryTest extends TestCase
         self::assertSame('arrival_only', $statuses['2027-01-10']);
         self::assertSame('occupied', $statuses['2027-01-11']);
         self::assertSame('departure_only', $statuses['2027-01-12']);
-        self::assertSame('available', $statuses['2027-01-14'], 'Pending booking must not block.');
+        self::assertSame('arrival_only', $statuses['2027-01-14']);
+        self::assertSame('occupied', $statuses['2027-01-15']);
+        self::assertSame('departure_only', $statuses['2027-01-16']);
         self::assertSame('available', $statuses['2027-01-18'], 'Cancelled booking must not block.');
+        self::assertSame('available', $statuses['2027-01-22'], 'Rejected booking must not block.');
+        self::assertSame('available', $statuses['2027-01-26'], 'Invalidated booking must not block.');
         self::assertStringNotContainsString('Private integration name', json_encode($result, JSON_THROW_ON_ERROR));
         self::assertStringNotContainsString('private@example.invalid', json_encode($result, JSON_THROW_ON_ERROR));
     }

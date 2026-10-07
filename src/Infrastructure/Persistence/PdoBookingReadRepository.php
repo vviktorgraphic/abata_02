@@ -6,6 +6,7 @@ namespace App\Infrastructure\Persistence;
 
 use App\Application\Availability\BookingReadRepository;
 use App\Domain\Booking\BookingPeriod;
+use App\Domain\Booking\BookingStatus;
 use DateTimeImmutable;
 use DateTimeZone;
 use PDO;
@@ -13,7 +14,7 @@ use PDO;
 final readonly class PdoBookingReadRepository implements BookingReadRepository
 {
     /** @param list<string> $blockingStatuses */
-    public function __construct(private PDO $pdo, private array $blockingStatuses = ['confirmed'])
+    public function __construct(private PDO $pdo, private array $blockingStatuses = BookingStatus::BLOCKING_VALUES)
     {
     }
 

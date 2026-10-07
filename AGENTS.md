@@ -15,7 +15,7 @@
 - Every new business rule requires both automated tests and documentation in the same pull request.
 - Keep IMPLEMENTED and PLANNED behavior explicitly separated in documentation.
 - Document local development commands in PowerShell-compatible form.
-- A public booking request starts as `pending`; pending requests neither block each other nor expire automatically. Only `confirmed` bookings and blocked periods block public creation.
+- A public booking request starts as `pending`; `pending` and `confirmed` bookings both block inventory and are exported through iCal. Pending requests do not expire automatically; `rejected`, `cancelled`, and `invalidated` bookings do not block.
 - Keep booking idempotency records with their booking; do not add time-based cleanup without a new owner decision.
 - Persist a server-calculated immutable pricing snapshot and an e-mail outbox record in the same booking transaction. Never perform SMTP I/O inside that transaction.
 - Pricing uses the single shared Sprint 6 engine and immutable snapshots. Supported configurable units are `per_person_per_night`, `per_night`, and `per_booking`; do not invent production prices, child discounts, weekend days, tax values, or legal exemption categories.

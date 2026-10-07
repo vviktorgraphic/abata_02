@@ -145,7 +145,7 @@ docker compose exec app composer seed:demo
 docker compose exec app vendor/bin/phpunit
 ```
 
-A `seed:demo` kizárólag `development`, `local` vagy `testing` környezetben fut. Idempotensen létrehoz egy többnapos megerősített foglalást, két azonos napon váltó foglalást, egy blokkolt időszakot, valamint egy-egy naptárt nem blokkoló `pending` és `cancelled` rekordot.
+A `seed:demo` kizárólag `development`, `local` vagy `testing` környezetben fut. Idempotensen létrehoz egy többnapos megerősített foglalást, két azonos napon váltó foglalást, egy blokkolt időszakot, valamint egy-egy `pending` és `cancelled` rekordot. A `pending` blokkol, a `cancelled` nem.
 
 ### Hasznos URL-ek
 
@@ -164,7 +164,7 @@ A `from` inkluzív, a `to` exkluzív ISO `YYYY-MM-DD` dátum. A maximális leké
 - `selectable_as_arrival`: választható-e érkezésként;
 - `selectable_as_departure`: választható-e távozásként.
 
-Az API csak időszakokat kér le, vendéghez tartozó személyes adatot nem olvas és nem ad vissza. Kizárólag a `confirmed` foglalások blokkolják a naptárt; a `pending` és `cancelled` rekordok nem. A `blocked_periods` mindig blokkol.
+Az API csak időszakokat kér le, vendéghez tartozó személyes adatot nem olvas és nem ad vissza. A `pending` és `confirmed` foglalások blokkolják a naptárt; a `rejected`, `cancelled` és `invalidated` rekordok nem. A `blocked_periods` mindig blokkol.
 
 PowerShell ellenőrzés:
 
@@ -221,7 +221,7 @@ A foglalási időszak fél-nyitott: `[arrival_date, departure_date)`. Az érkez�
 
 ## Sprint 3 – admin hitelesítési alap
 
-**IMPLEMENTED komponensek:** e-mail-normalizálás és időzítéskiegyenlített jelszóellenőrzés; hatjegyű, hash-elve tárolt, 10 percig érvényes e-mailes 2FA-kód legfeljebb öt próbával és 60 másodperces újraküldési várakozással; 15 perces csúszó idle session; session-ID rotáció; sessionhöz kötött CSRF; konfigurálható rate limit; szűrt audit metadata; PDO persistence; cserélhető mailer és közvetlen `mail()` nélküli SMTP adapter; minimális admin login/2FA/dashboard sablonok.
+**IMPLEMENTED komponensek:** e-mail-normalizálás és időzítéskiegyenlített jelszóellenőrzés; hatjegyű, hash-elve tárolt, 10 percig érvényes e-mailes 2FA-kód legfeljebb öt próbával és 60 másodperces újraküldési várakozással; konfigurálható, legalább 30 perces csúszó idle session (`ADMIN_SESSION_IDLE_TIMEOUT_SECONDS`, alapérték 1800); session-ID rotáció; sessionhöz kötött CSRF; konfigurálható rate limit; szűrt audit metadata; PDO persistence; cserélhető mailer és közvetlen `mail()` nélküli SMTP adapter; minimális admin login/2FA/dashboard sablonok.
 
 **DECISION REQUIRED:** nincs feltételezett abszolút session-élettartam. A production SMTP portja, titkosítása, authentikációja, felhasználója és feladó címe nyitott. A rate-limit küszöbök konfigurálható fejlesztési alapértékek, nem végleges tulajdonosi döntések.
 
@@ -239,7 +239,7 @@ A forrásfájl legyen a repositoryn kívül, a konténerbeli másolat pedig csak
 
 ## Jelenlegi hatókör
 
-**IMPLEMENTED:** két hónapos publikus naptár, availability, admin-auth alapok és `POST /api/bookings`. Az új publikus igény `pending`; más pending igényt nem blokkol és nem jár le automatikusan, a `confirmed` booking és a blocked period viszont blokkol. A mentés idempotens, tranzakciós, HUF ár-pillanatképet és e-mail outbox rekordot hoz létre; SMTP-hiba nem törli a bookingot.
+**IMPLEMENTED:** két hónapos publikus naptár, availability, admin-auth alapok és `POST /api/bookings`. Az új publikus igény `pending`, azonnal blokkolja a készletet és nem jár le automatikusan; a `confirmed` booking és a blocked period szintén blokkol. A mentés idempotens, tranzakciós, HUF ár-pillanatképet és e-mail outbox rekordot hoz létre; SMTP-hiba nem törli a bookingot.
 
 **IMPLEMENTED:** teljes admin booking workflow, pricing admin CRUD/preview, kötelező és verziózott booking-policy elfogadás, immutable pricing/cancellation snapshot, 7 naptári napos kötbérmentes határ és későbbi 50%-os kötbér, valamint automatikus iCal import worker. **PLANNED:** általános e-mail retry és online fizetés. A pontos határt a [rendszerspecifikáció](docs/README.md) tartja nyilván.
 
@@ -297,7 +297,7 @@ git status
 
 ## Sprint 7 – iCal szinkron
 
-**IMPLEMENTED:** Google Calendar és Szallas.hu iCal import kézi admin szinkronnal, forrás CRUD és szinkronnapló; külső eseményből külön blocked period készül, booking soha nem módosul. A tokenvédett `GET /calendar/export.ics?token=...` feed confirmed bookingokat és aktív blocked periodokat exportál PII nélkül. Pending/rejected/cancelled/invalidated booking nem exportálódik.
+**IMPLEMENTED:** Google Calendar és Szallas.hu iCal import kézi admin szinkronnal, forrás CRUD és szinkronnapló; külső eseményből külön blocked period készül, booking soha nem módosul. A tokenvédett `GET /calendar/export.ics?token=...` feed pending és confirmed bookingokat, valamint aktív belső blocked periodokat exportál PII nélkül. Rejected/cancelled/invalidated booking és importált külső block nem exportálódik.
 
 **HISTORICAL Sprint 7:** a cron, retry/backoff és eltűnt esemény grace akkor még tervezett volt. **IMPLEMENTED Sprint 10:** forrásonkénti DB-lock, korlátozott retry és legalább 24 órás grace; a tokenrotációs átfedés továbbra is nyitott.
 

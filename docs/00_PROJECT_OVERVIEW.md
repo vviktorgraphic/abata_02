@@ -41,7 +41,7 @@ Ez a dokumentum elválasztja a repositoryban igazolható jelenlegi működést a
 - **IMPLEMENTED:** publikus, reszponzív, két hónapos naptár build lépés nélküli CSS-sel és natív JavaScripttel;
 - **IMPLEMENTED:** `GET /api/availability` fél-nyitott dátumtartománnyal és személyes adat nélküli napi állapotokkal;
 - **IMPLEMENTED:** `POST /api/booking/validate` kötelező mező-, e-mail-, hozzájárulás-, tartomány-, horizont- és foglaltságellenőrzéssel, mentés nélkül;
-- **IMPLEMENTED:** kizárólag `confirmed` foglalás blokkol; `pending` és `cancelled` nem blokkol; a `blocked_periods` mindig blokkol;
+- **IMPLEMENTED:** `pending` és `confirmed` foglalás blokkol; `rejected`, `cancelled` és `invalidated` nem blokkol; a `blocked_periods` mindig blokkol;
 - **IMPLEMENTED:** verziózott, csak előre futó SQL migrációk és idempotens fejlesztői demo seeder;
 - **IMPLEMENTED:** PDO natív prepared statementekkel (`ATTR_EMULATE_PREPARES = false`);
 - **IMPLEMENTED:** Docker Compose: Apache + PHP 8.2, MySQL 8, Mailpit, opcionális phpMyAdmin és MySQL healthcheck;
@@ -88,7 +88,7 @@ Minden tervezett modul elfogadási feltétele legalább: dokumentált üzleti sz
 - **IMPLEMENTED:** értéket tartalmazó jelenlegi SQL lekérdezések prepared statementet használnak.
 - **PLANNED:** HTTPS, CSRF, biztonságos session-cookie, rate limiting, audit log, strukturált hibalog és személyesadat-megőrzési rend.
 - **PLANNED:** mobil és billentyűzetes használhatóság regressziós ellenőrzése, WCAG-célérték véglegesítése.
-- **IMPLEMENTED:** confirmed/blocked ütközést kizáró készletzár és idempotens publikus írás; az átfedő pending igények megengedettek.
+- **IMPLEMENTED:** pending/confirmed/blocked ütközést kizáró készletzár és idempotens publikus írás; két párhuzamos átfedő kérésből csak egy pending jöhet létre.
 - **PLANNED:** visszaállítással rendszeresen ellenőrzött adatbázis-mentés.
 
 > **DECISION REQUIRED:** Rögzíteni kell a rendelkezésre állási célértéket, az RPO/RTO értékeket, a támogatott böngészőket és a kötelező WCAG megfelelési szintet.
@@ -108,7 +108,7 @@ Példa: a `2026-08-01` érkezés és `2026-08-05` távozás négy éjszakát jel
 
 ### Vendég – tervezett 1.0
 
-1. **IMPLEMENTED:** a szerver mentés előtt tranzakcióban ismét ellenőrzi a confirmed/blocked foglalhatóságot;
+1. **IMPLEMENTED:** a szerver mentés előtt tranzakcióban ismét ellenőrzi a pending/confirmed/blocked foglalhatóságot;
 2. **IMPLEMENTED:** idempotenciakulccsal létrehozza a `pending` igényt és az immutable ár-/policy-pillanatképet;
 3. **IMPLEMENTED:** commit után naplózott visszaigazolást küld a vendégnek;
 4. **IMPLEMENTED:** az admin megerősíti, elutasítja, lemondja vagy érvényteleníti az igényt;

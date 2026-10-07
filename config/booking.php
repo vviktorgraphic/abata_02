@@ -8,7 +8,7 @@ return [
     'minimum_advance_days' => 2,
     'booking_horizon_days' => 365,
     'availability_query_max_days' => 93,
-    'blocking_statuses' => ['confirmed'],
+    'blocking_statuses' => \App\Domain\Booking\BookingStatus::BLOCKING_VALUES,
     'create_body_max_bytes' => (int) (getenv('BOOKING_BODY_MAX_BYTES') ?: 32768),
     'create_rate_limit' => (int) (getenv('BOOKING_RATE_LIMIT') ?: 10),
     'create_rate_window_seconds' => (int) (getenv('BOOKING_RATE_WINDOW_SECONDS') ?: 60),

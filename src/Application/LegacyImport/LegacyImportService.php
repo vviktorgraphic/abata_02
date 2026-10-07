@@ -2,6 +2,8 @@
 declare(strict_types=1);
 namespace App\Application\LegacyImport;
 
+use App\Domain\Booking\BookingStatus;
+
 use App\Application\Booking\LegacyImportProvenanceRepository;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -30,7 +32,7 @@ final readonly class LegacyImportService
     public function conflictCount(LegacyImportPreview $preview, LegacyImportOptions $options): int
     {
         $count = 0;
-        foreach ($preview->rows as $row) if ($row->isValid() && $options->accepts($row->sourceStatus, $row->calendarName) && $row->mappedStatus()?->value === 'confirmed' && $row->arrival !== null && $row->departure !== null && $this->hasConflict($row->arrival->format('Y-m-d'), $row->departure->format('Y-m-d'))) $count++;
+        foreach ($preview->rows as $row) if ($row->isValid() && $options->accepts($row->sourceStatus, $row->calendarName) && $row->mappedStatus()?->blocksPublicBooking() === true && $row->arrival !== null && $row->departure !== null && $this->hasConflict($row->arrival->format('Y-m-d'), $row->departure->format('Y-m-d'))) $count++;
         return $count;
     }
 
@@ -71,8 +73,8 @@ final readonly class LegacyImportService
             $imported = 0;
             foreach ($selected as $row) {
                 $reference = $this->reference($row->sourceBookingId);
-                if ($row->mappedStatus()?->value === 'confirmed' && $this->hasConflict($row->arrival->format('Y-m-d'), $row->departure->format('Y-m-d'))) {
-                    throw new \InvalidArgumentException('A kiválasztott megerősített foglalás ütközik meglévő foglalással vagy zárolt időszakkal.');
+                if ($row->mappedStatus()?->blocksPublicBooking() === true && $this->hasConflict($row->arrival->format('Y-m-d'), $row->departure->format('Y-m-d'))) {
+                    throw new \InvalidArgumentException('A kiválasztott blokkoló foglalás ütközik meglévő foglalással vagy zárolt időszakkal.');
                 }
                 $check = $this->pdo->prepare('SELECT id FROM bookings WHERE reference = :reference');
                 $check->execute(['reference' => $reference]);
@@ -121,8 +123,9 @@ final readonly class LegacyImportService
 
     private function hasConflict(string $arrival, string $departure): bool
     {
-        $query = $this->pdo->prepare('SELECT 1 FROM bookings WHERE status = \'confirmed\' AND arrival_date < :departure AND departure_date > :arrival LIMIT 1');
-        $query->execute(['arrival'=>$arrival,'departure'=>$departure]);
+        $statusPlaceholders = implode(', ', array_fill(0, count(BookingStatus::BLOCKING_VALUES), '?'));
+        $query = $this->pdo->prepare("SELECT 1 FROM bookings WHERE status IN ({$statusPlaceholders}) AND arrival_date < ? AND departure_date > ? LIMIT 1");
+        $query->execute([...BookingStatus::BLOCKING_VALUES, $departure, $arrival]);
         if ($query->fetchColumn() !== false) return true;
         $query = $this->pdo->prepare('SELECT 1 FROM blocked_periods WHERE is_active = TRUE AND start_date < :departure AND end_date > :arrival LIMIT 1');
         $query->execute(['arrival'=>$arrival,'departure'=>$departure]);

@@ -14,6 +14,16 @@ Minden támogatott pricing módban IFA = konfigurált egységár × felnőttek �
 
 **Üzemeltetési következmény:** migráció után az új occupancy IFA alapértéke nulla; nincs feltételezett production adóérték vagy automatikus legacy-IFA átvétel. A jóváhagyott összeget az admin külön beállítja az éles aktiválás során.
 
+## Egyedi időszakos tartózkodási korlátok — IMPLEMENTED
+
+A `027_add_occupancy_override_stay_limits.sql` forward migráció minden occupancy date override-hoz kötelező `min_nights` és opcionális `max_nights` mezőt ad. A meglévő sorok biztonságos alapértéke `min_nights=1`, `max_nights=NULL`, ezért a korábbi korlátlan működésük megmarad. A domain és az adatbázis 1–30 éjszaka közötti, egymással konzisztens értékeket fogad el.
+
+A teljes foglalás tartózkodáshossz-szabályát kizárólag az érkezési nap választja ki. Ha az érkezés aktív egyedi időszakba esik, annak minimuma és maximuma irányadó akkor is, ha a távozás túlnyúlik az időszakon. Ha az érkezés nem esik override-ba, a normál occupancy alapársáv tartózkodáshossz-szabálya érvényes. Az éjszakánkénti ár ettől függetlenül minden napra külön oldódik fel: az override által fedett éj override árat, a többi éj a megfelelő alapárat kapja. Teljesen override-dal fedett, érvényes tartózkodás nem igényel alkalmazható alapársávot; fedetlen éjhez viszont hiányzó alapár esetén a kalkuláció fail-closed.
+
+A publikus quote, a booking create, az admin preview és az immutable booking snapshot ugyanazt a közös engine-szabályt használja. Normál tartózkodáshossz-hibára magyar, mezőszintű `422` válasz érkezik. Az occupancy snapshot verziója 5; rögzíti az érkezési override azonosítóját, minimumát és maximumát, a governing stay rule-t, az éjszakánkénti forrást és az összes alkalmazott override azonosítóját. Korábbi snapshot nem módosul és nem számolódik újra.
+
+Az admin **Egyedi időszakos árak** létrehozó és szerkesztő űrlapja kezeli a minimum és opcionális maximum éjszakát; az üres maximum korlátlant jelent. A mentés az occupancy konfiguráció meglévő optimistic verzió-, CSRF- és auditfolyamatát használja. A 2027-es működéshez nincs automatikus január 1-jei átállás: amikor az új standard ár válik aktuálissá, a tulajdonos módosítja az alapárakat, majd inaktiválja a teljes éves override-ot; ezután csak a valódi különleges időszakok maradnak aktív override-ként.
+
 ## Díjbekérő és megerősítés
 
 Csak pending foglaláshoz indítható díjbekérő. A védett `POST /admin/bookings/{reference}/payment-request` teljes admin sessiont, CSRF-et, form Content-Type/body-limitet és rate limitet igényel. Ugyanez a végpont indítja a sikertelen levél újraküldését. Hiányzó foglalás 404, nem pending foglalás 409, hibás banki/előleg-konfiguráció 422; konfigurációs hibánál nincs SMTP-kísérlet.

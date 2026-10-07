@@ -18,6 +18,7 @@ use App\Application\Booking\IdempotencyConflict;
 use App\Application\Pricing\PricingConfigurationException;
 use App\Domain\Booking\BookingCreateRequest;
 use App\Domain\Booking\BookingCreateRequestValidator;
+use App\Domain\Pricing\OccupancyStayLengthViolation;
 use App\Http\BookingRequestRateLimiter;
 use App\Http\Controller\BookingCreateController;
 use App\Infrastructure\Database\ConnectionFactory;
@@ -167,6 +168,35 @@ final class BookingCreateApiTest extends TestCase
         self::assertArrayHasKey('child_ages', $response->payload['errors']);
     }
 
+    public function testPublicCreateAcceptsFivePhysicalGuestsWhenOnlyFourAreChargeable(): void
+    {
+        $payload = $this->payload();
+        $payload['adults'] = 4;
+        $payload['children'] = 1;
+        $payload['child_ages'] = [3];
+
+        $response = $this->controller($this->workflow())->create(
+            json_encode($payload, JSON_THROW_ON_ERROR), ['content-type' => 'application/json'], '192.0.2.10',
+        );
+
+        self::assertSame(201, $response->status);
+    }
+
+    public function testPublicCreateRejectsFiveChargeableGuests(): void
+    {
+        $payload = $this->payload();
+        $payload['adults'] = 4;
+        $payload['children'] = 1;
+        $payload['child_ages'] = [4];
+
+        $response = $this->controller($this->workflow())->create(
+            json_encode($payload, JSON_THROW_ON_ERROR), ['content-type' => 'application/json'], '192.0.2.10',
+        );
+
+        self::assertSame(422, $response->status);
+        self::assertStringContainsString('4 fizető vendég', $response->payload['errors']['guests']);
+    }
+
     public function testForgedSameDayAndNextDayArrivalsAreRejectedByBackend(): void
     {
         foreach (['2026-01-01', '2026-01-02'] as $arrival) {
@@ -249,6 +279,25 @@ final class BookingCreateApiTest extends TestCase
         self::assertStringNotContainsString('secret-host', json_encode($response->payload, JSON_THROW_ON_ERROR));
     }
 
+    public function testOverrideStayLengthViolationIsReturnedAsFieldScoped422(): void
+    {
+        $workflow = new class implements BookingCreateWorkflow {
+            public function create(BookingCreateRequest $request): BookingCreateOutcome
+            {
+                throw new OccupancyStayLengthViolation('Erre az érkezési dátumra legfeljebb 4 éjszaka foglalható.');
+            }
+        };
+        $response = $this->controller($workflow)->create(
+            $this->json(), ['content-type' => 'application/json'], '192.0.2.10',
+        );
+
+        self::assertSame(422, $response->status);
+        self::assertSame(
+            'Erre az érkezési dátumra legfeljebb 4 éjszaka foglalható.',
+            $response->payload['errors']['departure_date'],
+        );
+    }
+
     #[DataProvider('workflowErrorProvider')]
     public function testWorkflowErrorsAreSafe(\Throwable $error, int $status): void
     {
@@ -269,7 +318,7 @@ final class BookingCreateApiTest extends TestCase
     /** @return iterable<string, array{\Throwable, int}> */
     public static function workflowErrorProvider(): iterable
     {
-        yield 'confirmed or blocked conflict' => [new BookingConflict('secret-host guest@example.test'), 409];
+        yield 'blocking booking or period conflict' => [new BookingConflict('secret-host guest@example.test'), 409];
         yield 'changed idempotent payload' => [new IdempotencyConflict('secret-host'), 409];
         yield 'missing price' => [new PricingConfigurationException('secret-host'), 503];
         yield 'unexpected failure' => [new RuntimeException('secret-host guest@example.test'), 503];

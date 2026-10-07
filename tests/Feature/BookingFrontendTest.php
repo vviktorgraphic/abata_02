@@ -44,6 +44,9 @@ final class BookingFrontendTest extends TestCase
         self::assertStringContainsString('const MAX_CHARGEABLE_GUESTS = 4', $javascript);
         self::assertStringContainsString('FREE_CHILD_MAX_AGE = 3', $javascript);
         self::assertStringContainsString('option.disabled = Number(option.value) > maximumChildren', $javascript);
+        self::assertStringContainsString('data-error-for="guests"', $template);
+        self::assertStringContainsString('Legfeljebb 4 fizető vendég foglalható', $javascript);
+        self::assertStringNotContainsString("adultCount.value = String(adults)", $javascript);
         self::assertStringContainsString('Foglalási szabályzatot', $template);
         $productionEnv = (string) file_get_contents($root . '/.env.production.example');
         self::assertStringContainsString('PRIVACY_POLICY_URL=https://abata.hu/adatkezelesi_tajekoztato/', $productionEnv);

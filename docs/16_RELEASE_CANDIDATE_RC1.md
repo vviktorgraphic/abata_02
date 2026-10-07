@@ -46,7 +46,7 @@ Elfogadás: tiszta release branch, healthy DB/Mailpit, sikeres build/DB/migráci
 | Cancellation | `CancellationPolicyTest`, policy/cancellation repository teszt | free és 50%-os snapshot ellenőrzése, terhelés nélkül | automatizált PASS; staging PENDING |
 | Audit | audit sanitizer és persistence tesztek | login/booking/pricing/iCal események PII/secret nélkül | automatizált PASS; staging PENDING |
 | iCal import | parser/fetcher/import/persistence/controller tesztek | Google és Szallas.hu kijelölt staging fixture kézi sync | automatizált PASS; provider smoke PENDING |
-| iCal export | exporter/feed repository/endpoint tesztek | tokenes feed, confirmed/blocked igen, PII/pending nem | automatizált PASS; staging PENDING |
+| iCal export | exporter/feed repository/endpoint tesztek | **HISTORICAL RC1:** tokenes feed, confirmed/blocked igen, PII/pending nem; **Phase 1B:** pending is exportált | automatizált PASS; staging PENDING |
 | Backup/restore | operations contract tesztek | checksum-valid dump → eltérő nevű staging DB restore | contract PASS; roundtrip PENDING |
 | Monitoring | `HealthEndpointTest` | HTTPS `/health`, DB-kiesés 503, riasztás | automatizált PASS; monitor PENDING |
 | Deployment | `DeploymentArtifactsTest` | cPanel document root, HTTPS/proxy és rollback | contract PASS; cPanel PENDING |
@@ -89,7 +89,7 @@ Elfogadás: tiszta release branch, healthy DB/Mailpit, sikeres build/DB/migráci
 1. Hozz létre kizárólag szintetikus vendégadatú, jövőbeli publikus booking requestet; igazold a `pending` státuszt, immutable pricing/policy/privacy snapshotot és booking outboxot.
 2. Ellenőrizd a request e-mailt, majd admin jelszó + e-mailes 2FA után nyisd meg a booking részletét.
 3. Hasonlítsd össze az admin pricing preview és a booking snapshot eredményét. Erősítsd meg a bookingot; igazold a history, audit, outbox és confirmed levél rekordját.
-4. Kérd le a tokenes iCal exportot: a confirmed booking szerepeljen PII nélkül, pending ne szerepeljen.
+4. Kérd le a tokenes iCal exportot: a pending és confirmed booking is szerepeljen PII nélkül, azonos bookingreferenciához stabil UID-val.
 5. Külön, kijelölt Google és Szallas.hu fixture forrást szinkronizálj kézzel; igazold az idempotenciát, blocked periodot, sync logot és konfliktusjelzést.
 6. Hozz létre két külön confirmed tesztbookingot a kötbérmentes és 50%-os időablakhoz. Mondd le őket, és igazold az immutable cancellation snapshotot, auditot és levelet; pénzügyi terhelés nem történhet.
 7. Ellenőrizd az admin listát, szűrőket, részletet, pricing és calendar felületeket, CSRF/no-store védelmet és logoutot.

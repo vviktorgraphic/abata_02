@@ -37,21 +37,21 @@ final class AdminSessionTest extends TestCase
         self::assertSame(2, $rotator->rotations);
     }
 
-    public function testActivityBeforeFifteenMinutesRefreshesTheDeadline(): void
+    public function testActivityBeforeThirtyMinutesRefreshesTheDeadline(): void
     {
         [$session, $storage, , $clock] = $this->sessionAt(1_000);
         $session->authenticate(42);
-        $clock->timestamp = 1_899;
+        $clock->timestamp = 2_799;
 
         self::assertSame(42, $session->authenticatedAdminId());
-        self::assertSame(1_899, $storage->values['admin_last_activity']);
+        self::assertSame(2_799, $storage->values['admin_last_activity']);
     }
 
-    public function testFifteenMinutesOfInactivityDestroysTheSession(): void
+    public function testThirtyMinutesOfInactivityDestroysTheSession(): void
     {
         [$session, $storage, , $clock] = $this->sessionAt(1_000);
         $session->authenticate(42);
-        $clock->timestamp = 1_900;
+        $clock->timestamp = 2_800;
 
         self::assertNull($session->authenticatedAdminId());
         self::assertTrue($storage->destroyed);

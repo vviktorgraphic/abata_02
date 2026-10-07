@@ -111,6 +111,11 @@ final readonly class PricingAdminController
                 'result' => $result, 'input' => $form, 'summary' => $this->previewSummary($result, $adults, $ages),
                 'csrfToken' => $this->csrf->token(), 'error' => null,
             ]));
+        } catch (\App\Domain\Pricing\OccupancyStayLengthViolation $e) {
+            return new HtmlResponse($this->view->render('pricing-preview', [
+                'result' => null, 'input' => $form, 'summary' => null, 'csrfToken' => $this->csrf->token(),
+                'error' => $e->getMessage(),
+            ]), 422);
         } catch (PricingConfigurationError|PricingConfigurationException $e) {
             $this->audit('pricing.configuration_conflict', $authorization->admin['id']);
             return new HtmlResponse($this->view->render('pricing-preview', [

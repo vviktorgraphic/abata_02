@@ -16,7 +16,7 @@ Minimum dashboard:
 - HTTP 5xx arány, PHP fatális hibák és adatbázis-kapcsolati hibák;
 - lemez- és inode-telítettség, process/memory limitek;
 - sikertelen SMTP-küldések és `email_outbox` állapotok;
-- iCal források utolsó sikere, sync warning/error és confirmed konfliktus;
+- iCal források utolsó sikere, sync warning/error és pending/confirmed bookingkonfliktus;
 - backup frissesség, méret/checksum és utolsó igazolt restore;
 - admin auth rate-limit/lockout anomáliák.
 

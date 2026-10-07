@@ -12,7 +12,7 @@
 
 1. **Admin authentication és e-mailes 2FA.** Előfeltétel az admin session- és auditmodell. Elfogadás: rate limitelt jelszó + egyszer használatos kód, session rotation, biztonságos logout, auditált hibafolyamatok. Lásd [admin és hitelesítés](04_ADMIN_AND_AUTHENTICATION.md).
 2. **Read-only admin dashboard és foglaláslista.** Elfogadás: hitelesített, lapozható, szűrhető lista; PII kizárólag jogosult adminnak; minden lekérdezés prepared statement.
-3. **Publikus foglalásmentés — IMPLEMENTED.** Tranzakcióban újraellenőrzi a confirmed/blocked rendelkezésre állást és idempotenciakulcsot használ. Több pending átfedhet; azonos kulcs csak egy bookingot eredményez. Lásd [publikus flow](03_PUBLIC_BOOKING_FLOW.md).
+3. **Publikus foglalásmentés — IMPLEMENTED.** Tranzakcióban újraellenőrzi a pending/confirmed/blocked rendelkezésre állást és idempotenciakulcsot használ. Átfedő pending nem hozható létre; azonos kulcs csak egy bookingot eredményez. Lásd [publikus flow](03_PUBLIC_BOOKING_FLOW.md).
 4. **Foglalási státuszkezelés.** Elfogadás: definiált állapotgép, tiltott átmenetek elutasítása, minden változás audit- és status history rekord.
 5. **Árkalkuláció és snapshot.** A foglalásmentés után következik, hogy az ár a végleges vendég- és dátumadatokhoz köthető legyen. Elfogadás: determinisztikus kalkuláció, HUF-kerekítés és megváltoztathatatlan pillanatkép. Lásd [árképzés](05_PRICING.md).
 6. **SMTP és e-mail folyamatok.** Elfogadás: queue-szerű outbox/log, idempotens események, retry és admin újraküldés; közvetlen `mail()` nincs. Lásd [e-mail folyamatok](06_EMAIL_WORKFLOWS.md).
@@ -33,10 +33,10 @@
 | ADR-007 | IMPLEMENTED | Repository rétegek read és booking write oldalon | A booking create tranzakciós PDO adapterrel, application/domain határral működik. |
 | ADR-008 | IMPLEMENTED alap | SMTP transport és booking e-mail outbox/log | Közvetlen `mail()` nincs; atomi egyszeri claim működik, retry/admin resend és production SMTP-paraméterek még nyitottak. |
 | ADR-009 | IMPLEMENTED | E-mailes 2FA az 1.0-ban | TOTP bővíthetőség megmarad, de TOTP **DEFERRED**. |
-| ADR-010 | IMPLEMENTED | Query-tokenes iCal export feed | A token hashként tárolt, rotálható capability secret; feed nem tartalmaz PII-t és pending bookingot. |
+| ADR-010 | IMPLEMENTED | Query-tokenes iCal export feed | A token hashként tárolt, rotálható capability secret; a feed PII nélkül `pending` és `confirmed` bookingot exportál. |
 | ADR-011 | IMPLEMENTED alap | Importált iCal esemény külön entitás | Nem keverhető belső bookinggal; forrás és UID alapján idempotensen külön blocked periodhoz kapcsolódik. Eltűnés/grace PLANNED. |
 | ADR-012 | IMPLEMENTED | Megváltoztathatatlan ár-pillanatkép | Későbbi árszabály-változás nem írja át a korábbi booking árát. |
-| ADR-013 | IMPLEMENTED | Pending nem blokkol és nem jár le automatikusan | Több átfedő pending lehet; confirmed és blocked period blokkol. |
+| ADR-013 | IMPLEMENTED / Phase 1B SUPERSEDED | Pending blokkol és nem jár le automatikusan | Pending és confirmed blokkol, lezárt státuszok nem; párhuzamos átfedő pending nem engedett. |
 | ADR-014 | IMPLEMENTED | Bookinghoz kötött, időkorlát nélkül megőrzött idempotencia | Azonos kulcs/payload replay; eltérő payload `409`; cleanup nincs. |
 | ADR-015 | IMPLEMENTED | SMTP csak booking commit után | Az outbox a booking tranzakció része, a hálózati küldés nem; SMTP-hiba nem törli a bookingot. |
 
@@ -50,7 +50,7 @@
 4. **DECISION REQUIRED:** idegenforgalmi adó szabálya, mentességek, kerekítés és külön megjelenítés.
 5. **DECISION REQUIRED:** előleg összege/százaléka és az elfogadás jelentése online fizetés nélkül.
 6. **DECISION REQUIRED:** lemondási szabály és engedélyezett státuszátmenetek.
-7. **RESOLVED:** a `pending` nem blokkol és admin beavatkozásig, automatikus lejárat nélkül megmarad.
+7. **RESOLVED / Phase 1B:** a `pending` azonnal blokkol és admin beavatkozásig, automatikus lejárat nélkül megmarad.
 8. **DECISION REQUIRED:** adatmegőrzési és törlési idők booking, vendég, audit, e-mail és backup adatokra.
 
 ### P1 – modul előtt lezárandó
@@ -59,8 +59,8 @@
 2. **DECISION REQUIRED:** takarítási és más fix díjak feltételei.
 3. **DECISION REQUIRED:** kedvezménytípusok és admin felülírás korlátai.
 4. **RESOLVED:** elsődleges iCal források Google Calendar és Szallas.hu.
-5. **RESOLVED:** `pending` foglalás nem exportálódik.
-6. **DECISION REQUIRED:** admin session abszolút lejárata. A 15 perces idle lejárat RESOLVED és implementált.
+5. **RESOLVED / Phase 1B:** `pending` és `confirmed` foglalás exportálódik stabil booking UID-val.
+6. **DECISION REQUIRED:** admin session abszolút lejáratának production értéke. A konfigurálható idle lejárat minimuma és alapértéke 1800 másodperc.
 7. **RESOLVED:** a 2FA kódérvényesség 10 perc.
 8. **DECISION REQUIRED:** SMTP szolgáltató, feladó domainek és bounce-kezelés.
 
@@ -89,7 +89,7 @@ Nyitott kapuk: abszolút session maximum; production SMTP port/TLS/auth/feladó;
 
 ## Sprint 4 teljesítési állapot
 
-**IMPLEMENTED Sprint 4 történeti alap:** `POST /api/bookings`, tranzakciós készletzár, pending overlap, idempotencia, gyermekéletkorok és immutable snapshot/outbox. A Sprint 6 ezt közös összetett HUF pricing engine-re bővítette.
+**IMPLEMENTED Sprint 4 történeti alap, Phase 1B-ben felülírva:** `POST /api/bookings`, tranzakciós készletzár, idempotencia, gyermekéletkorok és immutable snapshot/outbox. A Phase 1B óta a pending is blokkol; a Sprint 6 ezt közös összetett HUF pricing engine-re bővítette.
 
 **IMPLEMENTED a későbbi sprintekben:** admin approval/list/detail, legacy/person pricing és kézi/automatikus iCal import/tokenes export. **PLANNED:** production pricing értékek, outbox retry/stale claim recovery és online fizetés.
 
@@ -103,7 +103,7 @@ Nyitott kapuk: abszolút session maximum; production SMTP port/TLS/auth/feladó;
 
 ## Sprint 7 teljesítési állapot
 
-**IMPLEMENTED:** RFC 5545 parser/exporter; Google Calendar és Szallas.hu kézi import; forrás, külső esemény és sync-log persistence; külső eseményből külön blocked period; idempotencia és confirmed-konfliktus figyelmeztetés; admin forrás CRUD/kézi sync/log; query-tokenes, PII-mentes export confirmed bookingokkal és aktív blocked periodokkal. **PLANNED:** cron, automatikus retry/backoff, eltűnési grace, manuális konfliktusfeloldás és tokenrotációs átfedés.
+**IMPLEMENTED:** RFC 5545 parser/exporter; Google Calendar és Szallas.hu kézi import; forrás, külső esemény és sync-log persistence; külső eseményből külön blocked period; idempotencia és blocking-booking konfliktusjelzés; admin forrás CRUD/kézi sync/log; query-tokenes, PII-mentes export pending/confirmed bookingokkal és aktív belső blocked periodokkal. **PLANNED:** manuális konfliktusfeloldás és tokenrotációs átfedés.
 
 ## Sprint 9 teljesítési állapot
 

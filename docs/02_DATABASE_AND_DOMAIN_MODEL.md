@@ -15,6 +15,8 @@ A forward-only `013_add_pricing_policy_and_cancellation.sql` a bookinghoz adja a
 
 A `pricing_rules` egységes, bővíthető modellje támogatja a `stay_length`, `base`, `seasonal`, `weekend`, `fixed_fee`, `tourism_tax` és admin által konfigurált `exemption` típusokat; a három alapegységet; adjustment módot; éjszaka- és hétköznap-feltételeket; prioritást; active/soft-delete állapotot; valamint létrehozó és módosító admin FK-kat. A 013 migráció a korábbi `person_night` értéket `per_person_per_night` értékre alakítja, korábbi migráció módosítása nélkül.
 
+**IMPLEMENTED Phase 1B pricing séma:** a `027_add_occupancy_override_stay_limits.sql` az `occupancy_date_overrides` táblához `min_nights SMALLINT UNSIGNED NOT NULL DEFAULT 1` és nullable `max_nights SMALLINT UNSIGNED` mezőt ad. A check constraint 1–30 közé korlátozza az értékeket, és megköveteli, hogy a maximum ne legyen kisebb a minimumnál. A migráció nem írja át a 024–026 fájlokat, a meglévő override-sorok jelentése `1–korlátlan` marad.
+
 Minden üzleti tábla InnoDB, `utf8mb4` karakterkészletű és `utf8mb4_unicode_ci` kollációjú. A foglalási napok `DATE` típusúak. A `TIMESTAMP` mezők technikai időpontok; a PHP dátumkezelés kötelező időzónája `Europe/Budapest`.
 
 > **DECISION REQUIRED:** A repository nem tartalmaz elfogadott adatmegőrzési és törlési időket. Az alábbi „Megőrzés” értékek ezért a jelenlegi technikai viselkedést (`nincs automatikus törlés`) és a meghozandó döntést rögzítik, nem állítanak fel jogalapot vagy végleges GDPR-szabályt.
@@ -41,7 +43,7 @@ Minden üzleti tábla InnoDB, `utf8mb4` karakterkészletű és `utf8mb4_unicode_
 |---|---|---:|---|---|---|---:|---|
 | `id` | `BIGINT UNSIGNED` | nem | auto increment | PK | Belső foglalásazonosító. | nem önmagában | Foglalási rekorddal együtt; nincs automatikus törlés. |
 | `reference` | `VARCHAR(32)` | nem | nincs | UNIQUE | Külső/belső hivatkozási kód; generálása még nincs implementálva. | közvetetten azonosíthat | **DECISION REQUIRED**. |
-| `status` | `VARCHAR(32)` | nem | `'pending'` | `idx_bookings_dates_status` 3. tagja | Szabad szöveges státusz, DB `CHECK`/FK nélkül. Jelenleg csak `confirmed` blokkol; `pending` és `cancelled` nem blokkol. | nem | Foglalással együtt. |
+| `status` | `VARCHAR(32)` | nem | `'pending'` | `idx_bookings_dates_status` 3. tagja | Szabad szöveges státusz, DB `CHECK`/FK nélkül. A `pending` és `confirmed` blokkol; a lezárt státuszok nem. | nem | Foglalással együtt. |
 | `arrival_date` | `DATE` | nem | nincs | `idx_bookings_dates_status` 1. tagja | Inkluzív érkezési nap. Nem lehet múltbeli az új igény domainvalidációja szerint. | közvetetten | **DECISION REQUIRED**. |
 | `departure_date` | `DATE` | nem | nincs | `idx_bookings_dates_status` 2. tagja; `chk_booking_dates` | Exkluzív távozási végdátum; DB-szabály: `departure_date > arrival_date`. | közvetetten | **DECISION REQUIRED**. |
 | `guest_name` | `VARCHAR(190)` | nem | nincs | — | Foglaló/vendég neve. | igen | Jogi, számviteli és GDPR-igény szerint meghatározandó. |
@@ -184,12 +186,12 @@ Kiértékelési elsőbbség: `past`, majd `blocked`, majd a foglalási jelzők (
 
 - Az adatbázis `VARCHAR(32)` mezőt használ, tehát nincs zárt státusz-enum és nincs DB-szintű állapotgép.
 - Az egyetlen alapérték `pending`.
-- A jelenlegi `config/booking.php` szerint kizárólag `confirmed` blokkolja az elérhetőséget.
-- A tesztek és repository-viselkedés szerint `pending` és `cancelled` nem blokkol.
+- A jelenlegi `config/booking.php` szerint a `pending` és `confirmed` blokkolja az elérhetőséget.
+- A tesztek és repository-viselkedés szerint `rejected`, `cancelled` és `invalidated` nem blokkol.
 - Ismeretlen státusz technikailag menthető, de nem blokkol, amíg nincs a `blocking_statuses` listában.
-- A státuszváltások megengedett sorrendje, jogosultsága és atomi történetírása még nincs implementálva.
+- A státuszváltások megengedett sorrendje, jogosultsága és atomi történetírása implementált.
 
-> **RÉSZBEN RESOLVED:** A publikus igény `pending`, nem blokkol és nem jár le automatikusan; a `confirmed` blokkol. Az admin átmeneti mátrix és a pending iCal-exportja továbbra is döntést igényel. A write flow mentéskor tranzakciós újraellenőrzést végez.
+> **RESOLVED / Phase 1B:** A publikus igény `pending`, azonnal blokkol, iCalban exportálódik és nem jár le automatikusan. A `confirmed` szintén blokkol; `rejected`, `cancelled` és `invalidated` nem. A write és confirm flow mentéskor tranzakciós újraellenőrzést végez.
 
 ## 6. Adatvédelem és megőrzés — jelenlegi helyzet
 
@@ -271,7 +273,7 @@ Minden fenti PLANNED elemhez teljesülnie kell:
 
 A `008_create_admin_authentication_tables.sql` verziózott migráció létrehozza az `admin_login_codes`, `admin_sessions`, `audit_logs` és `login_attempts` táblákat. A 2FA rekord csak kódhash-t tárol; a szerveroldali session csak SHA-256 tokenhash-t tárol; a login-attempt kulcs pszeudonimizált. A dinamikus értékeket a PDO adapterek prepared statementtel írják és olvassák.
 
-Az `admin_sessions.expires_at` a 15 perces csúszó idle lejárat aktuális határa, nem abszolút maximum. Aktivitáskor a repository a `last_activity_at` és `expires_at` mezőt frissítheti. **DECISION REQUIRED:** abszolút session-élettartam nincs elfogadva és nincs a sémában feltételezett szabályként megvalósítva.
+Az `admin_sessions.expires_at` a konfigurálható, legalább 1800 másodperces csúszó idle lejárat aktuális határa, nem abszolút maximum. Aktivitáskor a repository a `last_activity_at` és `expires_at` mezőt frissítheti. A külön abszolút korlát az aktuális idle timeoutnál kötelezően nagyobb.
 
 **DECISION REQUIRED:** az auth-, audit- és rate-limit rekordok retentionje. Automatikus takarító jelenleg nincs.
 
@@ -281,7 +283,7 @@ A `009_create_booking_persistence.sql`, `010_extend_pricing_rules_for_snapshots.
 
 Az idempotenciakulcs és a kanonikus request SHA-256 hashként kötődik a bookinghoz, és azzal együtt marad; időalapú cleanup nincs. Bookingonként pontosan egy immutable JSON snapshot lehet. A `026_add_admin_booking_notification_recipients.sql` az outbox egyediséget `(booking_id, message_type, recipient)` kulcsra bővíti, így eltérő admin címzettek külön rekordot kapnak, ugyanaz a címzett viszont nem duplikálható. Ugyanez a migráció adja az `admins.receives_booking_notifications` nem null, alapértelmezetten hamis mezőt. Az outbox állapotai: `pending`, `processing`, `sent`, `failed`.
 
-Az egy tranzakción belüli invariáns szerint booking nem maradhat status history, snapshot, idempotencia-kapcsolat, gyermekéletkorok vagy outbox nélkül. Az új booking `pending`; más pending rekordot nem blokkol és nem jár le automatikusan. A `confirmed` és a blocked period blokkol.
+Az egy tranzakción belüli invariáns szerint booking nem maradhat status history, snapshot, idempotencia-kapcsolat, gyermekéletkorok vagy outbox nélkül. Az új booking `pending`; azonnal blokkol és nem jár le automatikusan. A `confirmed` és a blocked period szintén blokkol.
 
 ## Sprint 5 admin modell – IMPLEMENTED
 

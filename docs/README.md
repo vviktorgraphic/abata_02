@@ -61,7 +61,7 @@ A jelölések jelentése:
 
 ## Sprint 4 dokumentációs állapot
 
-**IMPLEMENTED:** tranzakciós `POST /api/bookings`, confirmed/blocked mentéskori újraellenőrzés, egymást nem blokkoló `pending` igények, bookinghoz kötött idempotencia, gyermekéletkor-tárolás, közös összetett HUF pricing engine, immutable JSON snapshot, valamint ugyanabban a tranzakcióban létrejövő booking-request outbox. A commit után indított SMTP-kísérlet hibája a bookingot nem törli.
+**IMPLEMENTED:** tranzakciós `POST /api/bookings`, pending/confirmed/blocked mentéskori újraellenőrzés, egymást blokkoló átfedő `pending` igények, bookinghoz kötött idempotencia, gyermekéletkor-tárolás, közös összetett HUF pricing engine, immutable JSON snapshot, valamint ugyanabban a tranzakcióban létrejövő booking-request outbox. A commit után indított SMTP-kísérlet hibája a bookingot nem törli.
 
 **IMPLEMENTED:** admin jóváhagyás és booking CRUD, legacy és személyalapú pricing admin/preview, továbbá iCal parser/exporter, kézi import és a Sprint 10 automatikus lock/retry/grace worker. **PLANNED:** automatikus outbox retry és stale `processing` helyreállítás, online fizetés.
 
@@ -85,4 +85,4 @@ Admin booking lista/részlet, explicit state machine, tranzakciós history/audit
 
 ## Sprint 7 – IMPLEMENTED alaphatókör
 
-RFC 5545 import/export, provider-validáció, fél-nyitott Budapest-napok, külső eseményből blocked period, duplikáció- és confirmed-konfliktus kezelés, admin forráskezelés/kézi sync/sync log és query-tokenes PII-mentes export. Cron, automatikus retry és eltűnési grace **PLANNED**.
+RFC 5545 import/export, provider-validáció, fél-nyitott Budapest-napok, külső eseményből blocked period, duplikáció- és pending/confirmed-konfliktus kezelés, admin forráskezelés/kézi sync/sync log és query-tokenes PII-mentes export. Automatikus worker lockkal, retry-val és eltűnési grace-szel **IMPLEMENTED**; production cron aktiválása környezeti kapu.
