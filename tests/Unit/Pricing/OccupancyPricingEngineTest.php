@@ -35,7 +35,7 @@ final class OccupancyPricingEngineTest extends TestCase
     public function testActiveOverridesCannotOverlap(): void { $this->expectException(\InvalidArgumentException::class); $this->config([new OccupancyDateOverride(1,'2026-11-01','2026-11-03',[1=>'1',2=>'1',3=>'1',4=>'1']),new OccupancyDateOverride(2,'2026-11-03','2026-11-04',[1=>'1',2=>'1',3=>'1',4=>'1'])]); }
     public function testFixedFeeAndTourismTaxStayWholeHufInOccupancyMode(): void { $rules=[new PricingRule(1,'IFA','tourism_tax',true,'2026-01-01',null,1,'900.00','per_person_per_night'),new PricingRule(2,'Foglalási díj','fixed_fee',true,'2026-01-01',null,1,'2000.00','per_booking','fixed')]; $r=(new PricingEngine())->calculateOccupancy(new PricingInput('2026-11-01','2026-11-02',2,[]),$this->config(tax:'500'),$rules); self::assertSame('1000.00',$r->snapshot['taxes']); self::assertSame('2000.00',$r->snapshot['other_fees']); self::assertSame('38000.00',$r->totalAmount); }
 
-    public function testConfiguredTaxUsesPhysicalGuestsAndSnapshotQuantity(): void
+    public function testConfiguredTaxUsesAdultsOnlyAndSnapshotQuantity(): void
     {
         $engine = new PricingEngine();
         $result = $engine->calculateOccupancy(new PricingInput('2026-11-01','2026-11-04',2), $this->config(tax:'500'));
@@ -43,7 +43,8 @@ final class OccupancyPricingEngineTest extends TestCase
         self::assertSame(6, $result->snapshot['tourism_tax_quantity']);
         self::assertSame('500.00', $result->snapshot['tourism_tax_per_person_per_night']);
         $child = $engine->calculateOccupancy(new PricingInput('2026-11-01','2026-11-04',2,[2]), $this->config(tax:'500'));
-        self::assertSame('4500.00', $child->snapshot['taxes']);
+        self::assertSame('3000.00', $child->snapshot['taxes']);
+        self::assertSame(6, $child->snapshot['tourism_tax_quantity']);
         self::assertSame(2, $child->snapshot['chargeable_guests']);
     }
 

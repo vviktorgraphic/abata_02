@@ -42,7 +42,7 @@ A modell fél-nyitott: az érkezés inkluzív, a távozás exkluzív. Példa: eg
 5. Sikeres választáskor az érkezés és távozás keretet kap, a köztes napok tartománykiemelést, a rejtett űrlapmezők pedig ISO dátumot.
 6. A „Dátumok törlése” mindkét dátumot és a naptárhibát törli.
 
-A jelenlegi szabályok: minimum 1, maximum 30 éjszaka, 365 napos booking horizon. Egy availability kérés legfeljebb 93 nap lehet. A szerver az űrlap validálásakor ezeket ismét ellenőrzi.
+A jelenlegi szabályok: minimum 1, maximum 30 éjszaka, 365 napos booking horizon, és Budapest-idő szerint minimum 2 naptári napos előfoglalás. Ma és holnap nem választható érkezésnek, de távozásként továbbra is használható; kattintási kísérletkor a felület a last-minute telefonos egyeztetésre irányító tájékoztatást ad. Egy availability kérés legfeljebb 93 nap lehet. A szerver a validációs és a foglalás-létrehozási kérésben is ismét ellenőrzi ezeket.
 
 ### Vendégadatok és gyermekmezők
 
@@ -53,6 +53,7 @@ Az űrlap mezői:
 - `children` legördülő 0–4 értékkel, alapértéke 0;
 - gyermekenként dinamikusan létrehozott, kötelező `child_ages[]` számmező 0–17 tartománnyal;
 - opcionális `notes`;
+- a megjegyzéshez kapcsolt angol nyelvű segítség jelzi, hogy angol kommunikációs igény itt adható meg; ez nem indít külön automatikus angol e-mail workflow-t;
 - kötelező `privacy` checkbox;
 - rejtett `arrival_date` és `departure_date`.
 
@@ -66,7 +67,7 @@ Beküldéskor a kliens előbb megköveteli mindkét kiválasztott dátumot, majd
 - szintaktikailag ellenőrzi az e-mailt;
 - csak a logikai `true` privacy értéket fogadja el;
 - újra lekéri a teljes `[arrival_date, departure_date)` availability tartományt;
-- elutasít múltbeli, foglalt, érkezési, turnover vagy lezárt napot, horizonton kívüli távozást, illetve a minimum/maximum éjszakaszabály megsértését.
+- elutasít múltbeli vagy a minimum 2 napos előfoglaláson belüli érkezést, foglalt, érkezési, turnover vagy lezárt napot, horizonton kívüli távozást, illetve a minimum/maximum éjszakaszabály megsértését.
 
 Siker esetén is csak `valid: true`, `submission_enabled: false` érkezik: rekord, ár és e-mail nem keletkezik. A részletes payloadokat lásd az [API-referenciában](08_API_REFERENCE.md#post-apibookingvalidate).
 

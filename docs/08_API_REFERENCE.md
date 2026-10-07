@@ -39,20 +39,24 @@ Accept: application/json
   "rules": {
     "minimum_nights": 1,
     "maximum_nights": 30,
-    "booking_horizon_days": 365
+    "booking_horizon_days": 365,
+    "minimum_advance_days": 2
   },
   "days": [
     {
       "date": "2026-08-01",
       "status": "available",
       "selectable_as_arrival": true,
-      "selectable_as_departure": true
+      "selectable_as_departure": true,
+      "arrival_restricted": false
     }
   ]
 }
 ```
 
-A `days` minden napot tartalmaz `[from,to)` között. Lehetséges státusz: `available`, `occupied`, `arrival_only`, `departure_only`, `turnover`, `blocked`, `past`. A horizonton túli nap mindkét `selectable_*` értéke `false`, státuszától függetlenül. Csak `confirmed` booking blokkol a jelenlegi konfigurációban.
+A `days` minden napot tartalmaz `[from,to)` között. Lehetséges státusz: `available`, `occupied`, `arrival_only`, `departure_only`, `turnover`, `blocked`, `past`. A horizonton túli nap mindkét `selectable_*` értéke `false`, státuszától függetlenül. Az `arrival_restricted=true` a Budapest szerinti ma/holnap egyébként szabad napjain jelzi, hogy érkezésként a minimum 2 naptári napos előfoglalás miatt nem választhatók; távozásként választhatók maradnak. Csak `confirmed` booking blokkol a jelenlegi konfigurációban.
+
+A publikus árlekérdezés az immutable `accommodation_fee` mellett `public_accommodation_total` mezőt is ad. Ez a megjelenítési célú, teljes nem-adó részösszeg (`total - taxes`), így a publikus `Szállásdíj + IFA/adók = végösszeg` bontás akkor is pontos, ha konfigurált fix díj aktív. A lemondási alap továbbra is az immutable `accommodation_fee`; az új mező azt nem írja felül.
 
 `422 Unprocessable Entity` payloadja `{"error":"..."}`. A tényleges üzenetek:
 

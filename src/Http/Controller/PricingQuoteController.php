@@ -8,6 +8,7 @@ use App\Application\Pricing\PricingConfigurationException;
 use App\Application\Pricing\PricingPreviewer;
 use App\Domain\Pricing\PricingInput;
 use App\Http\JsonResponse;
+use App\Presentation\HufFormatter;
 use JsonException;
 
 /** Read-only public quote boundary. It deliberately delegates to the shared pricing engine. */
@@ -63,6 +64,10 @@ final readonly class PricingQuoteController
                 'physical_guests' => $payload['adults'] + count($ages),
                 'chargeable_guests' => $payload['adults'] + count(array_filter($ages, static fn (int $age): bool => $age >= 4)),
                 'accommodation_fee' => $result->accommodationFee,
+                'public_accommodation_total' => (string) (
+                    (int) HufFormatter::input($result->totalAmount)
+                    - (int) HufFormatter::input($result->tourismTax)
+                ) . '.00',
                 'one_night_surcharge' => is_string($surcharge) ? $surcharge : number_format((float) $surcharge, 2, '.', ''),
                 'taxes' => $result->tourismTax,
                 'total' => $result->totalAmount,

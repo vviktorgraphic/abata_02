@@ -204,6 +204,7 @@ $router->get('/api/availability', static function (array $query): void {
             $booking['minimum_nights'],
             $booking['maximum_nights'],
             $booking['booking_horizon_days'],
+            $booking['minimum_advance_days'],
         );
         (new AvailabilityController($handler))->index($query);
     } catch (Throwable) {
@@ -227,6 +228,7 @@ $router->post('/api/booking/validate', static function (): void {
             $booking['minimum_nights'],
             $booking['maximum_nights'],
             $booking['booking_horizon_days'],
+            $booking['minimum_advance_days'],
         );
         (new BookingValidationController($handler))->validate($input);
     } catch (Throwable) {
@@ -308,6 +310,7 @@ $router->post('/api/bookings', static function () use ($bookingPolicy, $privacyP
                 $booking['minimum_nights'],
                 $booking['maximum_nights'],
                 $booking['booking_horizon_days'],
+                $booking['minimum_advance_days'],
             ),
             $workflow,
             $rateLimiter,

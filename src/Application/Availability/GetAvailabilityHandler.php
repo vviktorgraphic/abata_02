@@ -19,8 +19,12 @@ final readonly class GetAvailabilityHandler
         private int $minimumNights = 1,
         private int $maximumNights = 30,
         private int $bookingHorizonDays = 365,
+        private int $minimumAdvanceDays = 2,
         private ?DateTimeImmutable $today = null,
     ) {
+        if ($minimumAdvanceDays < 2) {
+            throw new \InvalidArgumentException('Minimum advance days must be at least two.');
+        }
     }
 
     /** @return array<string, mixed> */
@@ -47,8 +51,15 @@ final readonly class GetAvailabilityHandler
         );
 
         $horizon = $today->modify(sprintf('+%d days', $this->bookingHorizonDays));
-        $serializedDays = array_map(static function ($day) use ($horizon): array {
+        $earliestArrival = $today->modify(sprintf('+%d days', $this->minimumAdvanceDays));
+        $serializedDays = array_map(static function ($day) use ($today, $horizon, $earliestArrival): array {
             $item = $day->toArray();
+            $item['arrival_restricted'] = $day->date >= $today
+                && $day->date < $earliestArrival
+                && $item['selectable_as_arrival'];
+            if ($item['arrival_restricted']) {
+                $item['selectable_as_arrival'] = false;
+            }
             if ($day->date > $horizon) {
                 $item['selectable_as_arrival'] = false;
                 $item['selectable_as_departure'] = false;
@@ -64,6 +75,7 @@ final readonly class GetAvailabilityHandler
                 'minimum_nights' => $this->minimumNights,
                 'maximum_nights' => $this->maximumNights,
                 'booking_horizon_days' => $this->bookingHorizonDays,
+                'minimum_advance_days' => $this->minimumAdvanceDays,
             ],
             'days' => $serializedDays,
         ];

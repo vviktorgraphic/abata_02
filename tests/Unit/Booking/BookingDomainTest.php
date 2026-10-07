@@ -121,6 +121,50 @@ final class BookingDomainTest extends TestCase
         $policy->assertPublicRequestAllowed($requested, [['period' => $this->period('2026-08-12', '2026-08-14'), 'status' => BookingStatus::Confirmed]]);
     }
 
+    public function testArrivalRequiresTwoBudapestCalendarDaysAdvanceNotice(): void
+    {
+        foreach (['2026-07-16', '2026-07-17'] as $arrival) {
+            $payload = $this->payload();
+            $payload['arrival_date'] = $arrival;
+            $payload['departure_date'] = (new DateTimeImmutable($arrival))->modify('+2 days')->format('Y-m-d');
+            try {
+                $this->validator->validate($payload);
+                self::fail('Today and tomorrow must be rejected as arrival dates.');
+            } catch (BookingValidationFailed $error) {
+                self::assertSame(
+                    'A foglalási alapbeállítások minimum 2 nappal előre történő foglalást tesznek lehetővé. Kérem, telefonáljon, ha „Last minute” szeretne foglalni.',
+                    $error->errors()['arrival_date'],
+                );
+            }
+        }
+
+        $payload = $this->payload();
+        $payload['arrival_date'] = '2026-07-18';
+        $payload['departure_date'] = '2026-07-20';
+        self::assertSame('2026-07-18', $this->validator->validate($payload)->period->arrival->format('Y-m-d'));
+    }
+
+    public function testAdvanceNoticeUsesBudapestCalendarDaysAcrossDstChange(): void
+    {
+        $validator = new BookingCreateRequestValidator(
+            new DateTimeImmutable('2026-03-28', new DateTimeZone('Europe/Budapest')),
+        );
+        $payload = $this->payload();
+        $payload['arrival_date'] = '2026-03-30';
+        $payload['departure_date'] = '2026-03-31';
+
+        self::assertSame('2026-03-30', $validator->validate($payload)->period->arrival->format('Y-m-d'));
+    }
+
+    public function testInvalidMinimumAdvanceConfigurationFailsClosed(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        new BookingCreateRequestValidator(
+            new DateTimeImmutable('2026-07-16', new DateTimeZone('Europe/Budapest')),
+            minimumAdvanceDays: 1,
+        );
+    }
+
     public function testAdjacentConfirmedBookingIsAccepted(): void
     {
         $policy = new BookingOverlapPolicy(new AvailabilityService(new DateTimeImmutable('2026-07-16')));

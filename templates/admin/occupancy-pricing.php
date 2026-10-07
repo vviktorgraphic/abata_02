@@ -101,10 +101,10 @@ require __DIR__ . '/_layout_start.php';
 <input type="hidden" name="_csrf" value="<?= $e($csrfToken) ?>">
 <input type="hidden" name="version" value="<?= $c->version ?>">
 <input type="hidden" name="action" value="tourism_tax">
-<label>IFA (Ft / fő / éj)<input name="amount" inputmode="numeric" value="<?= $e(HufFormatter::groupedInput($c->tourismTaxPerPersonPerNight)) ?>" aria-describedby="tourism-tax-help" required></label>
+<label>IFA (Ft / felnőtt / éj)<input name="amount" inputmode="numeric" value="<?= $e(HufFormatter::groupedInput($c->tourismTaxPerPersonPerNight)) ?>" aria-describedby="tourism-tax-help" required></label>
 <button type="submit">Mentés</button>
 </form>
-<p id="tourism-tax-help">Az IFA összege személyenként és éjszakánként kerül hozzáadásra.</p>
+<p id="tourism-tax-help">Az IFA összege felnőttenként és éjszakánként kerül hozzáadásra; a 0–17 éves gyermekek nem növelik az IFA-t.</p>
 </section>
 
 <section class="panel" aria-labelledby="override-prices-title">

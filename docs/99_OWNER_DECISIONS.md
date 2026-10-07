@@ -109,3 +109,14 @@
 - **RESOLVED:** péntek és szombat éjszaka hétvégi; person módban base/stay-length/weekend helyett személyár, seasonal/fixed/IFA/exemption megmarad.
 - **OPEN:** production felnőtt- és gyermekárak, IFA és jogi exemption értékek; a rendszer ezeket nem találja ki.
 - **RESOLVED:** iCal minimum 24 órás elapsed grace, retry/lock és 15 perces ajánlott gyakoriság; tényleges cron/monitor környezetfüggő.
+
+## Ügyfélteszt utáni módosítások
+
+- **IMPLEMENTED:** minimum 2 Budapest szerinti naptári nappal előre választható érkezés; a backend validáció és létrehozás is kikényszeríti.
+- **IMPLEMENTED:** az IFA mennyisége minden pricing módban kizárólag felnőttek × éjszakák; a 0–17 éves gyermekek ezt nem növelik. Régi snapshot nem számolódik újra.
+- **IMPLEMENTED:** a publikus árösszesítő a már beépített egyéjszakás felárat nem ismétli külön soron; az admin/snapshot bontás megmarad.
+- **IMPLEMENTED:** kontrasztosabb publikus foglaltsági jelölés, angol kommunikációs megjegyzés és egyértelmű „Technikai érvénytelenítés” adminszöveg.
+- **CONFLICT – NOT IMPLEMENTED:** a pending booking blokkolása és iCal-exportja ellentmond a repository kötelező szabályának, amely szerint pending kérés nem blokkol; emiatt a pendingre épülő havi foglaltsági nézet sem készült el.
+- **REQUIRES EXPLICIT SECURITY APPROVAL:** a 15 perces admin idle timeout 30 percre emelése gyengítené a jelenlegi kontrollt, ezért változatlan.
+- **NOT IMPLEMENTED / DECISION REQUIRED:** a confirmed-booking módosítás teljes tranzakciós folyamata, az aktuális vagy eredeti tarifa A/B döntése, az új snapshot- és módosítástörténet-verziózás, valamint a módosító e-mail.
+- **DECISION/INPUT REQUIRED:** egyedi időszak min/max szabálya, rövid payment reference szerződése, új e-mail template-ek és ütemezési/retry szabályok. Az automatikus `completed` állapotváltás külön production automatizálási jóváhagyást igényel.

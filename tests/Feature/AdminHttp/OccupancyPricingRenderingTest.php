@@ -15,7 +15,7 @@ final class OccupancyPricingRenderingTest extends TestCase
     public function testWholeHufFieldsAndYearPricingGuidanceAreRendered(): void
     {
         $html = $this->render();
-        foreach (['22 000 Ft', '27 000 Ft', '42 000 Ft', 'value="22 000"', 'value="8 000"', 'value="500"', 'Idegenforgalmi adó (IFA)', 'IFA (Ft / fő / éj)', 'dátumtól függetlenül', 'Éves vagy szezonális ár beállítása', 'href="#override-prices-title"', 'id="override-prices-title"', 'Korlátlan', 'Hagyja üresen, ha nincs felső korlát.'] as $text) {
+        foreach (['22 000 Ft', '27 000 Ft', '42 000 Ft', 'value="22 000"', 'value="8 000"', 'value="500"', 'Idegenforgalmi adó (IFA)', 'IFA (Ft / felnőtt / éj)', 'a 0–17 éves gyermekek nem növelik az IFA-t', 'dátumtól függetlenül', 'Éves vagy szezonális ár beállítása', 'href="#override-prices-title"', 'id="override-prices-title"', 'Korlátlan', 'Hagyja üresen, ha nincs felső korlát.'] as $text) {
             self::assertStringContainsString($text, $html);
         }
         self::assertStringNotContainsString('.00', $html);

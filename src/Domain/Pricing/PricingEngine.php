@@ -46,7 +46,7 @@ final class PricingEngine
                 $fee = $this->wholeHuf($rule->amount); $otherHuf += $fee; $items[] = ['type'=>'fixed_fee','description'=>$rule->name,'rule_id'=>$rule->id,'quantity'=>1,'unit_amount'=>$this->huf($fee),'total'=>$this->huf($fee),'total_huf'=>$fee];
             }
         }
-        $taxQuantity = $exempt ? 0 : $physical * $nights;
+        $taxQuantity = $exempt ? 0 : $input->adults * $nights;
         $taxHuf = (int) $configuration->tourismTaxPerPersonPerNight * $taxQuantity;
         $items[] = ['type'=>'tourism_tax','description'=>'Idegenforgalmi adó (IFA)','quantity'=>$taxQuantity,'unit_amount'=>$configuration->tourismTaxPerPersonPerNight,'total'=>$this->huf($taxHuf),'total_huf'=>$taxHuf];
         $now = ($calculatedAt ?? new \DateTimeImmutable('now', new \DateTimeZone(self::TIMEZONE)))->setTimezone(new \DateTimeZone(self::TIMEZONE));
@@ -140,7 +140,7 @@ final class PricingEngine
             $taxRule = $this->winner($taxCandidates, 'tourism tax');
             if ($exempt === []) {
                 $quantity = match ($taxRule->baseUnit) {
-                    'per_person_per_night' => $people * $nights,
+                    'per_person_per_night' => $input->adults * $nights,
                     'per_night' => $nights,
                     'per_booking' => 1,
                     default => throw new PricingConfigurationError('Tourism tax has no valid base unit.'),

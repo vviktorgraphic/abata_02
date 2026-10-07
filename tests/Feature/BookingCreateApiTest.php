@@ -167,6 +167,22 @@ final class BookingCreateApiTest extends TestCase
         self::assertArrayHasKey('child_ages', $response->payload['errors']);
     }
 
+    public function testForgedSameDayAndNextDayArrivalsAreRejectedByBackend(): void
+    {
+        foreach (['2026-01-01', '2026-01-02'] as $arrival) {
+            $payload = $this->payload();
+            $payload['arrival_date'] = $arrival;
+            $payload['departure_date'] = (new DateTimeImmutable($arrival))->modify('+2 days')->format('Y-m-d');
+            $response = $this->controller($this->workflow())->create(
+                json_encode($payload, JSON_THROW_ON_ERROR),
+                ['content-type' => 'application/json'],
+                '192.0.2.10',
+            );
+            self::assertSame(422, $response->status);
+            self::assertStringContainsString('minimum 2 nappal előre', $response->payload['errors']['arrival_date']);
+        }
+    }
+
     public function testHoneypotIsRejectedWithoutCallingWorkflow(): void
     {
         $payload = $this->payload();

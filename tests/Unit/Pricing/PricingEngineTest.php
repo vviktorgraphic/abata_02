@@ -75,6 +75,7 @@ final class PricingEngineTest extends TestCase
         $rules = [$this->rule(1,'base','1000.00','per_night'),$this->rule(2,'fixed_fee','500.00'),$this->rule(3,'tourism_tax','100.00','per_person_per_night'),$this->rule(4,'exemption','0.00',exemption:'owner-configured-key')];
         $normal = $this->engine->calculate(new PricingInput('2026-08-01','2026-08-03',2), $rules);
         self::assertSame('400.00', $normal->tourismTax); self::assertSame('2000.00', $normal->accommodationFee); self::assertSame('2900.00', $normal->totalAmount);
+        self::assertSame('400.00', $this->engine->calculate(new PricingInput('2026-08-01','2026-08-03',2,[5]), $rules)->tourismTax);
         $exempt = $this->engine->calculate(new PricingInput('2026-08-01','2026-08-03',2,[],['owner-configured-key']), $rules);
         self::assertSame('0.00', $exempt->tourismTax); self::assertSame('2500.00', $exempt->totalAmount);
     }

@@ -113,8 +113,8 @@ final class PersonPricingEngineTest extends TestCase
         ];
         $result = (new PricingEngine())->calculate(new PricingInput('2026-08-06','2026-08-08',1,[5]), $rules, null, $this->configuration());
         self::assertSame('34800.00', $result->accommodationFee); // 15,000 + 18,000 + 10% of Friday 18,000.
-        self::assertSame('2000.00', $result->tourismTax);
-        self::assertSame('38800.00', $result->totalAmount);
+        self::assertSame('1000.00', $result->tourismTax);
+        self::assertSame('37800.00', $result->totalAmount);
         self::assertSame('2000.00', $result->snapshot['other_fees']);
         self::assertSame([1, 2, 3], array_column($result->snapshot['applied_rules'], 'id'));
         self::assertSame('10.00', $result->snapshot['applied_rules'][0]['amount']);

@@ -16,15 +16,19 @@ final readonly class BookingCreateRequestValidator
         private int $minimumNights = 1,
         private int $maximumNights = 30,
         private int $bookingHorizonDays = 365,
+        private int $minimumAdvanceDays = 2,
         private int $maximumAdults = self::MAX_TOTAL_GUESTS,
         private int $maximumChildren = self::MAX_TOTAL_GUESTS,
         private int $maximumNotesLength = 2000,
     ) {
+        if ($minimumAdvanceDays < 2) {
+            throw new \InvalidArgumentException('Minimum advance days must be at least two.');
+        }
     }
 
-    public static function forBudapestToday(int $minimumNights = 1, int $maximumNights = 30, int $bookingHorizonDays = 365): self
+    public static function forBudapestToday(int $minimumNights = 1, int $maximumNights = 30, int $bookingHorizonDays = 365, int $minimumAdvanceDays = 2): self
     {
-        return new self(new DateTimeImmutable('today', new DateTimeZone('Europe/Budapest')), $minimumNights, $maximumNights, $bookingHorizonDays);
+        return new self(new DateTimeImmutable('today', new DateTimeZone('Europe/Budapest')), $minimumNights, $maximumNights, $bookingHorizonDays, $minimumAdvanceDays);
     }
 
     /** @param array<string, mixed> $payload */
@@ -121,8 +125,12 @@ final readonly class BookingCreateRequestValidator
                     $errors['departure_date'] = sprintf('%d és %d közötti éjszakaszám engedélyezett.', $this->minimumNights, $this->maximumNights);
                 }
             }
-            if ($arrival < $this->today) {
-                $errors['arrival_date'] = 'Múltbeli érkezés nem választható.';
+            $earliestArrival = $this->today->modify(sprintf('+%d days', $this->minimumAdvanceDays));
+            if ($arrival < $earliestArrival) {
+                $errors['arrival_date'] = sprintf(
+                    'A foglalási alapbeállítások minimum %d nappal előre történő foglalást tesznek lehetővé. Kérem, telefonáljon, ha „Last minute” szeretne foglalni.',
+                    $this->minimumAdvanceDays,
+                );
             }
             $horizon = $this->today->modify(sprintf('+%d days', $this->bookingHorizonDays));
             if ($arrival > $horizon) {

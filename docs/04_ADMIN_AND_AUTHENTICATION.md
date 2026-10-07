@@ -1,6 +1,6 @@
 # Adminfelület és hitelesítés
 
-> **Aktuális RC2 kiegészítés:** [occupancy áradmin, IFA és díjbekérő](22_OCCUPANCY_IFA_AND_PAYMENT_REQUEST.md). Pending foglalás megerősítéséhez sikeresen elküldött díjbekérő szükséges; az elutasítás és érvénytelenítés továbbra is elérhető. Az alábbi person-admin workflow korábbi sprintállapot.
+> **Aktuális RC2 kiegészítés:** [occupancy áradmin, IFA és díjbekérő](22_OCCUPANCY_IFA_AND_PAYMENT_REQUEST.md). Pending foglalás megerősítéséhez sikeresen elküldött díjbekérő szükséges; az elutasítás és a „Technikai érvénytelenítés” továbbra is elérhető. Utóbbi teszt-, téves vagy duplikált booking adminisztratív lezárása; confirmed bookingnál felszabadítja a naptárt, és nem küld vendég lemondási e-mailt. Az alábbi person-admin workflow korábbi sprintállapot.
 
 > **RC2 státusz:** az e-mailes 2FA és session strict mode enforcement IMPLEMENTED; valós SMTP/cPanel smoke production gate.
 

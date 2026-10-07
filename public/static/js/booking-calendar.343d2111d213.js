@@ -84,8 +84,11 @@
             const availability = state.days.get(dateIso);
             const button = document.createElement('button');
             button.type = 'button'; button.className = `day ${availability?.status || 'past'}`; button.textContent = dayNumber;
-            const label = `${localeDate.format(date)}: ${statusLabels[availability?.status] || 'nem elérhető'}`;
+            if (availability?.arrival_restricted) button.classList.add('arrival-restricted');
+            const restriction = availability?.arrival_restricted ? ', érkezésként csak last minute egyeztetéssel választható' : '';
+            const label = `${localeDate.format(date)}: ${statusLabels[availability?.status] || 'nem elérhető'}${restriction}`;
             button.title = label; button.setAttribute('aria-label', label); button.dataset.date = dateIso;
+            if (availability?.arrival_restricted && (!state.arrival || state.departure)) button.setAttribute('aria-disabled', 'true');
             button.disabled = !isPotentiallySelectable(availability);
             if (state.arrival === dateIso) button.classList.add('selected-arrival');
             if (state.departure === dateIso) button.classList.add('selected-departure');
@@ -99,11 +102,18 @@
 
     function isPotentiallySelectable(day) {
         if (!day) return false;
-        return state.arrival && !state.departure ? day.selectable_as_departure : day.selectable_as_arrival;
+        return state.arrival && !state.departure ? day.selectable_as_departure : day.selectable_as_arrival || day.arrival_restricted;
     }
 
     function selectDate(date) {
         if (state.bookingSaved) return;
+        if ((!state.arrival || state.departure) && state.days.get(date)?.arrival_restricted) {
+            errorBox.textContent = `A foglalási alapbeállítások minimum ${state.rules?.minimum_advance_days ?? 2} nappal előre történő foglalást tesznek lehetővé. Kérem, telefonáljon, ha „Last minute” szeretne foglalni.`;
+            errorBox.hidden = false;
+            return;
+        }
+        errorBox.textContent = '';
+        errorBox.hidden = true;
         if (!state.arrival || state.departure) { state.arrival = date; state.departure = null; }
         else {
             const nights = differenceInDays(state.arrival, date);
@@ -165,8 +175,7 @@
             if (!response.ok) throw new Error(result.error || 'no-price');
             box.querySelector('.pricing-quote-status').textContent = '';
             box.querySelector('.pricing-quote-total-value').textContent = formatQuoteAmount(result.total);
-            const lines = [['Szállásdíj', result.accommodation_fee]];
-            if (String(result.one_night_surcharge ?? '0').replace('.00', '') !== '0') lines.push(['Egyéjszakás felár', result.one_night_surcharge]);
+            const lines = [['Szállásdíj', result.public_accommodation_total ?? result.accommodation_fee]];
             lines.push(['IFA/adók', result.taxes]);
             box.querySelector('.pricing-quote-breakdown').innerHTML = lines.map(([label, value]) => `<div><dt>${label}</dt><dd>${formatQuoteAmount(value)}</dd></div>`).join('');
         } catch (error) {

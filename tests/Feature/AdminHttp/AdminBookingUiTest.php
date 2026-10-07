@@ -109,6 +109,8 @@ final class AdminBookingUiTest extends TestCase
         }
         self::assertSame(3, substr_count($html, 'name="_csrf"'));
         self::assertStringContainsString('maxlength="500"', $html);
+        self::assertStringContainsString('Technikai érvénytelenítés', $html);
+        self::assertStringContainsString('Téves, teszt vagy duplikált foglalás lezárására. A vendég nem kap lemondási e-mailt.', $html);
     }
 
     public static function snapshots(): iterable

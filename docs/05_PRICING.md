@@ -87,7 +87,7 @@ grand_total             = round_HUF(accommodation_subtotal - discount_total
 
 - A foglalásonkénti fix díj egyszer, a takarítási díj a meghatározott feltétellel egyszer számítandó.
 - A kedvezmény alapja, felső korlátja, kombinálhatósága és alkalmazási sorrendje explicit szabály legyen.
-- Az idegenforgalmi adó (IFA) külön tétel; mentességhez ok és a kalkuláció idején érvényes szabály szükséges.
+- Az idegenforgalmi adó (IFA) külön tétel; mennyisége a 18 éves vagy idősebb felnőttek száma × éjszakák száma. A 0–17 évesként rögzített gyermekek nem növelik az IFA-mennyiséget. További mentességhez ok és a kalkuláció idején érvényes szabály szükséges.
 - Adót vagy díjat nem szabad az alapárba rejtve és egyidejűleg külön is felszámítani.
 
 > **DECISION REQUIRED:** fix és takarítási díj összege/feltétele; IFA jogalapja, egysége, életkori és egyéb mentessége, felső éjszakakorlátja; kedvezménytípusok és kombinálási sorrend.
@@ -192,3 +192,7 @@ Az adatmodell változatlanul tartalmazza a kompatibilitási `legacy` és `person
 A legacy `base`, `stay_length` és `weekend` komponens person módban nem kerül kétszer felszámításra. A seasonal adjustment, fix díj, IFA és exemption megmarad. Fix díj és IFA nem része az immutable `accommodation_fee` értéknek, ezért a 7 napos/50%-os lemondási alapba sem kerül.
 
 A v3 snapshot tartalmazza a configuration verziót, felnőttárakat, sávokat, gyermekéletkorokat, éjszakánkénti bontást és a tényleges ancillary szabályparamétereket. A v1/v2 snapshotok változatlanok. A HUF adat DECIMAL-string marad, új személyár csak egész forint lehet; százalékos adjustment lehet tört. Megjelenítés mindenhol közös `20 000 Ft` formátum. A legacy `amount=NULL`/`nightly_price=DECIMAL` sorokat a repository határ normalizálja, a formatter továbbra is csak ellenőrzött `string|int` értéket fogad. Teljes szerződés: [Sprint 10](18_SPRINT10_AUTOMATIC_ICAL_AND_PERSON_PRICING.md), UX-javítás: [árképzési admin javítás](19_PRICING_ADMIN_UX_FIX.md).
+
+## Ügyfélteszt utáni ármegjelenítés – IMPLEMENTED
+
+A közös pricing engine minden támogatott módban kizárólag a felnőttek számával képezi az IFA-mennyiséget; a quote, az immutable booking snapshot, az admin preview és az e-mail ugyanebből az eredményből dolgozik. Korábbi snapshot nem számolódik újra. A publikus árösszesítőben az egyéjszakás felár nem jelenik meg külön soron: a megjelenített `Szállásdíj` a teljes nem-adó részösszeg, az `IFA/adók` külön sor marad, ezért a végösszeg mindig e két sor összege. Az immutable `accommodation_fee`, az admin és a snapshot tételes bontása változatlanul megőrzi a felárat és az esetleges külön fix díjakat; a lemondási alap számítása nem változik.

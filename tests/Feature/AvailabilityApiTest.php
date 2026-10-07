@@ -33,6 +33,42 @@ final class AvailabilityApiTest extends TestCase
         self::assertStringNotContainsString('guest', json_encode($payload, JSON_THROW_ON_ERROR));
     }
 
+    public function testTodayAndTomorrowAreVisiblyRestrictedAsArrivalsButDepartureRemainsPossible(): void
+    {
+        [, $payload] = $this->request('2026-01-01', '2026-01-04');
+        self::assertSame(2, $payload['rules']['minimum_advance_days']);
+        self::assertTrue($payload['days'][0]['arrival_restricted']);
+        self::assertFalse($payload['days'][0]['selectable_as_arrival']);
+        self::assertTrue($payload['days'][1]['arrival_restricted']);
+        self::assertFalse($payload['days'][1]['selectable_as_arrival']);
+        self::assertFalse($payload['days'][2]['arrival_restricted']);
+        self::assertTrue($payload['days'][2]['selectable_as_arrival']);
+        self::assertTrue($payload['days'][1]['selectable_as_departure']);
+
+        [, $past] = $this->request('2025-12-31', '2026-01-01');
+        self::assertFalse($past['days'][0]['arrival_restricted']);
+        self::assertFalse($past['days'][0]['selectable_as_arrival']);
+
+        [, $occupied] = $this->request('2026-01-02', '2026-01-03', [$this->period('2026-01-02', '2026-01-04')]);
+        self::assertFalse($occupied['days'][0]['arrival_restricted']);
+        self::assertFalse($occupied['days'][0]['selectable_as_arrival']);
+    }
+
+    public function testInvalidMinimumAdvanceConfigurationFailsClosed(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        new GetAvailabilityHandler(
+            new class() implements BookingReadRepository {
+                public function findBlockingBetween(DateTimeImmutable $from, DateTimeImmutable $to): array { return []; }
+            },
+            new class() implements BlockedPeriodReadRepository {
+                public function findBetween(DateTimeImmutable $from, DateTimeImmutable $to): array { return []; }
+            },
+            minimumAdvanceDays: 1,
+            today: $this->date('2026-01-01'),
+        );
+    }
+
     #[DataProvider('invalidRangeProvider')]
     public function testInvalidRangesReturn422(string $from, string $to): void
     {

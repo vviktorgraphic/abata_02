@@ -26,7 +26,7 @@ final class PdoOccupancyPricingRepositoryTest extends TestCase
         $this->pdo = ConnectionFactory::create(require dirname(__DIR__,3).'/config/database.php');
         // Connection-local temporary tables isolate mutations from other tests and existing data.
         foreach (['occupancy_pricing_configuration','occupancy_stay_length_bands','occupancy_date_overrides'] as $table) {
-            $this->pdo->exec('CREATE TEMPORARY TABLE '.$table.' LIKE '.$table);
+            $this->createTemporaryShadow($table);
         }
         $this->pdo->exec('INSERT INTO occupancy_pricing_configuration (id,version,one_night_surcharge) VALUES (1,1,0)');
         $events = &$this->events;
@@ -116,7 +116,7 @@ final class PdoOccupancyPricingRepositoryTest extends TestCase
 
     public function testSavedTaxIsSharedByBookingAndQuoteAdminPreviewBoundary(): void
     {
-        $this->pdo->exec('CREATE TEMPORARY TABLE pricing_rules LIKE pricing_rules');
+        $this->createTemporaryShadow('pricing_rules');
         $this->repository->saveBand(new OccupancyStayLengthBand(0,2,1,null,'27000'),1,1);
         $this->repository->saveTourismTax('500',2,1);
         $adapter = new PdoPricingEngineAdapter($this->pdo);
@@ -134,5 +134,13 @@ final class PdoOccupancyPricingRepositoryTest extends TestCase
         foreach (['tourism_tax_per_person_per_night','tourism_tax_quantity','taxes','total'] as $field) {
             self::assertSame($preview->snapshot[$field],$booking->snapshot[$field]);
         }
+    }
+
+    private function createTemporaryShadow(string $table): void
+    {
+        $source = $table . '_test_source';
+        $this->pdo->exec('CREATE TEMPORARY TABLE ' . $source . ' LIKE ' . $table);
+        $this->pdo->exec('CREATE TEMPORARY TABLE ' . $table . ' LIKE ' . $source);
+        $this->pdo->exec('DROP TEMPORARY TABLE ' . $source);
     }
 }

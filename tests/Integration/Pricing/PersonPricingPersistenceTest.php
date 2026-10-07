@@ -40,6 +40,12 @@ final class PersonPricingPersistenceTest extends TestCase
             self::markTestSkipped('Database environment is not configured.');
         }
         $this->pdo = ConnectionFactory::create(require dirname(__DIR__, 3) . '/config/database.php');
+        // Keep this legacy/person integration suite isolated after the additive
+        // occupancy migration: an empty connection-local configuration makes the
+        // shared adapter exercise its documented person-mode compatibility path.
+        foreach (['occupancy_pricing_configuration', 'occupancy_stay_length_bands', 'occupancy_date_overrides'] as $table) {
+            $this->createEmptyTemporaryShadow($table);
+        }
         $this->originalConfiguration = $this->pdo->query('SELECT * FROM person_pricing_configuration WHERE id=1')->fetch(PDO::FETCH_ASSOC);
         $this->originalBands = $this->pdo->query('SELECT * FROM pricing_child_bands ORDER BY id')->fetchAll(PDO::FETCH_ASSOC);
         $this->originalCoverage = $this->pdo->query('SELECT * FROM pricing_child_age_coverage ORDER BY age')->fetchAll(PDO::FETCH_ASSOC);
@@ -152,8 +158,8 @@ final class PersonPricingPersistenceTest extends TestCase
         $this->bookingIds[] = $created->bookingId;
         self::assertSame($preview->totalAmount, $created->totalAmount);
         self::assertSame('183000.00', $preview->accommodationFee);
-        self::assertSame('6000.00', $preview->tourismTax);
-        self::assertSame('189000.00', $preview->totalAmount);
+        self::assertSame('3000.00', $preview->tourismTax);
+        self::assertSame('186000.00', $preview->totalAmount);
         $snapshotBefore = $this->snapshot($created->bookingId);
         self::assertSame(3, $snapshotBefore['version']);
         self::assertSame($configuration->version, $snapshotBefore['pricing_configuration_version']);
@@ -163,7 +169,7 @@ final class PersonPricingPersistenceTest extends TestCase
         self::assertTrue($snapshotBefore['nightly_breakdown'][2]['weekend']);
         $mailPayload = json_decode((string) $this->pdo->query("SELECT payload FROM email_outbox WHERE booking_id=" . (int) $created->bookingId . " AND message_type='booking_request_received'")->fetchColumn(), true, 512, JSON_THROW_ON_ERROR);
         self::assertSame([4, 10], $mailPayload['child_ages']);
-        self::assertSame('189000.00', $mailPayload['total']);
+        self::assertSame('186000.00', $mailPayload['total']);
         // Preview and booking are two calculations, so their audit timestamps may cross a second boundary.
         $previewSnapshot = $preview->snapshot;
         $persistedSnapshot = $snapshotBefore;
@@ -261,7 +267,8 @@ final class PersonPricingPersistenceTest extends TestCase
             'PERSON-' . strtoupper(bin2hex(random_bytes(6))), $arrival, $departure, 'Pricing Guest',
             'pricing@example.invalid', '+3612345678', 2, $ages, null,
             '2044-01-01 12:00:00', 'test-v1', '/booking-policy',
-            '2044-01-01 12:00:00', 'privacy-v1', '/privacy');
+            '2044-01-01 12:00:00', 'privacy-v1', '/privacy',
+            '2044-01-01 12:00:00', 'https://abata.hu/abata_hazirend.pdf');
     }
 
     /** @return array<string,mixed> */
@@ -276,5 +283,13 @@ final class PersonPricingPersistenceTest extends TestCase
     {
         $whole = (int)explode('.', $amount, 2)[0];
         return intdiv($whole * 50 + 50, 100) . '.00';
+    }
+
+    private function createEmptyTemporaryShadow(string $table): void
+    {
+        $source = $table . '_person_test_source';
+        $this->pdo->exec('CREATE TEMPORARY TABLE ' . $source . ' LIKE ' . $table);
+        $this->pdo->exec('CREATE TEMPORARY TABLE ' . $table . ' LIKE ' . $source);
+        $this->pdo->exec('DROP TEMPORARY TABLE ' . $source);
     }
 }

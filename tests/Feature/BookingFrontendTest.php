@@ -65,6 +65,14 @@ final class BookingFrontendTest extends TestCase
         self::assertStringContainsString("result.email_status === 'failed'", $javascript);
         self::assertStringContainsString("submitButton.disabled = true", $javascript);
         self::assertStringContainsString("setAttribute('aria-invalid', 'true')", $javascript);
+        self::assertStringContainsString('*Please leave a short note if you would like to communicate in English.', $template);
+        self::assertStringContainsString('aria-describedby="guest-notes-help"', $template);
+        self::assertStringContainsString('state.rules?.minimum_advance_days ?? 2', $javascript);
+        self::assertStringContainsString("button.classList.add('arrival-restricted')", $javascript);
+        self::assertStringNotContainsString("lines.push(['Egyéjszakás felár'", $javascript);
+        self::assertStringContainsString("result.public_accommodation_total ?? result.accommodation_fee", $javascript);
+        self::assertStringContainsString("lines.push(['IFA/adók', result.taxes])", $javascript);
+        self::assertStringContainsString("button.setAttribute('aria-disabled', 'true')", $javascript);
     }
 
     public function testConfiguredRelativeAndHttpsPrivacyUrlsAreRenderedFromTheSameControllerInput(): void

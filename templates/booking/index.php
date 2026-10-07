@@ -83,7 +83,8 @@
             <div id="child-ages" class="child-ages full" aria-live="polite"></div>
             <div class="field full">
                 <label for="guest-notes">Megjegyzés <span>(opcionális)</span></label>
-                <textarea id="guest-notes" name="notes" rows="4" maxlength="2000"></textarea>
+                <p class="field-help" id="guest-notes-help">*Please leave a short note if you would like to communicate in English.</p>
+                <textarea id="guest-notes" name="notes" rows="4" maxlength="2000" aria-describedby="guest-notes-help"></textarea>
             </div>
             <label class="consent full"><input name="privacy_accepted" type="checkbox" required><span>Elolvastam és elfogadom az <a href="<?= htmlspecialchars($privacyPolicyUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" target="_blank" rel="noopener noreferrer">Adatvédelmi irányelveket</a>.</span></label>
             <label class="consent full"><input name="booking_policy_accepted" type="checkbox" required><span>Elolvastam és elfogadom a <a href="<?= htmlspecialchars($bookingPolicyUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" target="_blank" rel="noopener noreferrer">Foglalási szabályzatot</a>.</span></label>

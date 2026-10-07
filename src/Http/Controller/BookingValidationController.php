@@ -43,11 +43,12 @@ final readonly class BookingValidationController
             );
             $nights = count($document['days']);
             $rules = $document['rules'];
+            $arrivalRestricted = (bool) ($document['days'][0]['arrival_restricted'] ?? true);
             $today = new \DateTimeImmutable('today', new \DateTimeZone('Europe/Budapest'));
             $departure = new \DateTimeImmutable($input['departure_date'] . ' 00:00:00', new \DateTimeZone('Europe/Budapest'));
             $outsideHorizon = $departure > $today->modify(sprintf('+%d days', $rules['booking_horizon_days']));
 
-            if ($blocked !== [] || $outsideHorizon || $nights < $rules['minimum_nights'] || $nights > $rules['maximum_nights']) {
+            if ($blocked !== [] || $arrivalRestricted || $outsideHorizon || $nights < $rules['minimum_nights'] || $nights > $rules['maximum_nights']) {
                 JsonResponse::send(['valid' => false, 'errors' => ['dates' => 'A kiválasztott időszak nem foglalható.']], 422);
                 return;
             }
