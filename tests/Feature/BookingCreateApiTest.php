@@ -84,7 +84,10 @@ final class BookingCreateApiTest extends TestCase
             new PdoPricingEngineAdapter($pdo),
             new BookingOutboxDispatcher(new BookingRequestOutboxDispatcher(
                 new PdoBookingRequestOutbox($pdo),
-                new BookingRequestMailRenderer(dirname(__DIR__, 2) . '/templates/email', 'no-reply@example.test'),
+                new BookingRequestMailRenderer(
+                    dirname(__DIR__, 2) . '/templates/email', 'no-reply@example.test', 'A Bata',
+                    'info@abata.test', 'A Bata',
+                ),
                 $mailer,
             )),
             new \App\Application\Booking\BudapestBookingClock(),

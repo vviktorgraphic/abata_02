@@ -6,7 +6,13 @@ namespace App\Application\Mail;
 
 final readonly class BookingStatusMailRenderer
 {
-    public function __construct(private string $templateDirectory, private string $fromEmail)
+    public function __construct(
+        private string $templateDirectory,
+        private string $fromEmail,
+        private string $fromName,
+        private string $guestReplyToEmail,
+        private string $guestReplyToName,
+    )
     {
     }
 
@@ -24,6 +30,9 @@ final readonly class BookingStatusMailRenderer
             $subjects[$data->status],
             $this->renderTemplate('booking-status-' . $data->status . '.txt.php', $data),
             $this->renderTemplate('booking-status-' . $data->status . '.html.php', $data),
+            fromName: $this->fromName,
+            replyToEmail: $this->guestReplyToEmail,
+            replyToName: $this->guestReplyToName,
         );
     }
 

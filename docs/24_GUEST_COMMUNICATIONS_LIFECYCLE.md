@@ -2,6 +2,8 @@
 
 **Állapot: IMPLEMENTED a `release/rc2` ágon, production aktiválás nélkül.**
 
+Minden vendégnek címzett booking levél központilag a `MAIL_FROM_NAME` + `MAIL_FROM_EMAIL` feladói identitást használja, és a `GUEST_REPLY_TO_NAME` + `GUEST_REPLY_TO_EMAIL` címre irányítja a válaszokat. Ez a kezdeti foglalási értesítésre, díjbekérőre, előleg-emlékeztetőre, confirmed/rejected/cancelled státuszlevélre, érkezési tájékoztatóra és értékeléskérőre egyaránt érvényes. Az admin új-foglalás értesítő és a 2FA levél ugyanazt a feladói nevet használja, de guest Reply-To-t nem kap. A production rollout értéke `GUEST_REPLY_TO_EMAIL=info@abata.hu` és `GUEST_REPLY_TO_NAME=A Bata`; a tényleges `MAIL_FROM_EMAIL` és az SMTP envelope sender nem változott.
+
 ## Díjbekérő és előleg
 
 Az előleg alapja kizárólag a foglalás immutable pricing snapshotjának `accommodation_fee` mezője. Az IFA (`taxes`) teljes egészében helyben fizetendő, ezért nem része az előlegnek. A rendszer nem áraz újra és nem használja előlegalapként a `bookings.total_amount` mezőt. Hiányos vagy legacy, használhatatlan snapshot esetén az új díjbekérő fail-closed.

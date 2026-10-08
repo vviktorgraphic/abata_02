@@ -12,6 +12,7 @@ final readonly class TwoFactorMailRenderer
     public function __construct(
         private string $templateDirectory,
         private string $fromAddress,
+        private string $fromName,
     ) {
     }
 
@@ -30,6 +31,7 @@ final readonly class TwoFactorMailRenderer
             'A Bata admin belépési ellenőrzés',
             str_replace('{{code}}', $code, $text),
             str_replace('{{code}}', htmlspecialchars($code, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'), $html),
+            fromName: $this->fromName,
         );
     }
 

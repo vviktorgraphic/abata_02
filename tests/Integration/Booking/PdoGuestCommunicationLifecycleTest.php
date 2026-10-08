@@ -57,10 +57,16 @@ final class PdoGuestCommunicationLifecycleTest extends TestCase
         [$historicalId]=$this->booking('confirmed','2026-09-01','2026-09-02');
         [$pendingId]=$this->booking('pending','2026-10-01','2026-10-08');
         $mailer=new InMemoryMailer();$worker=new BookingLifecycleWorker(new PdoBookingLifecycleRepository($this->pdo),
-            new BookingReviewMailRenderer(dirname(__DIR__,3).'/templates/email','from@example.test'),$mailer,null,
+            new BookingReviewMailRenderer(
+                dirname(__DIR__,3).'/templates/email', 'from@example.test', 'A Bata',
+                'info@abata.test', 'A Bata',
+            ), $mailer, null,
             static fn()=>new \DateTimeImmutable('2026-10-08 00:01:00',new \DateTimeZone('Europe/Budapest')));
         self::assertSame(['review_sent'=>1,'review_failed'=>0,'completed'=>1],$worker->run());
         self::assertSame(['review_sent'=>0,'review_failed'=>0,'completed'=>0],$worker->run());self::assertCount(1,$mailer->messages());
+        self::assertSame('A Bata', $mailer->lastMessage()->fromName);
+        self::assertSame('info@abata.test', $mailer->lastMessage()->replyToEmail);
+        self::assertSame('A Bata', $mailer->lastMessage()->replyToName);
         self::assertSame('completed',$this->bookingStatus($completeId));self::assertSame('confirmed',$this->bookingStatus($reviewId));self::assertSame('confirmed',$this->bookingStatus($historicalId));self::assertSame('pending',$this->bookingStatus($pendingId));
         $q=$this->pdo->prepare("SELECT COUNT(*) FROM booking_status_history WHERE booking_id=:id AND new_status='completed'");$q->execute(['id'=>$completeId]);self::assertSame(1,(int)$q->fetchColumn());
     }
@@ -71,5 +77,11 @@ final class PdoGuestCommunicationLifecycleTest extends TestCase
     { $payload=['booking_reference'=>'BOOK','payment_reference'=>$paymentReference,'recipient'=>'guest@example.invalid','contact_name'=>'Guest','arrival_date'=>'2040-01-01','departure_date'=>'2040-01-03','currency'=>'HUF','accommodation_fee'=>'62000.00','taxes'=>'2000.00','total'=>'64000.00','advance_percent'=>50,'advance_amount'=>$amount,'beneficiary'=>'Frozen owner','bank_name'=>'Frozen bank','bank_account'=>'Frozen account','swift_bic'=>'FROZENSWIFT','template_version'=>2];$q=$this->pdo->prepare("INSERT INTO email_outbox(booking_id,message_type,recipient,subject,payload,status,sent_at) VALUES(:id,'booking_payment_request','guest@example.invalid','Sent',:payload,'sent',CURRENT_TIMESTAMP)");$q->execute(['id'=>$id,'payload'=>json_encode($payload,JSON_THROW_ON_ERROR)]); }
     private function bookingStatus(int $id):string{$q=$this->pdo->prepare('SELECT status FROM bookings WHERE id=:id');$q->execute(['id'=>$id]);return(string)$q->fetchColumn();}
     private function config():BookingPaymentRequestConfiguration{return new BookingPaymentRequestConfiguration('Owner','Account',50,'Bank','SWIFT');}
-    private function manualRenderer():BookingManualCommunicationRenderer{return new BookingManualCommunicationRenderer(dirname(__DIR__,3).'/templates/email',dirname(__DIR__,3).'/resources/email/arrival','from@example.test');}
+    private function manualRenderer():BookingManualCommunicationRenderer
+    {
+        return new BookingManualCommunicationRenderer(
+            dirname(__DIR__,3).'/templates/email', dirname(__DIR__,3).'/resources/email/arrival',
+            'from@example.test', 'A Bata', 'info@abata.test', 'A Bata',
+        );
+    }
 }

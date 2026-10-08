@@ -17,7 +17,7 @@ final class MailTest extends TestCase
 {
     public function testTwoFactorMailHasBothBodiesAndDoesNotExposeCodeInSubject(): void
     {
-        $renderer = new TwoFactorMailRenderer(dirname(__DIR__, 3) . '/templates/email', 'admin@abata.test');
+        $renderer = new TwoFactorMailRenderer(dirname(__DIR__, 3) . '/templates/email', 'admin@abata.test', 'A Bata');
         $message = $renderer->render('owner@example.test', '123456');
 
         self::assertStringNotContainsString('123456', $message->subject);
@@ -27,6 +27,10 @@ final class MailTest extends TestCase
         self::assertStringContainsString('123456', $message->htmlBody);
         self::assertStringContainsString('#19194B', $message->htmlBody);
         self::assertStringContainsString('#F0A236', $message->htmlBody);
+        self::assertSame('A Bata', $message->fromName);
+        self::assertNull($message->replyToEmail);
+        self::assertStringContainsString('From: A Bata <admin@abata.test>', $this->mime($message));
+        self::assertStringNotContainsString("\r\nReply-To:", $this->mime($message));
     }
 
     public function testInMemoryMailerCapturesMessage(): void
@@ -43,6 +47,69 @@ final class MailTest extends TestCase
     {
         $this->expectException(InvalidArgumentException::class);
         new Message('from@example.test', 'to@example.test', "Tárgy\r\nBcc: victim@example.test", 'Szöveg', '<p>HTML</p>');
+    }
+
+    public function testMessageAcceptsValidatedSenderAndReplyToIdentity(): void
+    {
+        $message = new Message(
+            'from@example.test', 'to@example.test', 'Teszt', 'Szöveg', '<p>HTML</p>',
+            fromName: 'A Bata', replyToEmail: 'info@abata.test', replyToName: 'A Bata',
+        );
+
+        self::assertSame('A Bata', $message->fromName);
+        self::assertSame('info@abata.test', $message->replyToEmail);
+        self::assertSame('A Bata', $message->replyToName);
+    }
+
+    public function testSenderNameRejectsHeaderInjection(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        new Message(
+            'from@example.test', 'to@example.test', 'Teszt', 'Szöveg', '<p>HTML</p>',
+            fromName: "A Bata\r\nBcc: victim@example.test",
+        );
+    }
+
+    public function testReplyToRejectsInvalidAddress(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        new Message(
+            'from@example.test', 'to@example.test', 'Teszt', 'Szöveg', '<p>HTML</p>',
+            replyToEmail: 'not-an-email', replyToName: 'A Bata',
+        );
+    }
+
+    public function testReplyToNameRejectsHeaderInjection(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        new Message(
+            'from@example.test', 'to@example.test', 'Teszt', 'Szöveg', '<p>HTML</p>',
+            replyToEmail: 'info@abata.test', replyToName: "A Bata\nCc: victim@example.test",
+        );
+    }
+
+    public function testRawMimeUsesDisplayNameAndGuestReplyToWithoutChangingAddresses(): void
+    {
+        $message = new Message(
+            'sender@example.test', 'guest@example.test', 'Teszt', 'Szöveg', '<p>HTML</p>',
+            fromName: 'A Bata', replyToEmail: 'info@abata.test', replyToName: 'A Bata',
+        );
+        $mime = $this->mime($message);
+
+        self::assertStringContainsString("\r\nFrom: A Bata <sender@example.test>\r\n", "\r\n" . $mime);
+        self::assertStringContainsString("\r\nReply-To: A Bata <info@abata.test>\r\n", "\r\n" . $mime);
+        self::assertStringContainsString("\r\nTo: <guest@example.test>\r\n", "\r\n" . $mime);
+    }
+
+    public function testRawMimeEncodesNonAsciiDisplayName(): void
+    {
+        $mime = $this->mime(new Message(
+            'sender@example.test', 'guest@example.test', 'Teszt', 'Szöveg', '<p>HTML</p>',
+            fromName: 'Árvíztűrő Tükörfúrógép',
+        ));
+
+        self::assertStringContainsString('From: =?UTF-8?B?', $mime);
+        self::assertStringContainsString(' <sender@example.test>', $mime);
     }
 
     public function testInlineAttachmentValidationAndRelatedMimeStructure(): void
@@ -70,7 +137,7 @@ final class MailTest extends TestCase
 
     public function testInvalidTwoFactorCodeIsRejected(): void
     {
-        $renderer = new TwoFactorMailRenderer(dirname(__DIR__, 3) . '/templates/email', 'admin@abata.test');
+        $renderer = new TwoFactorMailRenderer(dirname(__DIR__, 3) . '/templates/email', 'admin@abata.test', 'A Bata');
         $this->expectException(InvalidArgumentException::class);
         $renderer->render('owner@example.test', '12345');
     }
@@ -119,5 +186,13 @@ final class MailTest extends TestCase
         yield 'path' => ['example.test/smtp'];
         yield 'space' => ['smtp example.test'];
         yield 'credentials' => ['user@example.test'];
+    }
+
+    private function mime(Message $message): string
+    {
+        $mailer = new SmtpMailer(new SmtpConfiguration('mailpit', 1025, 'none'));
+        $method = new \ReflectionMethod($mailer, 'mimeMessage');
+
+        return (string) $method->invoke($mailer, $message);
     }
 }

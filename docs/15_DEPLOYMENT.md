@@ -85,7 +85,7 @@ Ellenőrizd továbbá a `nosniff`, frame/CSP, referrer és admin `no-store` head
 
 ## Production SMTP
 
-Productionben `MAIL_HOST`, `MAIL_PORT`, `MAIL_TIMEOUT_SECONDS`, `MAIL_ENCRYPTION=tls|ssl`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_EMAIL` és `MAIL_FROM_NAME` kötelező; hitelesítés nélküli vagy plaintext transport fail-fast hibát ad. A portot, timeoutot és titkosítási módot kizárólag a szolgáltató dokumentációja alapján válaszd, credentialt ne adj parancssori argumentumban és ne naplózz.
+Productionben `MAIL_HOST`, `MAIL_PORT`, `MAIL_TIMEOUT_SECONDS`, `MAIL_ENCRYPTION=tls|ssl`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_EMAIL`, `MAIL_FROM_NAME`, `GUEST_REPLY_TO_EMAIL` és `GUEST_REPLY_TO_NAME` kötelező; hitelesítés nélküli vagy plaintext transport fail-fast hibát ad. A production guest válaszcím `GUEST_REPLY_TO_EMAIL=info@abata.hu`, megjelenítési neve `A Bata`. Ez nem változtatja meg a `MAIL_FROM_EMAIL`, SMTP username vagy envelope sender értékét. A portot, timeoutot és titkosítási módot kizárólag a szolgáltató dokumentációja alapján válaszd, credentialt ne adj parancssori argumentumban és ne naplózz.
 
 Az SMTP/levelezési szolgáltatónál:
 
@@ -103,6 +103,8 @@ Staging smoke:
 3. A fogadó fejlécében ellenőrizd a TLS-t, valamint az SPF, DKIM és DMARC eredményt.
 4. Tesztelj hibás/lejárt credentialt: az alkalmazás ne fedje fel azt válaszban vagy logban, a booking tranzakció pedig ne vesszen el SMTP-hiba miatt.
 5. Rögzítsd a provider message ID helyett csak a smoke eredményét és időpontját, személyes adat és secret nélkül.
+
+A lifecycle cron engedélyezése előtt candidate környezetben raw MIME fejlécen igazold a `From: A Bata <aktuális MAIL_FROM_EMAIL>` és vendéglevélnél a `Reply-To: A Bata <info@abata.hu>` értéket. Ugyanebben a smoke-ban igazold, hogy a 2FA- és admin új-foglalás értesítő nem tartalmaz guest Reply-To fejlécet. Valós review e-mail vagy production lifecycle worker futtatása ebben az előkészítő fázisban tilos.
 
 ## Release elfogadás és rollback
 

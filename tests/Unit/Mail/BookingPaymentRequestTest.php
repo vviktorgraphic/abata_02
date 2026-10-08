@@ -55,6 +55,9 @@ final class BookingPaymentRequestTest extends TestCase
         $message = $this->renderer()->render($data);
         self::assertSame('guest@example.test', $message->to);
         self::assertSame('Foglalási igényét rögzítettük!', $message->subject);
+        self::assertSame('A Bata', $message->fromName);
+        self::assertSame('info@abata.test', $message->replyToEmail);
+        self::assertSame('A Bata', $message->replyToName);
         foreach ([$message->textBody, $message->htmlBody] as $body) {
             foreach (['126 000 Ft', '2 001 Ft', '63 000 Ft', 'Közlemény: AB-000042', 'TEST-ACCOUNT', 'Test Bank', 'SWIFTTEST', 'előleg beérkezését'] as $text) {
                 self::assertStringContainsString($text, $body);
@@ -124,7 +127,10 @@ final class BookingPaymentRequestTest extends TestCase
 
     private function renderer(): BookingPaymentRequestMailRenderer
     {
-        return new BookingPaymentRequestMailRenderer(dirname(__DIR__, 3) . '/templates/email', 'noreply@example.test');
+        return new BookingPaymentRequestMailRenderer(
+            dirname(__DIR__, 3) . '/templates/email', 'noreply@example.test', 'A Bata',
+            'info@abata.test', 'A Bata',
+        );
     }
 }
 

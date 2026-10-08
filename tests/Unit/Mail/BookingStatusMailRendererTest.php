@@ -26,6 +26,9 @@ final class BookingStatusMailRendererTest extends TestCase
 
         self::assertSame(['confirmed'=>'Foglalás visszaigazolás','rejected'=>'Foglalási igényét visszautasítottuk','cancelled'=>'Foglalási igényét töröltük'][$status], $message->subject);
         self::assertStringContainsString('A Bata', $message->htmlBody);
+        self::assertSame('A Bata', $message->fromName);
+        self::assertSame('info@abata.test', $message->replyToEmail);
+        self::assertSame('A Bata', $message->replyToName);
     }
 
     public function testConfirmedContainsApprovedCopyAndContactName(): void
@@ -75,7 +78,10 @@ final class BookingStatusMailRendererTest extends TestCase
 
     private function renderer(): BookingStatusMailRenderer
     {
-        return new BookingStatusMailRenderer(dirname(__DIR__, 3) . '/templates/email', 'noreply@example.test');
+        return new BookingStatusMailRenderer(
+            dirname(__DIR__, 3) . '/templates/email', 'noreply@example.test', 'A Bata',
+            'info@abata.test', 'A Bata',
+        );
     }
 
     private function data(string $status, ?string $cancellationReason = null): BookingStatusMailData

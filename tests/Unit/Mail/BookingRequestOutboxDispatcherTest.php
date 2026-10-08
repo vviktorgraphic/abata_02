@@ -90,7 +90,10 @@ final class BookingRequestOutboxDispatcherTest extends TestCase
 
     private function renderer(): BookingRequestMailRenderer
     {
-        return new BookingRequestMailRenderer(dirname(__DIR__, 3) . '/templates/email', 'sender@example.test');
+        return new BookingRequestMailRenderer(
+            dirname(__DIR__, 3) . '/templates/email', 'sender@example.test', 'A Bata',
+            'info@abata.test', 'A Bata',
+        );
     }
 }
 

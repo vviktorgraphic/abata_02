@@ -293,7 +293,10 @@ $router->post('/api/bookings', static function () use ($bookingPolicy, $privacyP
         ));
         $outbox = new BookingOutboxDispatcher(new BookingRequestOutboxDispatcher(
             new PdoBookingRequestOutbox($pdo),
-            new BookingRequestMailRenderer($root . '/templates/email', $mail['from_email']),
+            new BookingRequestMailRenderer(
+                $root . '/templates/email', $mail['from_email'], $mail['from_name'],
+                $mail['guest_reply_to_email'], $mail['guest_reply_to_name'],
+            ),
             $smtp,
         ));
         $workflow = new DefaultBookingCreateWorkflow(

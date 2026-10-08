@@ -29,6 +29,8 @@ $username = $production ? $value('MAIL_USERNAME') : (getenv('MAIL_USERNAME') ===
 $password = $production ? $value('MAIL_PASSWORD') : (getenv('MAIL_PASSWORD') === false ? '' : (string) getenv('MAIL_PASSWORD'));
 $fromEmail = $value('MAIL_FROM_EMAIL', 'no-reply@abata.local');
 $fromName = $value('MAIL_FROM_NAME', 'A Bata');
+$guestReplyToEmail = $value('GUEST_REPLY_TO_EMAIL', 'info@abata.local');
+$guestReplyToName = $value('GUEST_REPLY_TO_NAME', 'A Bata');
 
 if (!in_array($encryption, ['none', 'tls', 'ssl'], true)) {
     throw new RuntimeException('MAIL_ENCRYPTION must be none, tls or ssl.');
@@ -42,6 +44,12 @@ if (filter_var($fromEmail, FILTER_VALIDATE_EMAIL) === false || preg_match('/[\r\
 if (preg_match('/[\r\n]/', $fromName) === 1 || mb_strlen($fromName) > 120) {
     throw new RuntimeException('MAIL_FROM_NAME is invalid.');
 }
+if (filter_var($guestReplyToEmail, FILTER_VALIDATE_EMAIL) === false || preg_match('/[\r\n]/', $guestReplyToEmail) === 1) {
+    throw new RuntimeException('GUEST_REPLY_TO_EMAIL must be a valid single e-mail address.');
+}
+if (preg_match('/[\r\n]/', $guestReplyToName) === 1 || mb_strlen($guestReplyToName) > 120) {
+    throw new RuntimeException('GUEST_REPLY_TO_NAME is invalid.');
+}
 
 return [
     'host' => $host,
@@ -52,6 +60,8 @@ return [
     'password' => $password,
     'from_email' => $fromEmail,
     'from_name' => $fromName,
+    'guest_reply_to_email' => $guestReplyToEmail,
+    'guest_reply_to_name' => $guestReplyToName,
     'production' => $production,
 ];
 

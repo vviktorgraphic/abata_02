@@ -103,7 +103,7 @@ $workflow = new DefaultAdminAuthWorkflow(
     new IssueTwoFactorCode($codes, new TwoFactorCodeGenerator($dateClock), $dateClock),
     new VerifyTwoFactorCode($codes, $dateClock),
     new SmtpMailer(new SmtpConfiguration($mailConfig['host'], $mailConfig['port'], $mailConfig['encryption'], $username, $password, $mailConfig['timeout_seconds'], $mailConfig['production'])),
-    new TwoFactorMailRenderer($root . '/templates/email', $mailConfig['from_email']),
+    new TwoFactorMailRenderer($root . '/templates/email', $mailConfig['from_email'], $mailConfig['from_name']),
     $session,
     new AdminSessionRepository($pdo, $authConfig['session_absolute_timeout_seconds']),
     $rateLimiter,
@@ -126,7 +126,10 @@ $transitions = new TransactionalBookingRepository($pdo);
 $blockedRepository = new PdoBlockedPeriodRepository($pdo, $audit);
 $statusNotifications = new BookingStatusNotificationDispatcher(
     new PdoBookingStatusNotificationOutbox($pdo),
-    new BookingStatusMailRenderer($root . '/templates/email', $mailConfig['from_email']),
+    new BookingStatusMailRenderer(
+        $root . '/templates/email', $mailConfig['from_email'], $mailConfig['from_name'],
+        $mailConfig['guest_reply_to_email'], $mailConfig['guest_reply_to_name'],
+    ),
     new SmtpMailer(new SmtpConfiguration($mailConfig['host'], $mailConfig['port'], $mailConfig['encryption'], $username, $password, $mailConfig['timeout_seconds'], $mailConfig['production'])),
     $audit,
 );
@@ -138,7 +141,10 @@ $paymentConfiguration = new App\Application\Mail\BookingPaymentRequestConfigurat
 );
 $paymentRequests = new App\Application\Mail\BookingPaymentRequestDispatcher(
     new App\Infrastructure\Persistence\Booking\PdoBookingPaymentRequestOutbox($pdo),
-    new App\Application\Mail\BookingPaymentRequestMailRenderer($root . '/templates/email', $mailConfig['from_email']),
+    new App\Application\Mail\BookingPaymentRequestMailRenderer(
+        $root . '/templates/email', $mailConfig['from_email'], $mailConfig['from_name'],
+        $mailConfig['guest_reply_to_email'], $mailConfig['guest_reply_to_name'],
+    ),
     new SmtpMailer(new SmtpConfiguration($mailConfig['host'], $mailConfig['port'], $mailConfig['encryption'], $username, $password, $mailConfig['timeout_seconds'], $mailConfig['production'])),
     $paymentConfiguration,
     $audit,
@@ -146,7 +152,8 @@ $paymentRequests = new App\Application\Mail\BookingPaymentRequestDispatcher(
 $manualCommunications = new App\Application\Mail\BookingManualCommunicationDispatcher(
     new App\Infrastructure\Persistence\Booking\PdoBookingManualCommunicationOutbox($pdo),
     new App\Application\Mail\BookingManualCommunicationRenderer(
-        $root . '/templates/email', $root . '/resources/email/arrival', $mailConfig['from_email']
+        $root . '/templates/email', $root . '/resources/email/arrival', $mailConfig['from_email'],
+        $mailConfig['from_name'], $mailConfig['guest_reply_to_email'], $mailConfig['guest_reply_to_name'],
     ),
     new SmtpMailer(new SmtpConfiguration($mailConfig['host'], $mailConfig['port'], $mailConfig['encryption'], $username, $password, $mailConfig['timeout_seconds'], $mailConfig['production'])),
     $paymentConfiguration,

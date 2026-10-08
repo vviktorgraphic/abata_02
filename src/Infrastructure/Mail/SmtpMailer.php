@@ -98,7 +98,7 @@ final readonly class SmtpMailer implements Mailer
         $related = 'abata_rel_' . bin2hex(random_bytes(18));
         $headers = [
             'Date: ' . date(DATE_RFC2822),
-            'From: <' . $message->from . '>',
+            'From: ' . $this->mailbox($message->from, $message->fromName, 6),
             'To: <' . $message->to . '>',
             'Subject: =?UTF-8?B?' . base64_encode($message->subject) . '?=',
             'MIME-Version: 1.0',
@@ -106,6 +106,11 @@ final readonly class SmtpMailer implements Mailer
                 ? 'multipart/alternative; boundary="' . $alternative . '"'
                 : 'multipart/related; boundary="' . $related . '"'),
         ];
+        if ($message->replyToEmail !== null) {
+            array_splice($headers, 3, 0, [
+                'Reply-To: ' . $this->mailbox($message->replyToEmail, $message->replyToName, 10),
+            ]);
+        }
         $parts = [
             '--' . $alternative,
             'Content-Type: text/plain; charset=UTF-8',
@@ -141,6 +146,18 @@ final readonly class SmtpMailer implements Mailer
         }
 
         return implode("\r\n", $headers) . "\r\n\r\n" . implode("\r\n", $parts);
+    }
+
+    private function mailbox(string $email, ?string $name, int $indent): string
+    {
+        if ($name === null) {
+            return '<' . $email . '>';
+        }
+        $encodedName = preg_match('/^[A-Za-z0-9][A-Za-z0-9 ._-]*$/D', $name) === 1
+            ? $name
+            : mb_encode_mimeheader($name, 'UTF-8', 'B', "\r\n", $indent);
+
+        return $encodedName . ' <' . $email . '>';
     }
 
     private function dotStuff(string $payload): string

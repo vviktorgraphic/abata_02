@@ -22,7 +22,10 @@ try {
     $smtp=new SmtpMailer(new SmtpConfiguration($mail['host'],$mail['port'],$mail['encryption'],
         $mail['username']===''?null:$mail['username'],$mail['password']===''?null:$mail['password'],$mail['timeout_seconds'],$mail['production']));
     $result=(new BookingLifecycleWorker(new PdoBookingLifecycleRepository($pdo),
-        new BookingReviewMailRenderer($root.'/templates/email',$mail['from_email']),$smtp,new PdoAuditLog($pdo)))->run();
+        new BookingReviewMailRenderer(
+            $root.'/templates/email', $mail['from_email'], $mail['from_name'],
+            $mail['guest_reply_to_email'], $mail['guest_reply_to_name'],
+        ), $smtp, new PdoAuditLog($pdo)))->run();
     fwrite(STDOUT,json_encode(['event'=>'booking_lifecycle_completed']+$result,JSON_THROW_ON_ERROR|JSON_UNESCAPED_SLASHES).PHP_EOL);
     exit($result['review_failed']===0?0:2);
 } catch (Throwable) {

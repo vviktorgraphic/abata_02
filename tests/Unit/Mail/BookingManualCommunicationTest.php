@@ -28,6 +28,9 @@ final class BookingManualCommunicationTest extends TestCase
         self::assertCount(1,$mailer->messages());
         self::assertStringContainsString('31 000 Ft',$mailer->lastMessage()->textBody);
         self::assertStringContainsString('AB-000123',$mailer->lastMessage()->textBody);
+        self::assertSame('A Bata', $mailer->lastMessage()->fromName);
+        self::assertSame('info@abata.test', $mailer->lastMessage()->replyToEmail);
+        self::assertSame('A Bata', $mailer->lastMessage()->replyToName);
         self::assertSame(['email.payment_reminder_sent'],array_map(fn(AuditEvent $e)=>$e->eventType,$audit->events));
     }
 
@@ -35,6 +38,9 @@ final class BookingManualCommunicationTest extends TestCase
     {
         $message=$this->renderer()->render('booking_arrival_information',['recipient'=>'guest@example.test','contact_name'=>'Vendég']);
         self::assertCount(4,$message->inlineAttachments);
+        self::assertSame('A Bata', $message->fromName);
+        self::assertSame('info@abata.test', $message->replyToEmail);
+        self::assertSame('A Bata', $message->replyToName);
         $document = new \DOMDocument();
         @$document->loadHTML('<?xml encoding="UTF-8">' . $message->htmlBody);
         $xpath = new \DOMXPath($document);
@@ -57,13 +63,21 @@ final class BookingManualCommunicationTest extends TestCase
 
     public function testArrivalFailsClosedWhenImagesAreMissing(): void
     {
-        $renderer=new BookingManualCommunicationRenderer(dirname(__DIR__,3).'/templates/email',sys_get_temp_dir().'/missing-arrival-assets','from@example.test');
+        $renderer=new BookingManualCommunicationRenderer(
+            dirname(__DIR__,3).'/templates/email', sys_get_temp_dir().'/missing-arrival-assets',
+            'from@example.test', 'A Bata', 'info@abata.test', 'A Bata',
+        );
         $this->expectException(\RuntimeException::class);
         $renderer->render('booking_arrival_information',['recipient'=>'guest@example.test']);
     }
 
     private function renderer(): BookingManualCommunicationRenderer
-    { return new BookingManualCommunicationRenderer(dirname(__DIR__,3).'/templates/email',dirname(__DIR__,3).'/resources/email/arrival','from@example.test'); }
+    {
+        return new BookingManualCommunicationRenderer(
+            dirname(__DIR__,3).'/templates/email', dirname(__DIR__,3).'/resources/email/arrival',
+            'from@example.test', 'A Bata', 'info@abata.test', 'A Bata',
+        );
+    }
     private function config(): BookingPaymentRequestConfiguration
     { return new BookingPaymentRequestConfiguration('Petróczki-Oravecz Anikó','HU08 TEST',50,'Erste Bank','GIBAHUHB'); }
 }

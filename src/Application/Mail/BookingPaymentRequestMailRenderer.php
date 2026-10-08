@@ -6,14 +6,24 @@ namespace App\Application\Mail;
 
 final readonly class BookingPaymentRequestMailRenderer
 {
-    public function __construct(private string $templateDirectory, private string $fromEmail)
+    public function __construct(
+        private string $templateDirectory,
+        private string $fromEmail,
+        private string $fromName,
+        private string $guestReplyToEmail,
+        private string $guestReplyToName,
+    )
     {
     }
 
     public function render(BookingPaymentRequestMailData $data): Message
     {
         return new Message($this->fromEmail, $data->recipient, $data->subject(),
-            $this->template('txt', $data), $this->template('html', $data));
+            $this->template('txt', $data), $this->template('html', $data),
+            fromName: $this->fromName,
+            replyToEmail: $this->guestReplyToEmail,
+            replyToName: $this->guestReplyToName,
+        );
     }
 
     private function template(string $format, BookingPaymentRequestMailData $data): string

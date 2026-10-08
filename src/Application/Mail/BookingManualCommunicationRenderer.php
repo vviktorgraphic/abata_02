@@ -17,6 +17,9 @@ final readonly class BookingManualCommunicationRenderer
         private string $templateDirectory,
         private string $arrivalAssetDirectory,
         private string $fromEmail,
+        private string $fromName,
+        private string $guestReplyToEmail,
+        private string $guestReplyToName,
     ) {}
 
     /** @param array<string,mixed> $payload */
@@ -48,6 +51,9 @@ final readonly class BookingManualCommunicationRenderer
             $this->template($name . '.txt.php', $payload),
             $this->template($name . '.html.php', $payload),
             $attachments,
+            $this->fromName,
+            $this->guestReplyToEmail,
+            $this->guestReplyToName,
         );
     }
 

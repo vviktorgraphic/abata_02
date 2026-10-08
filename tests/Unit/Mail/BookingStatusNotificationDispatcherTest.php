@@ -73,7 +73,10 @@ final class BookingStatusNotificationDispatcherTest extends TestCase
 
     private function renderer(): BookingStatusMailRenderer
     {
-        return new BookingStatusMailRenderer(dirname(__DIR__, 3) . '/templates/email', 'noreply@example.test');
+        return new BookingStatusMailRenderer(
+            dirname(__DIR__, 3) . '/templates/email', 'noreply@example.test', 'A Bata',
+            'info@abata.test', 'A Bata',
+        );
     }
 }
 

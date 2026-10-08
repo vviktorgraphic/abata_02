@@ -79,6 +79,12 @@ $check('SMTP configuration', static function () use ($root): void {
         $config['password'] === '' ? null : $config['password'],
         $config['timeout_seconds'], $config['production'],
     );
+    new App\Application\Mail\Message(
+        $config['from_email'], 'preflight@abata.local', 'Preflight', 'Preflight', '<p>Preflight</p>',
+        fromName: $config['from_name'],
+        replyToEmail: $config['guest_reply_to_email'],
+        replyToName: $config['guest_reply_to_name'],
+    );
 });
 $check('payment request configuration', static function () use ($root): void {
     $config=require $root.'/config/payment-request.php';

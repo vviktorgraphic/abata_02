@@ -149,7 +149,10 @@ final class PdoBookingPaymentRequestOutboxTest extends TestCase
         $payments = new BookingPaymentRequestDispatcher(new PdoBookingPaymentRequestOutbox($this->pdo), $this->renderer(), $mailer, $this->config(), $audit);
         $notifications = new \App\Application\Mail\BookingStatusNotificationDispatcher(
             new \App\Infrastructure\Persistence\Booking\PdoBookingStatusNotificationOutbox($this->pdo),
-            new \App\Application\Mail\BookingStatusMailRenderer(dirname(__DIR__, 3) . '/templates/email', 'test@example.invalid'),
+            new \App\Application\Mail\BookingStatusMailRenderer(
+                dirname(__DIR__, 3) . '/templates/email', 'test@example.invalid', 'A Bata',
+                'info@abata.test', 'A Bata',
+            ),
             $mailer, $audit,
         );
         $controller = new \App\Http\Controller\Admin\BookingManagementController(
@@ -208,7 +211,10 @@ final class PdoBookingPaymentRequestOutboxTest extends TestCase
 
     private function renderer(): BookingPaymentRequestMailRenderer
     {
-        return new BookingPaymentRequestMailRenderer(dirname(__DIR__, 3) . '/templates/email', 'test@example.invalid');
+        return new BookingPaymentRequestMailRenderer(
+            dirname(__DIR__, 3) . '/templates/email', 'test@example.invalid', 'A Bata',
+            'info@abata.test', 'A Bata',
+        );
     }
 
     private function bookingStatus(): string

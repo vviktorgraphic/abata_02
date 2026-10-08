@@ -6,13 +6,23 @@ namespace App\Application\Mail;
 
 final readonly class BookingReviewMailRenderer
 {
-    public function __construct(private string $templateDirectory, private string $fromEmail) {}
+    public function __construct(
+        private string $templateDirectory,
+        private string $fromEmail,
+        private string $fromName,
+        private string $guestReplyToEmail,
+        private string $guestReplyToName,
+    ) {}
 
     /** @param array{recipient:string} $payload */
     public function render(array $payload): Message
     {
         return new Message($this->fromEmail, $payload['recipient'], 'Értékelés',
-            $this->template('booking-review-request.txt.php'), $this->template('booking-review-request.html.php'));
+            $this->template('booking-review-request.txt.php'), $this->template('booking-review-request.html.php'),
+            fromName: $this->fromName,
+            replyToEmail: $this->guestReplyToEmail,
+            replyToName: $this->guestReplyToName,
+        );
     }
 
     private function template(string $file): string

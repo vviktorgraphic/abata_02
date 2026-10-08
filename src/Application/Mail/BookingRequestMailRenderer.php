@@ -9,6 +9,9 @@ final readonly class BookingRequestMailRenderer
     public function __construct(
         private string $templateDirectory,
         private string $fromEmail,
+        private string $fromName,
+        private string $guestReplyToEmail,
+        private string $guestReplyToName,
     ) {
     }
 
@@ -21,6 +24,9 @@ final readonly class BookingRequestMailRenderer
             $owner ? 'Új foglalási igény érkezett' : 'A Bata – Foglalását megkaptuk',
             $this->renderTemplate($owner ? 'booking-admin-notification.txt.php' : 'booking-request.txt.php', $data),
             $this->renderTemplate($owner ? 'booking-admin-notification.html.php' : 'booking-request.html.php', $data),
+            fromName: $this->fromName,
+            replyToEmail: $owner ? null : $this->guestReplyToEmail,
+            replyToName: $owner ? null : $this->guestReplyToName,
         );
     }
 
