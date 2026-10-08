@@ -39,6 +39,12 @@ final class AdminControllersTest extends TestCase
         self::assertStringContainsString('autocomplete="current-password"', $response->body);
         self::assertStringContainsString('<label for="email">', $response->body);
         self::assertStringContainsString('name="_csrf"', $response->body);
+        self::assertStringNotContainsString('id="admin-navigation"', $response->body);
+        self::assertStringNotContainsString('data-admin-nav-toggle', $response->body);
+        self::assertStringNotContainsString('action="/admin/logout"', $response->body);
+        foreach (['Foglalások', 'Havi foglaltság', 'Korábbi import', 'Blokkolt időszakok', 'Árképzés', 'Felhasználók', 'Naptárszinkron'] as $navigationLabel) {
+            self::assertStringNotContainsString('>' . $navigationLabel . '</a>', $response->body);
+        }
     }
 
     public function test_rejected_login_uses_generic_error_and_does_not_echo_input(): void
@@ -75,6 +81,9 @@ final class AdminControllersTest extends TestCase
         self::assertStringContainsString('action="/admin/2fa/resend"', $response->body);
         self::assertStringNotContainsString('action="/admin/verify', $response->body);
         self::assertSame(2, substr_count($response->body, 'name="_csrf"'));
+        self::assertStringNotContainsString('id="admin-navigation"', $response->body);
+        self::assertStringNotContainsString('data-admin-nav-toggle', $response->body);
+        self::assertStringNotContainsString('action="/admin/logout"', $response->body);
     }
 
     public function test_successful_two_factor_rotatesCsrfAndRedirectsToDashboard(): void
@@ -119,6 +128,8 @@ final class AdminControllersTest extends TestCase
             self::assertInstanceOf(HtmlResponse::class, $response);
             self::assertSame(403, $response->status);
             self::assertStringContainsString('nem hajtható végre', $response->body);
+            self::assertStringNotContainsString('id="admin-navigation"', $response->body);
+            self::assertStringNotContainsString('action="/admin/logout"', $response->body);
         }
         self::assertSame(0, $workflow->loginCalls);
         self::assertSame(0, $workflow->verifyCalls);
@@ -131,9 +142,15 @@ final class AdminControllersTest extends TestCase
         self::assertInstanceOf(RedirectResponse::class, $anonymous);
         self::assertSame('/admin/login', $anonymous->location);
 
+        $workflow = new FakeAdminAuthWorkflow(admin: ['id' => 7, 'name' => '<img src=x onerror=alert(1)>']);
+        $authenticatedView = new AdminView(
+            dirname(__DIR__, 3) . '/templates',
+            $this->csrf,
+            static fn (): bool => $workflow->currentAdmin() !== null,
+        );
         $authenticated = (new DashboardController(
-            new FakeAdminAuthWorkflow(admin: ['id' => 7, 'name' => '<img src=x onerror=alert(1)>']),
-            $this->view,
+            $workflow,
+            $authenticatedView,
             $this->csrf,
         ))->show();
         self::assertInstanceOf(HtmlResponse::class, $authenticated);
@@ -145,8 +162,16 @@ final class AdminControllersTest extends TestCase
     public function testAuthenticatedLayoutShowsAccessiblePostLogoutAndControllerRequiresCsrf():void
     {
         $workflow=new FakeAdminAuthWorkflow(admin:['id'=>7,'name'=>'Admin']);
-        $view=new AdminView(dirname(__DIR__,3).'/templates',$this->csrf);
+        $view=new AdminView(dirname(__DIR__,3).'/templates',$this->csrf,static fn():bool=>$workflow->currentAdmin()!==null);
         $dashboard=(new DashboardController($workflow,$view,$this->csrf))->show();
+        self::assertStringContainsString('id="admin-navigation"',$dashboard->body);
+        self::assertStringContainsString('aria-label="Admin navigáció"',$dashboard->body);
+        self::assertStringContainsString('data-admin-nav-toggle',$dashboard->body);
+        self::assertStringContainsString('aria-expanded="false"',$dashboard->body);
+        self::assertStringContainsString('aria-controls="admin-navigation"',$dashboard->body);
+        foreach (['/admin/bookings','/admin/bookings/monthly','/admin/bookings/import','/admin/blocked-periods','/admin/pricing','/admin/users','/admin/calendar'] as $href) {
+            self::assertStringContainsString('href="'.$href.'"',$dashboard->body);
+        }
         self::assertStringContainsString('action="/admin/logout"',$dashboard->body);
         self::assertStringContainsString('title="Kijelentkezés"',$dashboard->body);
         self::assertStringContainsString('aria-label="Kijelentkezés"',$dashboard->body);

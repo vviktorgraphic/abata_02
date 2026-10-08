@@ -7,6 +7,7 @@
 - Az egzakt távozási napon review levél, az egzakt következő napon `Teljesült` státusz futtatható a lifecycle CLI-vel. Történeti catch-up nincs, production cron nincs engedélyezve.
 - A shared admin fejléc CSRF-védett POST kijelentkezés ikont kapott.
 - A pre-deploy hotfix megtartja a `Teljesült` foglalásokat a read-only havi történetben, pontosítja a státuszlevél-retry feltételét és egyértelműen vendégnek szólóként címkézi a lemondási indokot; a publikus blocking és iCal viselkedés változatlan.
+- A Phase 3.1 fejlécfinomítás bejelentkezés előtt csak a brandet rendereli; autentikált desktopon megőrzi a teljes navigációt és logout ikont, mobilon pedig ARIA-állapotú, Escape-pel bezárható hamburger menüt biztosít.
 
 ## Static path compatibility hotfix
 

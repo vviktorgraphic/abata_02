@@ -9,5 +9,22 @@
     <script src="<?= htmlspecialchars($staticAssets['admin_js'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" defer></script>
 </head>
 <body>
-<header class="brand-header"><a class="brand" href="/admin" aria-label="A Bata admin kezdőlap">A Bata</a><nav aria-label="Admin navigáció"><a href="/admin/bookings">Foglalások</a><a href="/admin/bookings/monthly">Havi foglaltság</a><a href="/admin/bookings/import">Korábbi import</a><a href="/admin/blocked-periods">Blokkolt időszakok</a><a href="/admin/pricing">Árképzés</a><a href="/admin/users">Felhasználók</a><a href="/admin/calendar">Naptárszinkron</a></nav><?php if (!empty($showLogout) && isset($csrfToken)): ?><form class="header-logout" method="post" action="/admin/logout"><input type="hidden" name="_csrf" value="<?= htmlspecialchars((string)$csrfToken,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?>"><button type="submit" title="Kijelentkezés" aria-label="Kijelentkezés"><svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M10 17v-2h4V9h-4V7l-5 5 5 5zm3-14h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6v-2h6V5h-6V3z"/></svg></button></form><?php endif ?></header>
+<header class="brand-header">
+    <a class="brand" href="/admin" aria-label="A Bata admin kezdőlap">A Bata</a>
+    <?php if (!empty($showAdminNavigation)): ?>
+        <button class="admin-nav-toggle" type="button" aria-expanded="false" aria-controls="admin-navigation" aria-label="Admin menü megnyitása" data-admin-nav-toggle>
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/></svg>
+        </button>
+        <nav id="admin-navigation" class="admin-navigation" aria-label="Admin navigáció">
+            <a href="/admin/bookings">Foglalások</a>
+            <a href="/admin/bookings/monthly">Havi foglaltság</a>
+            <a href="/admin/bookings/import">Korábbi import</a>
+            <a href="/admin/blocked-periods">Blokkolt időszakok</a>
+            <a href="/admin/pricing">Árképzés</a>
+            <a href="/admin/users">Felhasználók</a>
+            <a href="/admin/calendar">Naptárszinkron</a>
+        </nav>
+        <?php if (!empty($showLogout) && isset($csrfToken)): ?><form class="header-logout" method="post" action="/admin/logout"><input type="hidden" name="_csrf" value="<?= htmlspecialchars((string)$csrfToken,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8') ?>"><button type="submit" title="Kijelentkezés" aria-label="Kijelentkezés"><svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M10 17v-2h4V9h-4V7l-5 5 5 5zm3-14h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6v-2h6V5h-6V3z"/></svg></button></form><?php endif ?>
+    <?php endif ?>
+</header>
 <main class="admin-main">

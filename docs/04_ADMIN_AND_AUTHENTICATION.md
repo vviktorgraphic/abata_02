@@ -103,6 +103,8 @@ Sikerkor a rendszer:
 
 **IMPLEMENTED:** a logout állapotváltoztató POST kérés CSRF-tokennel működik. A szerver visszavonja a sessiont, törli a cookie-t ugyanazzal a path beállítással, és audit eseményt ír. **PLANNED:** minden aktív session tömeges visszavonása jelszóváltozáskor, admin letiltásakor vagy incidenskor.
 
+**IMPLEMENTED Phase 3.1 admin navigáció:** a shared fejléc szerveroldalon, az aktuális admin auth state alapján renderel. Login, 2FA és más nem autentikált admin válasz csak az `A Bata` márkajelzést tartalmazza; admin menüpont, hamburger és logout nem kerül a HTML-be. Autentikált desktop nézetben a teljes felső navigáció és a CSRF-védett POST logout ikon látható. Legfeljebb 42 rem szélességnél a navigáció hamburger gombbal nyitható; a gomb `aria-expanded`/`aria-controls` állapotot tart, Escape-re bezár és visszaadja a fókuszt, a menüpontok pedig billentyűzettel elérhetők.
+
 ## Hibafolyamatok
 
 | Helyzet | Külső viselkedés | Belső művelet | Audit/megfigyelés |

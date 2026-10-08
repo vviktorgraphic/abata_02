@@ -85,6 +85,8 @@ A fejlesztő agent először ezt az indexet, majd az érintett modul dokumentuma
 
 Admin booking lista/részlet, explicit state machine, tranzakciós history/audit/outbox, kétprocesszes confirm race teszt, blocked-period kezelés, státuszlevelek és védett A Bata admin UI. A production SMTP és az automatikus retry továbbra is **PLANNED**.
 
+**Phase 3.1 navigáció:** a shared admin fejléc nem autentikált állapotban kizárólag a brandet rendereli. Autentikált desktopon teljes menüsor és POST logout, legfeljebb 42 rem szélességnél hozzáférhető hamburger navigáció jelenik meg.
+
 ## Phase 2 admin havi foglaltság – IMPLEMENTED
 
 A védett `/admin/bookings/monthly` read-only oldal Budapest-hónaponként napi bontásban mutatja a pending/confirmed, valamint történeti completed foglalások érkezését, foglalt éjszakáit és távozását, továbbá az aktív kézi és külső naptári blokkolásokat. A lekérdezés két batchelt SQL műveletet használ, a fél-nyitott intervallumot megőrzi, és nem változtat booking-, inventory-, pricing-, payment-, mail- vagy iCal-viselkedést; a completed továbbra sem blokkol és nem exportálódik.

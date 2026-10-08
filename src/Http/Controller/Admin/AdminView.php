@@ -6,7 +6,11 @@ namespace App\Http\Controller\Admin;
 
 final readonly class AdminView
 {
-    public function __construct(private string $templateDirectory, private ?\App\Security\Csrf\CsrfTokenManager $csrf = null)
+    public function __construct(
+        private string $templateDirectory,
+        private ?\App\Security\Csrf\CsrfTokenManager $csrf = null,
+        private ?\Closure $authenticationResolver = null,
+    )
     {
     }
 
@@ -18,7 +22,10 @@ final readonly class AdminView
             throw new \RuntimeException('Admin template not found.');
         }
 
-        if ($this->csrf !== null && !in_array($template, ['login','verify','error'], true)) {
+        $authenticated = $this->authenticationResolver !== null
+            && (bool) ($this->authenticationResolver)();
+        $data['showAdminNavigation'] = $authenticated;
+        if ($authenticated && $this->csrf !== null) {
             $data['csrfToken'] ??= $this->csrf->token();
             $data['showLogout'] = true;
         }

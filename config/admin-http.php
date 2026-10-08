@@ -114,7 +114,11 @@ $workflow = new DefaultAdminAuthWorkflow(
     $authConfig['rate_limit_pepper'],
     $authConfig['session_idle_timeout_seconds'],
 );
-$view = new AdminView($root . '/templates', $csrf);
+$view = new AdminView(
+    $root . '/templates',
+    $csrf,
+    static fn (): bool => $workflow->currentAdmin() !== null,
+);
 $audit = new PdoAuditLog($pdo);
 $queries = new PdoAdminBookingQueryRepository($pdo);
 $actionGuard = new AdminActionGuard($workflow, $csrf, new SecurityAdminActionRateLimiter($rateLimiter, new RateLimitPolicy('admin_action', 20, 60, 60)));

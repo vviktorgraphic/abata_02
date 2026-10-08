@@ -138,6 +138,8 @@ A `composer backup:database` webrooton/repositoryn kívüli könyvtárba készí
 - `POST /admin/pricing` – verzióvédett felnőttár-mentés, gyermekársáv létrehozás/szerkesztés/törlés
 - `POST /admin/pricing/preview` – üzleti nyelvű ár-előnézet; a `/admin/pricing/person` kompatibilitási útvonal a főoldalra irányít
 
+Az admin shared fejléc auth-state alapú: bejelentkezés előtt csak az `A Bata` márkajelzés kerül a HTML-be, autentikált desktop nézetben a teljes navigáció és POST logout ikon látható, mobilon pedig billentyűzettel és Escape-pel kezelhető hamburger menü nyitja meg ugyanazokat a menüpontokat.
+
 ## Sprint 2 indítása PowerShellből
 
 ```powershell

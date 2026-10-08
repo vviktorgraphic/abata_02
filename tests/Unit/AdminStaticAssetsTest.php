@@ -67,4 +67,25 @@ final class AdminStaticAssetsTest extends TestCase
             self::assertStringContainsString('background:#dbeaf2', $css);
         }
     }
+
+    public function testResponsiveAdminNavigationContractExistsInCanonicalAndFingerprintedAssets(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $assets = require $root . '/config/static-assets.php';
+
+        foreach ([$root . '/public/static/css/admin.css', $root . '/public' . $assets['admin_css']] as $path) {
+            $css = file_get_contents($path);
+            self::assertIsString($css);
+            self::assertStringContainsString('.admin-nav-toggle', $css);
+            self::assertStringContainsString('.brand-header nav.admin-navigation.is-open', $css);
+            self::assertStringContainsString('@media (max-width:42rem)', $css);
+        }
+        foreach ([$root . '/public/static/js/admin-auth.js', $root . '/public' . $assets['admin_js']] as $path) {
+            $javascript = file_get_contents($path);
+            self::assertIsString($javascript);
+            self::assertStringContainsString("event.key === 'Escape'", $javascript);
+            self::assertStringContainsString("setAttribute('aria-expanded'", $javascript);
+            self::assertStringContainsString('navigationToggle.focus()', $javascript);
+        }
+    }
 }

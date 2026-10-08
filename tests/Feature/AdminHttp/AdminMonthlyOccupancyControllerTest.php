@@ -82,9 +82,13 @@ final class AdminMonthlyOccupancyControllerTest extends TestCase
 
     private function controller(?array $admin, AdminMonthlyOccupancyRepository $repository): MonthlyOccupancyController
     {
+        $auth = new MonthlyOccupancyAuthWorkflow($admin);
         return new MonthlyOccupancyController(
-            new MonthlyOccupancyAuthWorkflow($admin),
-            new AdminView(dirname(__DIR__, 3) . '/templates'),
+            $auth,
+            new AdminView(
+                dirname(__DIR__, 3) . '/templates',
+                authenticationResolver: static fn (): bool => $auth->currentAdmin() !== null,
+            ),
             $repository,
             static fn (): DateTimeImmutable => new DateTimeImmutable('2026-10-08 12:00:00+02:00'),
         );
