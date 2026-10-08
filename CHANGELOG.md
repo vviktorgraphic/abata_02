@@ -23,6 +23,7 @@ A projekt változásai ebben a fájlban követik a release-eket. A formátum a K
 
 ### Fixed
 
+- Az érkezési tájékoztató négy inline CID képe desktopon egységes, explicit 600 px szélességet kapott, miközben mobilon aránytartóan zsugorodik.
 - Az admin fejléc bejelentkezés előtt már nem renderel védett menüpontokat vagy logoutot; autentikált mobilnézetben hozzáférhető, bezárható hamburger navigáció jelenik meg.
 - A teljesült foglalások megmaradnak az admin havi történeti nézetben anélkül, hogy publikus kapacitást blokkolnának vagy iCalba kerülnének; a státuszlevél-retry csak a kapcsolódó failed levélre reagál, a lemondási indok pedig egyértelműen vendégnek szóló mezőként jelenik meg.
 - Az admin `Árképzés` most egyetlen, nem technikai tulajdonosi workflow: felnőttárak, létrehozható/szerkeszthető/törölhető gyermek ársávok és üzleti előnézet.

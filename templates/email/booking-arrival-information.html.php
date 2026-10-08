@@ -20,22 +20,22 @@
 <p>Bár jellemzően személyesen szoktuk átadni a szálláshelyet, egyedi megállapodás és előzetes vendégregisztráció esetén a bejutás és az apartman elfoglalása jelenlétünk nélkül is megoldott.</p>
 <p>Az utcafrontról az épület így néz ki:</p>
 <p>
-<img src="cid:arrival-front" alt="Az A Bata utcafrontja" style="max-width:100%;height:auto">
+<img src="cid:arrival-front" alt="Az A Bata utcafrontja" width="600" style="display:block;width:600px;max-width:100%;height:auto;margin:0 auto">
 </p>
 <p>A kapu a nap 24 órájában nyitva van. A város biztonságos, ennek ellenére nem javasoljuk, hogy értékeit a kertben tárolja.</p>
 <p>Az előkert bal oldala az apartman kizárólagos használatában van, az ott található kerti bútorok az Ön kényelmét szolgálják, ez egyben a szálláshely kijelölt dohányzóhelye is.</p>
 <p>A külső homlokzaton 2 db postaládát talál.</p>
 <p>
-<img src="cid:arrival-mailboxes" alt="Bejárat és postaládák" style="max-width:100%;height:auto">
+<img src="cid:arrival-mailboxes" alt="Bejárat és postaládák" width="600" style="display:block;width:600px;max-width:100%;height:auto;margin:0 auto">
 </p>
 <p>A jobb oldali postaláda jobb oldalán egy kulcsszéfet helyeztünk el. A kulcsszéf kódját az eddig használt kommunikációs csatornán (telefon, SMS, WhatsApp) küldjük el az érkezése előtt nem sokkal.</p>
 <p>
-<img src="cid:arrival-keybox-safe" alt="A kulcsszéf helye" style="max-width:100%;height:auto">
+<img src="cid:arrival-keybox-safe" alt="A kulcsszéf helye" width="600" style="display:block;width:600px;max-width:100%;height:auto;margin:0 auto">
 </p>
 <p>A szélfogó ajtaját az emeleti lakó az éjszakára zárva tartja. Kérjük ennek az ajtónak zárját mindig hagyja átjutás után a korábbi helyzetében (ha zárva találta kérem zárja vissza, ha nyitva volt, maradjon úgy)!</p>
 <p>A szélfogóból egy ajtón keresztül jut a felújított lépcsőházba. Ez az ajtó nem zárható.</p>
 <p>
-<img src="cid:arrival-inside" alt="Belső bejutási útvonal" style="max-width:100%;height:auto">
+<img src="cid:arrival-inside" alt="Belső bejutási útvonal" width="600" style="display:block;width:600px;max-width:100%;height:auto;margin:0 auto">
 </p>
 <p>A lépcsőház ajtajával szemben találja a szálláshely bejáratát. A többi ajtó a tulajdonosok magánhasználatú helyiségeibe vezet.</p>
 <p>A szálláshely felszereléseivel és a környékkel kapcsolatos információkat a nappaliban, a dohányzóasztalon elhelyezett piros borítós mappában találja.</p>

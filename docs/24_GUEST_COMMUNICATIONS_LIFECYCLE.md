@@ -19,7 +19,7 @@ Jóváhagyott rollout-értékek: bank `Erste Bank`, kedvezményezett `Petróczki
 
 Mindkettő auth-, CSRF-, form-body- és admin rate-limit védelemmel fut. Foglalásonként és message type-onként egy sikeres outbox rekord készül; `failed` újrapróbálható, `sent` nem duplikálható.
 
-Az érkezési levél négy repositoryban tárolt JPEG képet ágyaz be `multipart/related` + `multipart/alternative` MIME szerkezettel és `cid:` hivatkozással. A fájlútvonal nem felhasználói input. Csak biztonságos ASCII CID/fájlnév és `image/jpeg` engedélyezett. A kulcsszéfhez kizárólag a redaktált `resources/email/arrival/bata3-safe.jpg` kerülhet release-be; az eredeti `bata3.jpg` tiltott. Hiányzó vagy hibás required kép leállítja a küldést. A plain-text változat képek nélkül is érthető.
+Az érkezési levél négy repositoryban tárolt JPEG képet ágyaz be `multipart/related` + `multipart/alternative` MIME szerkezettel és `cid:` hivatkozással. Mind a négy HTML-kép explicit `width="600"` attribútumot és `width:600px;max-width:100%;height:auto` inline stílust kap: desktopon egységesen 600 px szélesek, keskeny kliensben aránytartóan zsugorodnak, crop nélkül. A fájlútvonal nem felhasználói input. Csak biztonságos ASCII CID/fájlnév és `image/jpeg` engedélyezett. A kulcsszéfhez kizárólag a redaktált `resources/email/arrival/bata3-safe.jpg` kerülhet release-be; az eredeti `bata3.jpg` tiltott. Hiányzó vagy hibás required kép leállítja a küldést. A plain-text változat képek nélkül is érthető.
 
 ## Automatikus review és completed
 

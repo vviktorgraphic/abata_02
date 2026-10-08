@@ -35,8 +35,21 @@ final class BookingManualCommunicationTest extends TestCase
     {
         $message=$this->renderer()->render('booking_arrival_information',['recipient'=>'guest@example.test','contact_name'=>'Vendég']);
         self::assertCount(4,$message->inlineAttachments);
+        $document = new \DOMDocument();
+        @$document->loadHTML('<?xml encoding="UTF-8">' . $message->htmlBody);
+        $xpath = new \DOMXPath($document);
+        self::assertCount(4, $xpath->query('//img'));
         foreach(['arrival-front','arrival-mailboxes','arrival-keybox-safe','arrival-inside'] as $cid) {
             self::assertStringContainsString('cid:'.$cid,$message->htmlBody);
+            $images = $xpath->query('//img[@src="cid:' . $cid . '"]');
+            self::assertCount(1, $images);
+            $image = $images->item(0);
+            self::assertInstanceOf(\DOMElement::class, $image);
+            self::assertSame('600', $image->getAttribute('width'));
+            $style = $image->getAttribute('style');
+            foreach (['display:block', 'width:600px', 'max-width:100%', 'height:auto', 'margin:0 auto'] as $declaration) {
+                self::assertStringContainsString($declaration, $style, $cid);
+            }
         }
         self::assertStringNotContainsString('cid:',$message->textBody);
         self::assertSame(['bata1.jpg','bata2.jpg','bata3-safe.jpg','bata4.jpg'],array_map(fn($a)=>$a->filename,$message->inlineAttachments));
