@@ -30,7 +30,7 @@ final readonly class AdminBookingListQuery
         $this->page = $filters['page'] ?? 1;
         $this->pageSize = $filters['pageSize'] ?? 20;
 
-        if ($this->status !== null && !in_array($this->status, ['pending', 'confirmed', 'rejected', 'cancelled', 'invalidated'], true)) {
+        if ($this->status !== null && !in_array($this->status, ['pending', 'confirmed', 'rejected', 'cancelled', 'invalidated', 'completed'], true)) {
             throw new \InvalidArgumentException('Invalid booking status filter.');
         }
         if ($this->page < 1 || $this->pageSize < 1 || $this->pageSize > 100) {

@@ -11,14 +11,16 @@ final readonly class BookingStateMachine
     public const STATE_REJECTED = 'rejected';
     public const STATE_CANCELLED = 'cancelled';
     public const STATE_INVALIDATED = 'invalidated';
+    public const STATE_COMPLETED = 'completed';
 
     /** @var array<string, list<string>> */
     private const TRANSITIONS = [
         self::STATE_PENDING => [self::STATE_CONFIRMED, self::STATE_REJECTED, self::STATE_INVALIDATED],
-        self::STATE_CONFIRMED => [self::STATE_CANCELLED, self::STATE_INVALIDATED],
+        self::STATE_CONFIRMED => [self::STATE_CANCELLED, self::STATE_INVALIDATED, self::STATE_COMPLETED],
         self::STATE_REJECTED => [],
         self::STATE_CANCELLED => [],
         self::STATE_INVALIDATED => [],
+        self::STATE_COMPLETED => [],
     ];
 
     public function canTransition(BookingStatus|string $from, BookingStatus|string $to): bool

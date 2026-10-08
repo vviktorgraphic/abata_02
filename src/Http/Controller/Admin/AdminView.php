@@ -6,7 +6,7 @@ namespace App\Http\Controller\Admin;
 
 final readonly class AdminView
 {
-    public function __construct(private string $templateDirectory)
+    public function __construct(private string $templateDirectory, private ?\App\Security\Csrf\CsrfTokenManager $csrf = null)
     {
     }
 
@@ -18,6 +18,10 @@ final readonly class AdminView
             throw new \RuntimeException('Admin template not found.');
         }
 
+        if ($this->csrf !== null && !in_array($template, ['login','verify','error'], true)) {
+            $data['csrfToken'] ??= $this->csrf->token();
+            $data['showLogout'] = true;
+        }
         extract($data, EXTR_SKIP);
         $initialBufferLevel = ob_get_level();
         ob_start();

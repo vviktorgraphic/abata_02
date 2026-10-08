@@ -240,6 +240,10 @@ final class PdoAdminBookingQueryRepository
             'status' => $row['status'], 'sent_at' => $row['sent_at'],
             'advance_amount' => $payload['advance_amount'] ?? null,
             'advance_percent' => $payload['advance_percent'] ?? null,
+            'accommodation_fee' => $payload['accommodation_fee'] ?? null,
+            'taxes' => $payload['taxes'] ?? null,
+            'total' => $payload['total'] ?? null,
+            'payment_reference' => $payload['payment_reference'] ?? $payload['booking_reference'] ?? null,
         ];
     }
 

@@ -5,6 +5,11 @@ body { margin: 0; min-width:0; min-height: 100vh; color: var(--color-primary); b
 .brand-header { display:flex; width:100%; max-width:100%; min-width:0; gap:2rem; align-items:center; flex-wrap:wrap; padding: 1rem clamp(1rem, 4vw, 3rem); background: var(--color-primary); }
 .brand { color: var(--color-background); font-size: 1.5rem; font-weight: 800; letter-spacing: .04em; text-decoration: none; }
 .brand-header nav { display:flex; min-width:0; gap:.75rem 1rem; flex-wrap:wrap; } .brand-header nav a { color:#fff; overflow-wrap:anywhere; }
+.brand-header nav { flex:1; }
+.header-logout { margin:0 0 0 auto; }
+.header-logout button { display:grid;place-items:center;width:2.75rem;min-width:2.75rem;min-height:2.75rem;margin:0;padding:.45rem;color:#fff;background:transparent;border-color:var(--color-accent); }
+.header-logout button:hover { color:var(--color-primary);background:var(--color-accent); }
+@media (max-width:42rem) { .brand-header { gap:.75rem 1rem; } .brand-header nav { order:3; flex-basis:100%; } .header-logout { order:2; } }
 .admin-main { display:block; width:100%; max-width:100%; min-width:0; padding: clamp(1.5rem, 5vw, 4rem) 1rem; }
 .admin-main > * { margin-inline:auto; }
 .auth-card, .dashboard { width: min(100%, 34rem); padding: clamp(1.5rem, 5vw, 2.5rem); border-top: .4rem solid var(--color-accent); border-radius: .35rem; background: var(--color-background); box-shadow: 0 .5rem 2rem #19194B1F; }

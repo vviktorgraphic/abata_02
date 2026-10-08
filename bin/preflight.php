@@ -80,6 +80,19 @@ $check('SMTP configuration', static function () use ($root): void {
         $config['timeout_seconds'], $config['production'],
     );
 });
+$check('payment request configuration', static function () use ($root): void {
+    $config=require $root.'/config/payment-request.php';
+    (new App\Application\Mail\BookingPaymentRequestConfiguration($config['beneficiary'],$config['bank_account'],
+        $config['advance_percent'],$config['bank_name'],$config['swift_bic']))->assertConfigured();
+});
+$check('arrival e-mail safe images', static function () use ($root): void {
+    foreach(['bata1.jpg','bata2.jpg','bata3-safe.jpg','bata4.jpg'] as $file){
+        $path=$root.'/resources/email/arrival/'.$file;
+        $bytes=is_file($path)?file_get_contents($path):false;
+        if(!is_string($bytes)||!str_starts_with($bytes,"\xFF\xD8"))throw new RuntimeException($file.' is missing or is not JPEG.');
+    }
+    if(is_file($root.'/resources/email/arrival/bata3.jpg'))throw new RuntimeException('Unsafe keybox source image must not be packaged.');
+});
 $check('static runtime files', static function () use ($root): void {
     foreach (['public/static/css/admin.css', 'public/static/css/booking.css', 'public/static/js/admin-auth.js', 'public/static/js/booking-calendar.js'] as $relative) {
         if (!is_file($root . '/' . $relative) || !is_readable($root . '/' . $relative)) {

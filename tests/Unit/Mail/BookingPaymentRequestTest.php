@@ -18,7 +18,7 @@ use PHPUnit\Framework\TestCase;
 
 final class BookingPaymentRequestTest extends TestCase
 {
-    public function testAdvanceUsesCompleteTotalAndWholeHufHalfUp(): void
+    public function testAdvanceUsesAccommodationFeeAndWholeHufHalfUp(): void
     {
         $config = new BookingPaymentRequestConfiguration('', '');
         self::assertSame('63000.00', $config->advanceFor('126000.00'));
@@ -40,7 +40,7 @@ final class BookingPaymentRequestTest extends TestCase
         }
         foreach ([['', ''], ['Test', ''], ['<placeholder>', 'Test']] as [$name, $account]) {
             try {
-                (new BookingPaymentRequestConfiguration($name, $account))->assertConfigured();
+                (new BookingPaymentRequestConfiguration($name, $account, 50, 'Bank', 'SWIFT'))->assertConfigured();
                 self::fail('Missing bank configuration accepted.');
             } catch (\InvalidArgumentException $error) {
                 self::assertStringContainsString('BANK_ACCOUNT', $error->getMessage());
@@ -54,14 +54,25 @@ final class BookingPaymentRequestTest extends TestCase
         self::assertEquals($data, BookingPaymentRequestMailData::fromPayload($data->payload()));
         $message = $this->renderer()->render($data);
         self::assertSame('guest@example.test', $message->to);
-        self::assertStringContainsString('előlegfizetés a foglalás véglegesítéséhez – TEST-42', $message->subject);
+        self::assertSame('Foglalási igényét rögzítettük!', $message->subject);
         foreach ([$message->textBody, $message->htmlBody] as $body) {
-            foreach (['126 001 Ft', '63 001 Ft', '50%', 'Közlemény: TEST-42', 'TEST-ACCOUNT', '2040-01-01', '2040-01-04', 'előleg jóváírását'] as $text) {
+            foreach (['126 000 Ft', '2 001 Ft', '63 000 Ft', 'Közlemény: AB-000042', 'TEST-ACCOUNT', 'Test Bank', 'SWIFTTEST', 'előleg beérkezését'] as $text) {
                 self::assertStringContainsString($text, $body);
             }
         }
         self::assertStringContainsString('&lt;Guest&gt;', $message->htmlBody);
         self::assertStringNotContainsString('<Guest>', $message->htmlBody);
+    }
+
+    public function testV1PayloadRemainsReadableAndRendersLegacyAmountAndSubject():void
+    {
+        $v1=new BookingPaymentRequestMailData('LEGACY-1','guest@example.test','Legacy Guest','2039-01-01','2039-01-03','HUF','64000.00',50,'32000.00','Old owner','OLD-ACCOUNT');
+        $restored=BookingPaymentRequestMailData::fromPayload($v1->payload());
+        self::assertEquals($v1,$restored);self::assertSame(1,$restored->templateVersion);
+        $message=$this->renderer()->render($restored);
+        self::assertStringContainsString('LEGACY-1',$message->subject);
+        self::assertStringContainsString('32 000 Ft',$message->textBody);
+        self::assertStringContainsString('Közlemény: LEGACY-1',$message->textBody);
     }
 
     public function testFailureRetryAndDoubleClickPreservePayloadAndAudit(): void
@@ -85,7 +96,7 @@ final class BookingPaymentRequestTest extends TestCase
         self::assertSame('sent', $dispatcher->dispatch('TEST-42', 7)->status);
         self::assertSame('sent', $dispatcher->dispatch('TEST-42', 7)->status);
         self::assertCount(1, $mailer->messages);
-        self::assertStringContainsString('63 001 Ft', $mailer->messages[0]->textBody);
+        self::assertStringContainsString('63 000 Ft', $mailer->messages[0]->textBody);
         self::assertSame(['email.payment_request_failed', 'email.payment_request_retry', 'email.payment_request_sent'],
             array_map(static fn (AuditEvent $event): string => $event->eventType, $audit->events));
         self::assertSame(['target_type' => 'booking', 'target_id' => '42', 'outbox_id' => 1], $audit->events[0]->metadata->values);
@@ -107,7 +118,8 @@ final class BookingPaymentRequestTest extends TestCase
     private function data(): BookingPaymentRequestMailData
     {
         return new BookingPaymentRequestMailData('TEST-42', 'guest@example.test', '<Guest>', '2040-01-01',
-            '2040-01-04', 'HUF', '126001.00', 50, '63001.00', 'Test beneficiary', 'TEST-ACCOUNT');
+            '2040-01-04', 'HUF', '128001.00', 50, '63000.00', 'Test beneficiary', 'TEST-ACCOUNT',
+            '126000.00', '2001.00', 'AB-000042', 'Test Bank', 'SWIFTTEST', 2);
     }
 
     private function renderer(): BookingPaymentRequestMailRenderer

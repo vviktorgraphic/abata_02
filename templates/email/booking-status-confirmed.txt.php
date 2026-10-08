@@ -1,10 +1,10 @@
-A Bata – foglalás megerősítve
+Tisztelt <?= $data->contactName ?>!
 
-Foglalási referencia: <?= $data->reference ?>
-Érkezés: <?= $data->arrivalDate ?>
-Távozás: <?= $data->departureDate ?>
-Éjszakák: <?= $data->nights() ?>
-Létszám: <?= $data->adults ?> felnőtt, <?= $data->children ?> gyermek
-Végösszeg: <?= \App\Presentation\HufFormatter::format($data->totalAmount) ?>
+Köszönjük, hogy minket választott!
+Foglalását ezúton visszaigazoljuk.
+Várjuk szeretettel.
 
-Foglalását megerősítettük.
+Üdvözlettel:
+Petróczki-Oravecz Anikó
+tulajdonos-üzemeltető
+A BATA

@@ -1,5 +1,8 @@
-A Bata – foglalási igény elutasítva
+Tisztelt <?= $data->contactName ?>!
 
-Foglalási referencia: <?= $data->reference ?>
+Ezúton tájékoztatjuk, hogy foglalási igényét visszautasítottuk.
 
-Foglalási igényét elutasítottuk.
+Üdvözlettel:
+Petróczki-Oravecz Anikó
+tulajdonos-üzemeltető
+A BATA

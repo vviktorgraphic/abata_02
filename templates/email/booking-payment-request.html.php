@@ -17,18 +17,15 @@ h1 { border-bottom: 3px solid var(--color-accent); }
 <body style="margin:0;background:#FFFFFF;color:#19194B;font-family:Arial,sans-serif;line-height:1.5">
 <main style="max-width:640px;margin:auto;padding:32px">
 <h1 style="color:#19194B;border-bottom:3px solid #F0A236;padding-bottom:12px">A Bata</h1>
-<p>Kedves <?= $escape($data->contactName) ?>!</p>
-<p>Köszönjük foglalási igényét az A Bata szálláshelyre.</p>
-<p>A foglalás véglegesítéséhez kérjük, utalja át a foglalás teljes összegének <?= $data->advancePercent ?>%-át az alábbi bankszámlára.</p>
-<p>Foglalási azonosító: <strong><?= $escape($data->reference) ?></strong><br>
-Érkezés: <?= $escape($data->arrivalDate) ?><br>
-Távozás: <?= $escape($data->departureDate) ?></p>
-<p>Foglalás teljes összege: <?= HufFormatter::format($data->total) ?><br>
-<strong>Fizetendő előleg (<?= $data->advancePercent ?>%): <?= HufFormatter::format($data->advanceAmount) ?></strong></p>
-<p>Kedvezményezett: <?= $escape($data->beneficiary) ?><br>
-Bankszámlaszám: <?= $escape($data->bankAccount) ?><br>
-<strong>Közlemény: <?= $escape($data->reference) ?></strong></p>
-<p>Kérjük, hogy az átutalás közlemény rovatában feltétlenül tüntesse fel a foglalási azonosítót.</p>
-<p>A foglalás az előleg jóváírását és az ezt követő visszaigazolásunkat követően válik véglegessé.</p>
-<p>Köszönjük!<br>A Bata</p>
+<p>Tisztelt <?= $escape($data->contactName) ?>!</p>
+<p>Foglalási igényét rögzítettük!</p>
+<p>Kalkulált szállásdíj: <?= $escape(HufFormatter::format((string) $data->accommodationFee)) ?><br>
+Az idegenforgalmi adó összege: <?= $escape(HufFormatter::format((string) $data->taxes)) ?>, mely a szálláshelyen külön fizetendő<br>
+<strong>Előleg összege: <?= $escape(HufFormatter::format($data->advanceAmount)) ?></strong></p>
+<p>Kérjük az előleg összegét 5 napon belül az alábbi bankszámlára szíveskedjen átutalni:</p>
+<p><?= $escape($data->bankName) ?><br><?= $escape($data->beneficiary) ?><br><?= $escape($data->bankAccount) ?><br><?= $escape($data->swiftBic) ?></p>
+<p><strong>Közlemény: <?= $escape((string) $data->paymentReference) ?></strong></p>
+<p>Az előleg beérkezését követően foglalásáról visszaigazolást küldünk.</p>
+<p>Bármilyen felmerülő kérdés, kérés esetén kérem keressen az info@abata.hu címen, vagy hívjon a +3670 4326-001 telefonszámon!</p>
+<p>Üdvözlettel:<br>Petróczki-Oravecz Anikó<br>tulajdonos-üzemeltető<br>A BATA</p>
 </main></body></html>

@@ -47,6 +47,8 @@ final readonly class PdoBookingStatusNotificationOutbox implements BookingStatus
             (string) $payload['total'], (string) $payload['currency'],
             isset($payload['cancellation_penalty_amount']) ? (string) $payload['cancellation_penalty_amount'] : null,
             isset($payload['cancellation_accommodation_fee']) ? (string) $payload['cancellation_accommodation_fee'] : null,
+            (string) ($payload['contact_name'] ?? 'Vendégünk'),
+            isset($payload['admin_note']) ? (string) $payload['admin_note'] : null,
         )];
     }
 
@@ -54,7 +56,7 @@ final readonly class PdoBookingStatusNotificationOutbox implements BookingStatus
     {
         $statement = $this->pdo->prepare(
             "UPDATE email_outbox SET status = 'sent', attempts = attempts + 1,
-             last_error = NULL, sent_at = CURRENT_TIMESTAMP WHERE id = :id"
+             last_error = NULL, sent_at = CURRENT_TIMESTAMP WHERE id = :id AND status = 'processing'"
         );
         $statement->execute(['id' => $outboxId]);
     }
@@ -63,7 +65,7 @@ final readonly class PdoBookingStatusNotificationOutbox implements BookingStatus
     {
         $statement = $this->pdo->prepare(
             "UPDATE email_outbox SET status = 'failed', attempts = attempts + 1,
-             last_error = :reason, sent_at = NULL WHERE id = :id"
+             last_error = :reason, sent_at = NULL WHERE id = :id AND status = 'processing'"
         );
         $statement->execute(['id' => $outboxId, 'reason' => mb_substr($safeReason, 0, 500)]);
     }

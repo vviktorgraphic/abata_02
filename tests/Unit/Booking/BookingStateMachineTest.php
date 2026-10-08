@@ -31,6 +31,7 @@ final class BookingStateMachineTest extends TestCase
         yield 'invalidate pending' => [BookingStatus::Pending, BookingStatus::Invalidated];
         yield 'cancel confirmed' => [BookingStatus::Confirmed, BookingStatus::Cancelled];
         yield 'invalidate confirmed' => [BookingStatus::Confirmed, BookingStatus::Invalidated];
+        yield 'complete confirmed' => [BookingStatus::Confirmed, BookingStatus::Completed];
     }
 
     #[DataProvider('forbiddenTransitions')]
@@ -52,6 +53,8 @@ final class BookingStateMachineTest extends TestCase
         yield 'pending cannot be cancelled' => [BookingStatus::Pending, BookingStatus::Cancelled];
         yield 'same state is not a transition' => [BookingStatus::Pending, BookingStatus::Pending];
         yield 'confirmed cannot be rejected' => [BookingStatus::Confirmed, BookingStatus::Rejected];
+        yield 'completed is final' => [BookingStatus::Completed, BookingStatus::Confirmed];
+        yield 'pending cannot be completed' => [BookingStatus::Pending, BookingStatus::Completed];
     }
 
     public function testTransitionErrorExposesSafeStateContext(): void
@@ -86,6 +89,7 @@ final class BookingStateMachineTest extends TestCase
             'rejected' => 'Elutasítva',
             'cancelled' => 'Lemondva',
             'invalidated' => 'Érvénytelenítve',
+            'completed' => 'Teljesült',
         ], array_combine(
             array_map(static fn (BookingStatus $status): string => $status->value, BookingStatus::cases()),
             array_map(static fn (BookingStatus $status): string => $status->label(), BookingStatus::cases()),

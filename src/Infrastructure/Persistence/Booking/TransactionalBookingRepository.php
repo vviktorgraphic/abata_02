@@ -135,7 +135,7 @@ final class TransactionalBookingRepository
 
             $notificationQueued = in_array($targetStatus, ['confirmed', 'rejected', 'cancelled'], true);
             if ($notificationQueued) {
-                $this->insertStatusOutbox($booking, $targetStatus, $cancellation);
+                $this->insertStatusOutbox($booking, $targetStatus, $cancellation, $note);
             }
 
             $this->pdo->commit();
@@ -193,7 +193,7 @@ final class TransactionalBookingRepository
     {
         $statement = $this->pdo->prepare(
             'SELECT id, reference, status, arrival_date, departure_date, guest_email,
-                    adults, children, total_amount, currency
+                    guest_name, adults, children, total_amount, currency
              FROM bookings WHERE reference = :reference FOR UPDATE'
         );
         $statement->execute(['reference' => $reference]);
@@ -265,7 +265,7 @@ final class TransactionalBookingRepository
     }
 
     /** @param array<string, mixed> $booking */
-    private function insertStatusOutbox(array $booking, string $status, ?CancellationResult $cancellation = null): void
+    private function insertStatusOutbox(array $booking, string $status, ?CancellationResult $cancellation = null, ?string $adminNote = null): void
     {
         $payload = json_encode([
             'booking_reference' => (string) $booking['reference'],
@@ -275,6 +275,8 @@ final class TransactionalBookingRepository
             'children' => (int) $booking['children'],
             'total' => (string) $booking['total_amount'],
             'currency' => (string) $booking['currency'],
+            'contact_name' => (string) $booking['guest_name'],
+            ...($status === 'cancelled' && $adminNote !== null && $adminNote !== '' ? ['admin_note' => $adminNote] : []),
             ...($cancellation === null ? [] : [
                 'cancellation_accommodation_fee' => $cancellation->snapshot['accommodation_fee'],
                 'cancellation_penalty_rate' => $cancellation->penaltyRate,
@@ -284,9 +286,9 @@ final class TransactionalBookingRepository
             ]),
         ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
         $subjects = [
-            'confirmed' => 'A Bata foglalás megerősítve',
-            'rejected' => 'A Bata foglalási igény elutasítva',
-            'cancelled' => 'A Bata foglalás lemondva',
+            'confirmed' => 'Foglalás visszaigazolás',
+            'rejected' => 'Foglalási igényét visszautasítottuk',
+            'cancelled' => 'Foglalási igényét töröltük',
         ];
         $statement = $this->pdo->prepare(
             'INSERT INTO email_outbox

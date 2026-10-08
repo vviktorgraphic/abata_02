@@ -30,6 +30,10 @@ final class PdoBookingPaymentRequestOutboxTest extends TestCase
             VALUES (:reference, 'pending', '2040-01-01', '2040-01-04', 'Test guest', 'test@example.invalid', 126001.00)");
         $query->execute(['reference' => $this->reference]);
         $this->bookingId = (int) $this->pdo->lastInsertId();
+        $snapshot=$this->pdo->prepare('INSERT INTO booking_pricing_snapshots (booking_id,snapshot) VALUES (:id,:snapshot)');
+        $snapshot->execute(['id'=>$this->bookingId,'snapshot'=>json_encode([
+            'version'=>5,'accommodation_fee'=>'126000.00','taxes'=>'1.00','total'=>'126001.00','currency'=>'HUF'
+        ],JSON_THROW_ON_ERROR)]);
     }
 
     protected function tearDown(): void
@@ -53,7 +57,11 @@ final class PdoBookingPaymentRequestOutboxTest extends TestCase
         self::assertNotNull($item);
         self::assertFalse($this->pdo->inTransaction());
         self::assertFalse($item['retry']);
-        self::assertSame('63001.00', $item['data']->advanceAmount);
+        self::assertSame('63000.00', $item['data']->advanceAmount);
+        self::assertSame('126000.00', $item['data']->accommodationFee);
+        self::assertSame('1.00', $item['data']->taxes);
+        self::assertSame(sprintf('AB-%06d',$this->bookingId),$item['data']->paymentReference);
+        self::assertSame(2,$item['data']->templateVersion);
         $other = new PdoBookingPaymentRequestOutbox(ConnectionFactory::create(require dirname(__DIR__, 3) . '/config/database.php'));
         self::assertNull($other->claim($this->reference, $this->config()));
         $outbox->markFailed($item['id'], 'E-mail transport failure.');
@@ -195,7 +203,7 @@ final class PdoBookingPaymentRequestOutboxTest extends TestCase
 
     private function config(): BookingPaymentRequestConfiguration
     {
-        return new BookingPaymentRequestConfiguration('Test beneficiary', 'TEST-ACCOUNT');
+        return new BookingPaymentRequestConfiguration('Test beneficiary', 'TEST-ACCOUNT', 50, 'Test Bank', 'TESTSWIFT');
     }
 
     private function renderer(): BookingPaymentRequestMailRenderer

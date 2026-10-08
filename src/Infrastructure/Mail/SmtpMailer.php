@@ -94,28 +94,51 @@ final readonly class SmtpMailer implements Mailer
 
     private function mimeMessage(Message $message): string
     {
-        $boundary = 'abata_' . bin2hex(random_bytes(18));
+        $alternative = 'abata_alt_' . bin2hex(random_bytes(18));
+        $related = 'abata_rel_' . bin2hex(random_bytes(18));
         $headers = [
             'Date: ' . date(DATE_RFC2822),
             'From: <' . $message->from . '>',
             'To: <' . $message->to . '>',
             'Subject: =?UTF-8?B?' . base64_encode($message->subject) . '?=',
             'MIME-Version: 1.0',
-            'Content-Type: multipart/alternative; boundary="' . $boundary . '"',
+            'Content-Type: ' . ($message->inlineAttachments === []
+                ? 'multipart/alternative; boundary="' . $alternative . '"'
+                : 'multipart/related; boundary="' . $related . '"'),
         ];
         $parts = [
-            '--' . $boundary,
+            '--' . $alternative,
             'Content-Type: text/plain; charset=UTF-8',
             'Content-Transfer-Encoding: base64',
             '',
             chunk_split(base64_encode($message->textBody), 76, "\r\n"),
-            '--' . $boundary,
+            '--' . $alternative,
             'Content-Type: text/html; charset=UTF-8',
             'Content-Transfer-Encoding: base64',
             '',
             chunk_split(base64_encode($message->htmlBody), 76, "\r\n"),
-            '--' . $boundary . '--',
+            '--' . $alternative . '--',
         ];
+
+        if ($message->inlineAttachments !== []) {
+            $relatedParts = [
+                '--' . $related,
+                'Content-Type: multipart/alternative; boundary="' . $alternative . '"',
+                '',
+                implode("\r\n", $parts),
+            ];
+            foreach ($message->inlineAttachments as $attachment) {
+                $relatedParts[] = '--' . $related;
+                $relatedParts[] = 'Content-Type: ' . $attachment->mimeType . '; name="' . $attachment->filename . '"';
+                $relatedParts[] = 'Content-Transfer-Encoding: base64';
+                $relatedParts[] = 'Content-ID: <' . $attachment->contentId . '>';
+                $relatedParts[] = 'Content-Disposition: inline; filename="' . $attachment->filename . '"';
+                $relatedParts[] = '';
+                $relatedParts[] = chunk_split(base64_encode($attachment->bytes), 76, "\r\n");
+            }
+            $relatedParts[] = '--' . $related . '--';
+            $parts = $relatedParts;
+        }
 
         return implode("\r\n", $headers) . "\r\n\r\n" . implode("\r\n", $parts);
     }

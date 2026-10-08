@@ -132,6 +132,8 @@ A `composer backup:database` webrooton/repositoryn kívüli könyvtárba készí
 - `POST /admin/2fa/resend` – új kód kérése resend limittel
 - `GET /admin` – minimális, teljes 2FA-val védett dashboard
 - `POST /admin/logout` – CSRF-védett kijelentkezés
+- `POST /admin/bookings/{reference}/payment-reminder` – pending booking kézi előleg-emlékeztetője sikeres díjbekérő után
+- `POST /admin/bookings/{reference}/arrival-information` – confirmed booking kézi érkezési tájékoztatója, négy biztonságos inline képpel
 - `GET /admin/pricing` – védett, egyszerű tulajdonosi felnőttár-, gyermekársáv- és előnézeti oldal
 - `POST /admin/pricing` – verzióvédett felnőttár-mentés, gyermekársáv létrehozás/szerkesztés/törlés
 - `POST /admin/pricing/preview` – üzleti nyelvű ár-előnézet; a `/admin/pricing/person` kompatibilitási útvonal a főoldalra irányít

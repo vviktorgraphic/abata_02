@@ -27,6 +27,7 @@
     "scripts": {
         "admin:create": "php bin/admin-create.php",
         "backup:database": "php bin/backup-database.php",
+        "booking:lifecycle": "php bin/booking-lifecycle-worker.php",
         "db:check": "php bin/db-check.php",
         "ical:sync": "php bin/ical-sync.php",
         "migrate": "php bin/migrate.php",

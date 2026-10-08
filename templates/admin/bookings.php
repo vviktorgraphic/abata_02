@@ -5,7 +5,7 @@
  <form class="filters" method="get" action="/admin/bookings" aria-label="Foglalások szűrése">
   <fieldset class="filter-group filter-group-primary"><legend>Gyors szűrés</legend><div class="filter-fields">
    <div class="filter-field filter-field-search"><label for="q">Keresés</label><input id="q" name="q" maxlength="100" value="<?= $e($filters['q'] ?? '') ?>" placeholder="Referencia, név, e-mail vagy telefon"></div>
-   <div class="filter-field"><label for="status">Státusz</label><select id="status" name="status"><option value="">Minden státusz</option><?php foreach (['pending','confirmed','rejected','cancelled','invalidated'] as $value): ?><option value="<?= $value ?>" <?= ($filters['status'] ?? '') === $value ? 'selected' : '' ?>><?= \App\Presentation\BookingStatusLabel::for($value) ?></option><?php endforeach ?></select></div>
+   <div class="filter-field"><label for="status">Státusz</label><select id="status" name="status"><option value="">Minden státusz</option><?php foreach (['pending','confirmed','rejected','cancelled','invalidated','completed'] as $value): ?><option value="<?= $value ?>" <?= ($filters['status'] ?? '') === $value ? 'selected' : '' ?>><?= \App\Presentation\BookingStatusLabel::for($value) ?></option><?php endforeach ?></select></div>
   </div></fieldset>
   <fieldset class="filter-group"><legend>Érkezési időszak</legend><div class="filter-fields">
    <div class="filter-field"><label for="arrival_from">Érkezés ettől</label><input type="date" id="arrival_from" name="arrival_from" value="<?= $e($filters['arrival_from'] ?? '') ?>"></div>

@@ -36,7 +36,7 @@ final class PdoCalendarExportFeedRepositoryTest extends TestCase
              (reference, status, arrival_date, departure_date, guest_name, guest_email, adults, children, total_amount, currency)
              VALUES (:reference, :status, :arrival, :departure, :name, :email, 1, 0, 1000, \'HUF\')'
         );
-        foreach (['confirmed', 'pending', 'rejected', 'cancelled', 'invalidated'] as $index => $status) {
+        foreach (['confirmed', 'pending', 'rejected', 'cancelled', 'invalidated', 'completed'] as $index => $status) {
             $booking->execute([
                 'reference' => 'ICAL-' . $status . '-' . bin2hex(random_bytes(4)),
                 'status' => $status,

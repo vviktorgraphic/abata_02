@@ -62,6 +62,15 @@ final class BookingStatusNotificationDispatcherTest extends TestCase
         self::assertCount(0, $mailer->messages());
     }
 
+    public function testAuditFailureAfterSmtpAcceptanceLeavesNotificationSent():void
+    {
+        $outbox=new FakeStatusOutbox();
+        $audit=new class implements AuditLog{public function append(AuditEvent $event):void{throw new \RuntimeException('audit failed');}};
+        $dispatcher=new BookingStatusNotificationDispatcher($outbox,$this->renderer(),new InMemoryMailer(),$audit);
+        try{$dispatcher->dispatch(42,'confirmed');self::fail('Audit failure expected.');}
+        catch(\RuntimeException){self::assertSame([7],$outbox->sent);self::assertSame([],$outbox->failed);}
+    }
+
     private function renderer(): BookingStatusMailRenderer
     {
         return new BookingStatusMailRenderer(dirname(__DIR__, 3) . '/templates/email', 'noreply@example.test');

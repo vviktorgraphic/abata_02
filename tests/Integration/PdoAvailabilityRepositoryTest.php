@@ -45,12 +45,14 @@ final class PdoAvailabilityRepositoryTest extends TestCase
                 (reference, status, arrival_date, departure_date, guest_name, guest_email, adults, children)
              VALUES (:reference, :status, :arrival, :departure, :name, :email, 1, 0)'
         );
-        foreach (['confirmed', 'pending', 'cancelled', 'rejected', 'invalidated'] as $index => $status) {
+        foreach (['confirmed', 'pending', 'cancelled', 'rejected', 'invalidated', 'completed'] as $index => $status) {
+            $arrivals = [10, 14, 18, 22, 26, 28];
+            $departures = [12, 16, 20, 24, 28, 30];
             $statement->execute([
                 'reference' => sprintf('INTEGRATION-%s-%s', strtoupper($status), bin2hex(random_bytes(4))),
                 'status' => $status,
-                'arrival' => sprintf('2027-01-%02d', 10 + ($index * 4)),
-                'departure' => sprintf('2027-01-%02d', 12 + ($index * 4)),
+                'arrival' => sprintf('2027-01-%02d', $arrivals[$index]),
+                'departure' => sprintf('2027-01-%02d', $departures[$index]),
                 'name' => 'Private integration name',
                 'email' => 'private@example.invalid',
             ]);
@@ -78,6 +80,7 @@ final class PdoAvailabilityRepositoryTest extends TestCase
         self::assertSame('available', $statuses['2027-01-18'], 'Cancelled booking must not block.');
         self::assertSame('available', $statuses['2027-01-22'], 'Rejected booking must not block.');
         self::assertSame('available', $statuses['2027-01-26'], 'Invalidated booking must not block.');
+        self::assertSame('available', $statuses['2027-01-29'], 'Completed booking must not block.');
         self::assertStringNotContainsString('Private integration name', json_encode($result, JSON_THROW_ON_ERROR));
         self::assertStringNotContainsString('private@example.invalid', json_encode($result, JSON_THROW_ON_ERROR));
     }

@@ -24,22 +24,17 @@ final class BookingStatusMailRendererTest extends TestCase
     {
         $message = $this->renderer()->render($this->data($status));
 
-        self::assertStringContainsString('A Bata', $message->subject);
-        self::assertStringContainsString('AB-2026-001', $message->subject);
-        self::assertStringContainsString('AB-2026-001', $message->textBody);
-        self::assertStringContainsString('AB-2026-001', $message->htmlBody);
+        self::assertSame(['confirmed'=>'Foglalás visszaigazolás','rejected'=>'Foglalási igényét visszautasítottuk','cancelled'=>'Foglalási igényét töröltük'][$status], $message->subject);
         self::assertStringContainsString('A Bata', $message->htmlBody);
     }
 
-    public function testConfirmedContainsDatesGuestsAndAmount(): void
+    public function testConfirmedContainsApprovedCopyAndContactName(): void
     {
         $message = $this->renderer()->render($this->data('confirmed'));
 
-        foreach (['2026-08-10', '2026-08-13', '2 felnőtt', '1 gyermek', '90 000 Ft'] as $value) {
+        foreach (['Tisztelt Teszt Vendég!', 'Köszönjük, hogy minket választott!', 'Foglalását ezúton visszaigazoljuk.', 'Várjuk szeretettel.'] as $value) {
             self::assertStringContainsString($value, $message->textBody);
         }
-        self::assertStringContainsString('90 000 Ft', $message->htmlBody);
-        self::assertStringNotContainsString('90000.00', $message->textBody . $message->htmlBody);
     }
 
     public function testRejectedDoesNotContainInternalNoteOrUnneededBookingDetails(): void
@@ -50,12 +45,12 @@ final class BookingStatusMailRendererTest extends TestCase
         self::assertStringNotContainsString('90000.00', $message->textBody . $message->htmlBody);
     }
 
-    public function testCancelledContainsRelevantDates(): void
+    public function testCancelledPreservesPenaltyAndIncludesAdminNote(): void
     {
         $message = $this->renderer()->render($this->data('cancelled'));
 
-        self::assertStringContainsString('2026-08-10', $message->textBody);
-        self::assertStringContainsString('2026-08-13', $message->textBody);
+        self::assertStringContainsString('Indoklás:', $message->textBody);
+        self::assertStringContainsString('Vendég kérésére', $message->textBody);
         self::assertStringContainsString('Lemondási kötbér: 45 000 Ft', $message->textBody);
         self::assertStringContainsString('45 000 Ft', $message->htmlBody);
         self::assertStringContainsString('90 000 Ft', $message->htmlBody);
@@ -81,6 +76,8 @@ final class BookingStatusMailRendererTest extends TestCase
             2, 1, '90000.00', 'HUF',
             $status === 'cancelled' ? '45000.00' : null,
             $status === 'cancelled' ? '90000.00' : null,
+            'Teszt Vendég',
+            $status === 'cancelled' ? 'Vendég kérésére' : null,
         );
     }
 }

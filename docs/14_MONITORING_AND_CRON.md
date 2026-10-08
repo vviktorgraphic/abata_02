@@ -38,6 +38,8 @@ A cron minden esetben abszolút PHP- és scriptútvonalat használjon. Secret ne
 
 Az iCal worker `php bin/ical-sync.php` vagy `composer ical:sync`. Process environmentet örököl, secretmentes JSON outputot és 0/1/2 exit kódot ad. A `bin/migrate.php`, `bin/db-check.php`, `bin/admin-create.php` és `bin/seed-demo.php` nem periodikus production cron feladat.
 
+A booking lifecycle worker `php bin/booking-lifecycle-worker.php` vagy `composer booking:lifecycle`. Csak a Budapest szerinti egzakt mai távozások review levelét és az egzakt tegnapi távozások completed átmenetét dolgozza fel; történeti catch-up nincs. **CRON NOT ENABLED:** az éles ütemezést ez a változás nem kapcsolja be.
+
 Javasolt, deployment során pontosítandó cPanel bejegyzés:
 
 ```text

@@ -13,6 +13,9 @@ if ($normalized | Where-Object { $_ -eq '.env' -or $_ -like '.env.*' -or $_ -lik
 if (-not $normalized.Contains('public/static/css/admin.css')) { throw 'Archive is missing public/static/css/admin.css.' }
 if ($normalized | Where-Object { $_ -like 'public/assets/*' }) { throw 'Archive contains runtime public/assets.' }
 if ($normalized | Where-Object { $_ -like 'tests/*' }) { throw 'Archive contains tests.' }
+$requiredArrival = @('resources/email/arrival/bata1.jpg','resources/email/arrival/bata2.jpg','resources/email/arrival/bata3-safe.jpg','resources/email/arrival/bata4.jpg')
+foreach ($asset in $requiredArrival) { if (-not $normalized.Contains($asset)) { throw "Archive is missing safe arrival asset: $asset" } }
+if ($normalized.Contains('resources/email/arrival/bata3.jpg')) { throw 'Archive contains unsafe keybox source image.' }
 
 $stage = Join-Path ([IO.Path]::GetTempPath()) ('foglalo-verify-' + [guid]::NewGuid().ToString('N'))
 try {

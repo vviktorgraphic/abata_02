@@ -22,6 +22,8 @@ final readonly class BookingStatusMailData
         public string $currency,
         public ?string $cancellationPenaltyAmount = null,
         public ?string $cancellationAccommodationFee = null,
+        public string $contactName = 'Vendégünk',
+        public ?string $adminNote = null,
     ) {
         if (!in_array($status, [self::CONFIRMED, self::REJECTED, self::CANCELLED], true)) {
             throw new \InvalidArgumentException('Unsupported booking notification status.');

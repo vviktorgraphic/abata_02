@@ -17,11 +17,13 @@
 <h2 id="payment-request-title">Foglalás véglegesítése</h2>
 <?php if (!empty($paymentConfigurationError)): ?><p class="alert"><?= $e($paymentConfigurationError) ?></p><?php endif ?>
 <?php $payment = $booking['payment_request'] ?? null; $paymentStatus = $payment['status'] ?? null; ?>
-<?php $advance = $payment['advance_amount'] ?? $paymentAdvance ?? null; if ($advance !== null): ?>
-<p>Előleg: <?= $e(\App\Presentation\HufFormatter::format($advance)) ?></p>
+<?php $advance = $payment['advance_amount'] ?? $paymentAdvance ?? null; if ($advance !== null && isset($snapshot['accommodation_fee'],$snapshot['taxes'])): ?>
+<dl class="facts"><div><dt>Szállásdíj</dt><dd><?= $e(\App\Presentation\HufFormatter::format($payment['accommodation_fee'] ?? $snapshot['accommodation_fee'])) ?></dd></div><div><dt>IFA</dt><dd><?= $e(\App\Presentation\HufFormatter::format($payment['taxes'] ?? $snapshot['taxes'])) ?> – helyben fizetendő</dd></div><div><dt>Fizetendő előleg</dt><dd><?= $e(\App\Presentation\HufFormatter::format($advance)) ?></dd></div><div><dt>Utalási közlemény</dt><dd><?= $e($paymentReference) ?></dd></div></dl>
 <?php endif ?>
 <?php if ($paymentStatus === 'sent'): ?>
 <p>Díjbekérő elküldve<?= !empty($payment['sent_at']) ? ': ' . $e($payment['sent_at']) : '' ?></p>
+<?php $reminders=array_values(array_filter($booking['email_outbox'],static fn(array $m):bool=>$m['type']==='booking_payment_reminder')); $reminder=$reminders[0]??null; ?>
+<?php if (($reminder['status'] ?? null) === 'sent'): ?><p>Előleg emlékeztető elküldve<?= !empty($reminder['sent_at']) ? ': '.$e($reminder['sent_at']) : '' ?>.</p><?php else: ?><form method="post" action="/admin/bookings/<?= rawurlencode((string)$booking['reference']) ?>/payment-reminder"><input type="hidden" name="_csrf" value="<?= $e($csrfToken) ?>"><button type="submit"><?= ($reminder['status']??null)==='failed' ? 'Emlékeztető újraküldése' : 'Emlékeztető küldése' ?></button></form><?php endif ?>
 <p>A rendszer nem ellenőrzi automatikusan a banki jóváírást. Az előleg beérkezésének ellenőrzése után erősítse meg a foglalást.</p>
 <form method="post" action="/admin/bookings/<?= rawurlencode((string) $booking['reference']) ?>/confirm">
 <input type="hidden" name="_csrf" value="<?= $e($csrfToken) ?>">
@@ -42,6 +44,9 @@
 </form>
 <?php endif; endif ?>
 </section>
+<?php endif ?>
+<?php if ($booking['status'] === 'confirmed'): $arrivals=array_values(array_filter($booking['email_outbox'],static fn(array $m):bool=>$m['type']==='booking_arrival_information')); $arrival=$arrivals[0]??null; ?>
+<section><h2>Érkezési tájékoztató</h2><?php if (($arrival['status']??null)==='sent'): ?><p>Érkezési tájékoztató elküldve<?= !empty($arrival['sent_at']) ? ': '.$e($arrival['sent_at']) : '' ?>.</p><?php else: ?><form method="post" action="/admin/bookings/<?= rawurlencode((string)$booking['reference']) ?>/arrival-information"><input type="hidden" name="_csrf" value="<?= $e($csrfToken) ?>"><button type="submit"><?= ($arrival['status']??null)==='failed' ? 'Érkezési tájékoztató újraküldése' : 'Érkezési tájékoztató küldése' ?></button></form><?php endif ?></section>
 <?php endif ?>
 <?php $allowed=['pending'=>['reject'=>'Elutasítás','invalidate'=>'Technikai érvénytelenítés'],'confirmed'=>['cancel'=>'Lemondás','invalidate'=>'Technikai érvénytelenítés']][$booking['status']] ?? []; if ($allowed): ?><section><h2>Műveletek</h2><div class="actions"><?php foreach ($allowed as $action=>$label): ?><form method="post" action="/admin/bookings/<?= rawurlencode((string)$booking['reference']) ?>/<?= $action ?>"><input type="hidden" name="_csrf" value="<?= $e($csrfToken) ?>"><?php if ($action === 'invalidate'): ?><p>Téves, teszt vagy duplikált foglalás lezárására. A vendég nem kap lemondási e-mailt.</p><?php endif ?><label for="note-<?= $action ?>">Admin megjegyzés (opcionális)</label><textarea id="note-<?= $action ?>" name="admin_note" maxlength="500"></textarea><button class="<?= in_array($action,['reject','cancel','invalidate'],true)?'danger':'' ?>" type="submit"><?= $label ?></button></form><?php endforeach ?></div></section><?php endif ?>
 <section><h2>Státusztörténet</h2><ol class="timeline"><?php foreach ($booking['status_history'] as $item): ?><li><strong><?= $e($item['old_status'] === null ? 'Létrehozás' : \App\Presentation\BookingStatusLabel::for((string) $item['old_status'])) ?> → <?= $e(\App\Presentation\BookingStatusLabel::for((string) $item['status'])) ?></strong><br><time><?= $e($item['created_at']) ?></time><?php if ($item['admin_note']): ?><p><?= $e(\App\Presentation\BookingHistoryNoteLabel::for((string) $item['admin_note'])) ?></p><?php endif ?></li><?php endforeach ?></ol></section>

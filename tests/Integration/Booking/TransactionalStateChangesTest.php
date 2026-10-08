@@ -78,6 +78,7 @@ final class TransactionalStateChangesTest extends TestCase
             'booking_reference' => $this->reference($id), 'arrival_date' => '2042-01-10',
             'departure_date' => '2042-01-13', 'adults' => 2, 'children' => 1,
             'total' => '30000.00', 'currency' => 'HUF',
+            'contact_name' => 'Guest',
         ], json_decode($outbox['payload'], true, 512, JSON_THROW_ON_ERROR));
     }
 

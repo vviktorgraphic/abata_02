@@ -2,6 +2,8 @@
 
 > **Aktuális RC2 kiegészítés:** [IFA és payment-request HTTP szerződés](22_OCCUPANCY_IFA_AND_PAYMENT_REQUEST.md). Új védett POST: `/admin/bookings/{reference}/payment-request`; confirm sikeres díjbekérő nélkül 409. A kanonikus áradmin occupancy műveletei: `band|band_toggle|override|override_toggle|surcharge|tourism_tax`, optimistic verzióval.
 
+> **Phase 3:** két új védett, POST-only admin action: `/admin/bookings/{reference}/payment-reminder` és `/admin/bookings/{reference}/arrival-information`. Mindkettő auth-, CSRF-, body-limit- és admin rate-limit védelemmel fut; részletek: [vendégkommunikáció és életciklus](24_GUEST_COMMUNICATIONS_LIFECYCLE.md).
+
 **Állapot:** IMPLEMENTED és PLANNED részekre bontva
 **Utolsó ellenőrzés:** 2026-07-18, `release/rc1` munkafa (commit előtt)
 

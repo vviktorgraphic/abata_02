@@ -27,6 +27,7 @@ final readonly class BookingManagementController
         private \App\Application\Mail\BookingStatusNotificationDispatcher $notifications,
         private ?\App\Application\Mail\BookingPaymentRequestDispatcher $paymentRequests = null,
         private ?\App\Application\Mail\BookingPaymentRequestConfiguration $paymentConfiguration = null,
+        private ?\App\Application\Mail\BookingManualCommunicationDispatcher $manualCommunications = null,
     ) {}
 
     /** @param array<string, mixed> $query */
@@ -53,7 +54,7 @@ final readonly class BookingManagementController
         $booking = $this->queries->fetchBookingDetail(new AdminBookingDetailQuery($identifier));
         if ($booking === null) return $this->error(404, 'A foglalás nem található.');
         $snapshot = $booking['pricing_snapshot'] ?? [];
-        $accommodationFee = is_array($snapshot) ? ($snapshot['accommodation_fee'] ?? $snapshot['total'] ?? null) : null;
+        $accommodationFee = is_array($snapshot) ? ($snapshot['accommodation_fee'] ?? null) : null;
         $cancellationPreview = is_string($accommodationFee) || is_int($accommodationFee)
             ? (new CancellationPolicy())->calculate(
                 (string) $booking['arrival_date'],
@@ -66,14 +67,15 @@ final readonly class BookingManagementController
         $paymentConfigurationError = null;
         if ($paymentAdvance === null && empty($booking['legacy_pricing_unavailable']) && $booking['status'] === 'pending') {
             try {
-                $paymentAdvance = $this->paymentConfiguration?->advanceFor((string) $booking['total_amount']);
+                $paymentAdvance = $this->paymentConfiguration?->advanceFor((string) $accommodationFee);
             } catch (\InvalidArgumentException) {
-                $paymentConfigurationError = 'A díjbekérő előlegbeállítása vagy a rögzített végösszeg érvénytelen.';
+                $paymentConfigurationError = 'A díjbekérő előlegbeállítása vagy az immutable szállásdíj-pillanatkép érvénytelen.';
             }
         }
         return new HtmlResponse($this->view->render('booking-detail', [
             'booking' => $booking, 'csrfToken' => $this->csrf->token(), 'cancellationPreview' => $cancellationPreview,
             'paymentAdvance' => $paymentAdvance, 'paymentConfigurationError' => $paymentConfigurationError,
+            'paymentReference' => $booking['payment_request']['payment_reference'] ?? \App\Application\Mail\PaymentReference::forBookingId((int)$booking['id']),
         ]));
     }
 
@@ -131,6 +133,30 @@ final readonly class BookingManagementController
         }
         $result = $this->notifications->dispatch((int) $booking['id'], (string) $booking['status'], $authorization->admin['id']);
         return new RedirectResponse('/admin/bookings/' . rawurlencode($reference) . '?email=' . rawurlencode($result->status));
+    }
+
+    /** @param array<string,mixed> $form */
+    public function paymentReminder(string $reference, array $form, ?string $contentType, ?int $contentLength): AdminResponse
+    {
+        $authorization=$this->guard->authorizeForm('email.payment_reminder',$form,$contentType,$contentLength);
+        if(!$authorization->allowed())return $authorization->rejection;
+        if($this->manualCommunications===null)return $this->error(422,'A vendégkommunikáció nincs konfigurálva.');
+        try{$result=$this->manualCommunications->paymentReminder($reference,$authorization->admin['id']);
+            return new RedirectResponse('/admin/bookings/'.rawurlencode($reference).'?reminder='.rawurlencode($result->status));
+        }catch(\OutOfBoundsException){return $this->error(404,'A foglalás nem található.');}
+        catch(\DomainException $e){return $this->error(409,$e->getMessage());}
+    }
+
+    /** @param array<string,mixed> $form */
+    public function arrivalInformation(string $reference, array $form, ?string $contentType, ?int $contentLength): AdminResponse
+    {
+        $authorization=$this->guard->authorizeForm('email.arrival_information',$form,$contentType,$contentLength);
+        if(!$authorization->allowed())return $authorization->rejection;
+        if($this->manualCommunications===null)return $this->error(422,'A vendégkommunikáció nincs konfigurálva.');
+        try{$result=$this->manualCommunications->arrivalInformation($reference,$authorization->admin['id']);
+            return new RedirectResponse('/admin/bookings/'.rawurlencode($reference).'?arrival='.rawurlencode($result->status));
+        }catch(\OutOfBoundsException){return $this->error(404,'A foglalás nem található.');}
+        catch(\DomainException $e){return $this->error(409,$e->getMessage());}
     }
 
     /** @param array<string, mixed> $query */

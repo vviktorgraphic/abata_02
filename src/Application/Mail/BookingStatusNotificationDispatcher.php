@@ -34,16 +34,17 @@ final readonly class BookingStatusNotificationDispatcher
 
         try {
             $this->mailer->send($this->renderer->render($item['data']));
-            $this->outbox->markSent($item['id']);
-            $this->audit('email.status_notification_sent', 'sent', $bookingId, $item['id'], $adminId);
-
-            return new OutboxDeliveryResult('sent');
         } catch (Throwable) {
             $this->outbox->markFailed($item['id'], 'E-mail transport failure.');
             $this->audit('email.status_notification_failed', 'failed', $bookingId, $item['id'], $adminId);
 
             return new OutboxDeliveryResult('failed');
         }
+        // Once SMTP accepted the message, later audit failure must not make it retryable.
+        $this->outbox->markSent($item['id']);
+        $this->audit('email.status_notification_sent', 'sent', $bookingId, $item['id'], $adminId);
+
+        return new OutboxDeliveryResult('sent');
     }
 
     private function audit(string $eventType, string $result, int $bookingId, int $outboxId, ?int $adminId): void

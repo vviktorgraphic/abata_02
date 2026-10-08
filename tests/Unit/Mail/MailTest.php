@@ -6,8 +6,10 @@ namespace Tests\Unit\Mail;
 
 use App\Application\Mail\InMemoryMailer;
 use App\Application\Mail\Message;
+use App\Application\Mail\InlineAttachment;
 use App\Application\Mail\TwoFactorMailRenderer;
 use App\Infrastructure\Mail\SmtpConfiguration;
+use App\Infrastructure\Mail\SmtpMailer;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 
@@ -41,6 +43,29 @@ final class MailTest extends TestCase
     {
         $this->expectException(InvalidArgumentException::class);
         new Message('from@example.test', 'to@example.test', "Tárgy\r\nBcc: victim@example.test", 'Szöveg', '<p>HTML</p>');
+    }
+
+    public function testInlineAttachmentValidationAndRelatedMimeStructure(): void
+    {
+        $jpeg="\xFF\xD8safe-jpeg\xFF\xD9";
+        $attachment=new InlineAttachment('arrival-test','test.jpg','image/jpeg',$jpeg);
+        $message=new Message('from@example.test','to@example.test','Érkezés','Plain fallback','<p><img src="cid:arrival-test"></p>',[$attachment]);
+        $mailer=new SmtpMailer(new SmtpConfiguration('mailpit',1025,'none'));
+        $method=new \ReflectionMethod($mailer,'mimeMessage');
+        $mime=(string)$method->invoke($mailer,$message);
+        self::assertStringContainsString('multipart/related',$mime);
+        self::assertStringContainsString('multipart/alternative',$mime);
+        self::assertStringContainsString('Content-ID: <arrival-test>',$mime);
+        self::assertStringContainsString('Content-Type: image/jpeg; name="test.jpg"',$mime);
+        self::assertStringContainsString(chunk_split(base64_encode($jpeg),76,"\r\n"),$mime);
+
+        foreach ([
+            fn()=>new InlineAttachment("bad\r\n",'test.jpg','image/jpeg',$jpeg),
+            fn()=>new InlineAttachment('ok','../test.jpg','image/jpeg',$jpeg),
+            fn()=>new InlineAttachment('ok','test.png','image/png',$jpeg),
+        ] as $invalid) {
+            try { $invalid(); self::fail('Unsafe inline attachment accepted.'); } catch (InvalidArgumentException) {}
+        }
     }
 
     public function testInvalidTwoFactorCodeIsRejected(): void

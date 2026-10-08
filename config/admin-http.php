@@ -114,7 +114,7 @@ $workflow = new DefaultAdminAuthWorkflow(
     $authConfig['rate_limit_pepper'],
     $authConfig['session_idle_timeout_seconds'],
 );
-$view = new AdminView($root . '/templates');
+$view = new AdminView($root . '/templates', $csrf);
 $audit = new PdoAuditLog($pdo);
 $queries = new PdoAdminBookingQueryRepository($pdo);
 $actionGuard = new AdminActionGuard($workflow, $csrf, new SecurityAdminActionRateLimiter($rateLimiter, new RateLimitPolicy('admin_action', 20, 60, 60)));
@@ -130,10 +130,20 @@ $calendarSources = new PdoCalendarSourceRepository($pdo);
 $paymentConfig = require $root . '/config/payment-request.php';
 $paymentConfiguration = new App\Application\Mail\BookingPaymentRequestConfiguration(
     $paymentConfig['beneficiary'], $paymentConfig['bank_account'], $paymentConfig['advance_percent'],
+    $paymentConfig['bank_name'], $paymentConfig['swift_bic'],
 );
 $paymentRequests = new App\Application\Mail\BookingPaymentRequestDispatcher(
     new App\Infrastructure\Persistence\Booking\PdoBookingPaymentRequestOutbox($pdo),
     new App\Application\Mail\BookingPaymentRequestMailRenderer($root . '/templates/email', $mailConfig['from_email']),
+    new SmtpMailer(new SmtpConfiguration($mailConfig['host'], $mailConfig['port'], $mailConfig['encryption'], $username, $password, $mailConfig['timeout_seconds'], $mailConfig['production'])),
+    $paymentConfiguration,
+    $audit,
+);
+$manualCommunications = new App\Application\Mail\BookingManualCommunicationDispatcher(
+    new App\Infrastructure\Persistence\Booking\PdoBookingManualCommunicationOutbox($pdo),
+    new App\Application\Mail\BookingManualCommunicationRenderer(
+        $root . '/templates/email', $root . '/resources/email/arrival', $mailConfig['from_email']
+    ),
     new SmtpMailer(new SmtpConfiguration($mailConfig['host'], $mailConfig['port'], $mailConfig['encryption'], $username, $password, $mailConfig['timeout_seconds'], $mailConfig['production'])),
     $paymentConfiguration,
     $audit,
@@ -149,7 +159,7 @@ return [
     'login' => new LoginController($workflow, $view, $csrf),
     'two_factor' => new TwoFactorController($workflow, $view, $csrf),
     'dashboard' => new DashboardController($workflow, $view, $csrf, $queries),
-    'bookings' => new BookingManagementController($workflow, $view, $csrf, $actionGuard, $queries, $transitions, $statusNotifications, $paymentRequests, $paymentConfiguration),
+    'bookings' => new BookingManagementController($workflow, $view, $csrf, $actionGuard, $queries, $transitions, $statusNotifications, $paymentRequests, $paymentConfiguration, $manualCommunications),
     'monthly_occupancy' => new MonthlyOccupancyController($workflow, $view, new PdoAdminMonthlyOccupancyRepository($pdo)),
     'legacy_import' => new LegacyBookingImportController(
         $workflow, $view, $csrf, $actionGuard, $storage,

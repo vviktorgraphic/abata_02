@@ -14,6 +14,7 @@ final readonly class Message
         public string $subject,
         public string $textBody,
         public string $htmlBody,
+        public array $inlineAttachments = [],
     ) {
         $this->assertEmail($from, 'Feladó');
         $this->assertEmail($to, 'Címzett');
@@ -24,6 +25,17 @@ final readonly class Message
 
         if ($textBody === '' || $htmlBody === '') {
             throw new InvalidArgumentException('A levél szöveges és HTML törzse is kötelező.');
+        }
+
+        $contentIds = [];
+        foreach ($inlineAttachments as $attachment) {
+            if (!$attachment instanceof InlineAttachment) {
+                throw new InvalidArgumentException('Az inline mellékletek típusa érvénytelen.');
+            }
+            if (isset($contentIds[$attachment->contentId])) {
+                throw new InvalidArgumentException('Az inline kép CID értéke nem lehet ismétlődő.');
+            }
+            $contentIds[$attachment->contentId] = true;
         }
     }
 

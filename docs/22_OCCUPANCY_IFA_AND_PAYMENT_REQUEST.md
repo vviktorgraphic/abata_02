@@ -2,6 +2,8 @@
 
 **IMPLEMENTED — 2026-10-05, release/rc2.** Ez a kiegészítés a korábbi person-admin és díjbekérő nélküli megerősítés leírását az alábbi pontokon felváltja. Production aktiválás, adatbázis-migráció és valós SMTP/böngészős ellenőrzés külön release lépés.
 
+> **Phase 3 felülírás:** a díjbekérő előlegalapja már nem a teljes végösszeg, hanem kizárólag az immutable `accommodation_fee`; az IFA helyben fizetendő. Az aktuális szerződés: [Vendégkommunikáció és foglalási életciklus](24_GUEST_COMMUNICATIONS_LIFECYCLE.md).
+
 ## Árképzés és IFA
 
 A kanonikus `/admin/pricing` occupancy alapársávokat és egyedi időszakos árakat kezel. Az alapársáv dátumtól független; azonos létszám aktív tartózkodáshossz-sávjai nem fedhetik egymást. A felső korlát nélküli sáv a felületen `Korlátlan`. Éves/szezonális ár az egyedi időszakok alatt adható meg, például `2027-01-01`–`2027-12-31`, mind a négy létszám árával. Az időszakok inkluzívak, az aktív időszakok átfedése tiltott. Nincs automatikus sáv-inaktiválás vagy rejtett prioritás.
@@ -30,17 +32,19 @@ Csak pending foglaláshoz indítható díjbekérő. A védett `POST /admin/booki
 
 A `booking_payment_request` a meglévő `email_outbox` táblába kerül. A `026` utáni egyediség booking/message-type/recipient alapú; mivel a díjbekérőnek egy vendég címzettje van, ebből továbbra is foglalásonként egy rekord készül. A foglalás zárolása, a payload létrehozása és a `processing` claim tranzakciós; SMTP csak commit után fut. A küldés nem vált foglalási státuszt és nem foglal kapacitást. A levél `sent` állapota SMTP-átvételt jelent, nem banki jóváírást vagy garantált inbox-kézbesítést.
 
-A teljes, tárolt booking végösszeg az előleg alapja, nem csak a szállásdíj és nem az aktuális árlista. Az alapbeállítás 50%; páratlan egész-HUF végösszegből az előleg egész forintra HALF_UP kerekített. A kerekítés egész számokkal történik. A feladat konfigurációs követelményének megfelelően a százalék 1–100 között beállítható; az alapérték és a példafájl értéke 50. A levél a tényleges, payloadba rögzített százalékot mutatja.
+**SUPERSEDED:** az előleg alapja az immutable `accommodation_fee`, nem a teljes végösszeg; az IFA nem része. Az alapbeállítás 50%, a százalék 1–100 között konfigurálható, a kerekítés determinisztikus egész-HUF HALF_UP. A v2 levél a snapshotolt százalékot és összeget mutatja.
 
 Konfiguráció a `config/payment-request.php` fájlon keresztül:
 
 - `PAYMENT_REQUEST_BENEFICIARY`: kedvezményezett;
 - `PAYMENT_REQUEST_BANK_ACCOUNT`: bankszámlaszám;
+- `PAYMENT_REQUEST_BANK_NAME`: bank neve;
+- `PAYMENT_REQUEST_SWIFT_BIC`: SWIFT/BIC;
 - `PAYMENT_REQUEST_ADVANCE_PERCENT=50`.
 
 A repository csak üres vagy placeholder bankadatokat tartalmaz a példafájlokban. Hiányzó bankadat nem akadályozza az admin bejelentkezést; a küldés ad konfigurációs hibát. Ismeretlen árú régi importból nem készül kitalált nulla összegű díjbekérő.
 
-A TXT/HTML levél tartalmazza a vendégnevet, referenciát, dátumokat, teljes összeget, előleget, kedvezményezettet és bankszámlát. A közlemény kötelezően a booking referencia. A szöveg nem nevez számlának vagy hivatalos számviteli bizonylatnak semmit. A véglegességet az előleg jóváírásához és a későbbi visszaigazoláshoz köti.
+**SUPERSEDED:** a v2 TXT/HTML levél az immutable szállásdíjat, a helyben fizetendő IFA-t, az előleget és a teljes banki snapshotot mutatja. A közlemény az `AB-%06d` payment reference; kizárólag a v1 kompatibilitási levél használja a booking referenciát.
 
 A retry ugyanazt a payloadot használja: recipient, név, referencia, dátumok, pénznem, végösszeg, százalék, előleg és bankadatok az első kéréskor rögzülnek. Új ár vagy banki konfiguráció nem írja át. `sent` és `processing` rekord ismételt kattintása nem küld új levelet. SMTP-hiba `failed`, a foglalás pending marad. Sikeres SMTP utáni persistence/audithiba nem teszi automatikusan újraküldhetővé a levelet.
 

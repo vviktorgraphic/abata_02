@@ -7,6 +7,7 @@ namespace App\Infrastructure\Persistence\Booking;
 use App\Application\Mail\BookingPaymentRequestConfiguration;
 use App\Application\Mail\BookingPaymentRequestMailData;
 use App\Application\Mail\BookingPaymentRequestOutbox;
+use App\Application\Mail\PaymentReference;
 use PDO;
 
 final readonly class PdoBookingPaymentRequestOutbox implements BookingPaymentRequestOutbox
@@ -46,10 +47,29 @@ final readonly class PdoBookingPaymentRequestOutbox implements BookingPaymentReq
                     throw new \InvalidArgumentException('A történeti foglalás tárolt ára hiányzik, ezért díjbekérő nem küldhető.');
                 }
                 $configuration->assertConfigured();
+                $snapshotQuery = $this->pdo->prepare('SELECT snapshot FROM booking_pricing_snapshots WHERE booking_id = :booking_id FOR UPDATE');
+                $snapshotQuery->execute(['booking_id' => $booking['id']]);
+                $snapshotJson = $snapshotQuery->fetchColumn();
+                if (!is_string($snapshotJson)) {
+                    throw new \InvalidArgumentException('A díjbekérőhöz használható immutable pricing snapshot szükséges.');
+                }
+                $snapshot = json_decode($snapshotJson, true, 512, JSON_THROW_ON_ERROR);
+                if (!is_array($snapshot)) {
+                    throw new \InvalidArgumentException('A díjbekérő pricing snapshotja érvénytelen.');
+                }
+                $accommodationFee = $this->money($snapshot['accommodation_fee'] ?? null);
+                $taxes = $this->money($snapshot['taxes'] ?? null);
+                $total = $this->money($snapshot['total'] ?? null);
+                $currency = $snapshot['currency'] ?? null;
+                if ($accommodationFee === null || $taxes === null || $total === null || $currency !== 'HUF') {
+                    throw new \InvalidArgumentException('A díjbekérő pricing snapshotja hiányos vagy nem támogatott.');
+                }
                 $data = new BookingPaymentRequestMailData($reference, $booking['guest_email'], $booking['guest_name'],
-                    $booking['arrival_date'], $booking['departure_date'], $booking['currency'], $booking['total_amount'],
-                    $configuration->advancePercent, $configuration->advanceFor($booking['total_amount']),
-                    $configuration->beneficiary, $configuration->bankAccount);
+                    $booking['arrival_date'], $booking['departure_date'], $currency, $total,
+                    $configuration->advancePercent, $configuration->advanceFor($accommodationFee),
+                    $configuration->beneficiary, $configuration->bankAccount, $accommodationFee, $taxes,
+                    PaymentReference::forBookingId((int) $booking['id']), $configuration->bankName,
+                    $configuration->swiftBic, 2);
                 $insert = $this->pdo->prepare("INSERT INTO email_outbox (booking_id, message_type, recipient, subject, payload)
                     VALUES (:booking_id, 'booking_payment_request', :recipient, :subject, :payload)");
                 $insert->execute(['booking_id' => $booking['id'], 'recipient' => $data->recipient,
@@ -92,5 +112,17 @@ final readonly class PdoBookingPaymentRequestOutbox implements BookingPaymentReq
         $query = $this->pdo->prepare("UPDATE email_outbox SET status = 'failed', attempts = attempts + 1,
             sent_at = NULL, last_error = :reason WHERE id = :id AND status = 'processing' AND message_type = 'booking_payment_request'");
         $query->execute(['id' => $outboxId, 'reason' => mb_substr($safeReason, 0, 500)]);
+    }
+
+    private function money(mixed $value): ?string
+    {
+        if (!is_string($value) && !is_int($value)) {
+            return null;
+        }
+        $value = (string) $value;
+        if (preg_match('/\A\d{1,10}(?:\.\d{2})?\z/', $value) !== 1) {
+            return null;
+        }
+        return str_contains($value, '.') ? $value : $value . '.00';
     }
 }

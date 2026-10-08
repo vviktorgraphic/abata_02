@@ -1,5 +1,12 @@
 # A Bata 1.0.0-rc2 release notes
 
+## Phase 3 guest communications and lifecycle
+
+- Az előleg az immutable szállásdíj 50%-a; az IFA teljes egészében helyben fizetendő. Az új díjbekérő v2 payload rövid `AB-…` utalási közleményt és teljes banki snapshotot tárol, a v1 rekordok változatlanul olvashatók.
+- Kézi, idempotens előleg-emlékeztető és confirmed foglaláshoz küldhető érkezési tájékoztató készült. Az érkezési levél négy CID-es JPEG-et használ; a kulcsszéf képe redaktált, az unsafe forrás nincs a release assetek között.
+- Az egzakt távozási napon review levél, az egzakt következő napon `Teljesült` státusz futtatható a lifecycle CLI-vel. Történeti catch-up nincs, production cron nincs engedélyezve.
+- A shared admin fejléc CSRF-védett POST kijelentkezés ikont kapott.
+
 ## Static path compatibility hotfix
 
 - A shared-hosting nginx `/assets/` tiltása miatt a publikus erőforrások `public/static/` alá kerültek, minden runtime HTML-hivatkozás `/static/...` útvonalat használ.

@@ -15,6 +15,8 @@ A projekt változásai ebben a fájlban követik a release-eket. A formátum a K
 
 ### Added
 
+- Added Phase 3 guest communications: snapshot-safe payment reminders, manual arrival information with four CID JPEGs, exact-day review worker, completed booking lifecycle and shared CSRF logout icon.
+- Added v2 payment request snapshots and deterministic short payment references; advance now excludes tourism tax and is calculated from immutable accommodation fee.
 - Automatikus, forrásonként lockolt iCal CLI worker korlátozott retry/backoff, 24 órás eltűnési grace és bővített sync metrikák mellett.
 - Explicit legacy/személyalapú pricing mód, felnőtt hétköznapi/hétvégi személyár, adminisztrálható gyermek ársávok és teljes v3 immutable snapshot.
 - Egységes, lebegőpontos számítást nem használó HUF formatter az admin, publikus és e-mail felületeken.

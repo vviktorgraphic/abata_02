@@ -10,6 +10,7 @@ use App\Http\Controller\Admin\AdminView;
 use App\Http\Controller\Admin\DashboardController;
 use App\Http\Controller\Admin\HtmlResponse;
 use App\Http\Controller\Admin\LoginController;
+use App\Http\Controller\Admin\LogoutController;
 use App\Http\Controller\Admin\RedirectResponse;
 use App\Http\Controller\Admin\SecurityHeaders;
 use App\Http\Controller\Admin\TwoFactorController;
@@ -24,8 +25,8 @@ final class AdminControllersTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->view = new AdminView(dirname(__DIR__, 3) . '/templates');
         $this->csrf = new CsrfTokenManager(new ArraySessionStorage());
+        $this->view = new AdminView(dirname(__DIR__, 3) . '/templates', $this->csrf);
     }
 
     public function test_login_page_contains_accessible_secure_fields_and_branding(): void
@@ -141,6 +142,23 @@ final class AdminControllersTest extends TestCase
         self::assertStringContainsString('name="_csrf"', $authenticated->body);
     }
 
+    public function testAuthenticatedLayoutShowsAccessiblePostLogoutAndControllerRequiresCsrf():void
+    {
+        $workflow=new FakeAdminAuthWorkflow(admin:['id'=>7,'name'=>'Admin']);
+        $view=new AdminView(dirname(__DIR__,3).'/templates',$this->csrf);
+        $dashboard=(new DashboardController($workflow,$view,$this->csrf))->show();
+        self::assertStringContainsString('action="/admin/logout"',$dashboard->body);
+        self::assertStringContainsString('title="Kijelentkezés"',$dashboard->body);
+        self::assertStringContainsString('aria-label="Kijelentkezés"',$dashboard->body);
+        self::assertStringContainsString('header-logout',$dashboard->body);
+        $controller=new LogoutController($workflow,$this->csrf,$view);
+        self::assertSame(403,$controller->submit([])->status);self::assertSame(0,$workflow->logoutCalls);
+        $response=$controller->submit(['_csrf'=>$this->csrf->token()]);
+        self::assertInstanceOf(RedirectResponse::class,$response);self::assertSame('/admin/login',$response->location);self::assertSame(1,$workflow->logoutCalls);
+        $routes=(string)file_get_contents(dirname(__DIR__,3).'/public/index.php');
+        self::assertStringNotContainsString("->get('/admin/logout'",$routes);
+    }
+
     public function test_admin_security_headers_prevent_storage_embedding_and_sniffing(): void
     {
         $headers = SecurityHeaders::admin();
@@ -185,6 +203,7 @@ final class FakeAdminAuthWorkflow implements AdminAuthWorkflow
     public int $loginCalls = 0;
     public int $verifyCalls = 0;
     public int $resendCalls = 0;
+    public int $logoutCalls = 0;
 
     /** @param array{id: int, name: string}|null $admin */
     public function __construct(
@@ -198,7 +217,7 @@ final class FakeAdminAuthWorkflow implements AdminAuthWorkflow
     public function login(string $email, string $password, array $requestContext = []): bool { ++$this->loginCalls; return $this->loginAccepted; }
     public function verify(string $code, array $requestContext = []): bool { ++$this->verifyCalls; return $this->verifyAccepted; }
     public function resend(array $requestContext = []): bool { ++$this->resendCalls; return false; }
-    public function logout(array $requestContext = []): void {}
+    public function logout(array $requestContext = []): void { ++$this->logoutCalls; }
     public function currentAdmin(): ?array { return $this->admin; }
 }
 

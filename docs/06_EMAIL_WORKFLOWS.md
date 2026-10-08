@@ -1,6 +1,8 @@
 # E-mail folyamatok
 
-> **IMPLEMENTED RC2:** [díjbekérő a megerősítés előtt](22_OCCUPANCY_IFA_AND_PAYMENT_REQUEST.md). A `booking_payment_request` manuális retry ugyanazt az immutable outbox rekordot használja; a lentebb PLANNED-ként leírt új rekordos resend erre nem vonatkozik. Meglévő request/status levelek változatlanok.
+> **IMPLEMENTED RC2 alap:** [díjbekérő a megerősítés előtt](22_OCCUPANCY_IFA_AND_PAYMENT_REQUEST.md). A `booking_payment_request` manuális retry ugyanazt az immutable outbox rekordot használja; a lentebb PLANNED-ként leírt új rekordos resend erre nem vonatkozik. A levélszövegek és az előlegalap aktuális Phase 3 szerződését a következő bekezdés hivatkozása írja le.
+
+> **IMPLEMENTED Phase 3:** [vendégkommunikáció és életciklus](24_GUEST_COMMUNICATIONS_LIFECYCLE.md): accommodation-fee alapú előleg, kézi payment reminder és érkezési tájékoztató biztonságos inline képekkel, napi review worker és completed státusz. A production cron nincs engedélyezve.
 
 > A production SMTP paraméterezés, SPF/DKIM/DMARC előkészítés és staging kézbesítési smoke végrehajtható lépéseit a [production deployment runbook](15_DEPLOYMENT.md#production-smtp) tartalmazza. Provider rekordot, credentialt vagy enforcement policyt a rendszer nem feltételez.
 

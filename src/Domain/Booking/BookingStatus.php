@@ -14,6 +14,7 @@ enum BookingStatus: string
     case Rejected = 'rejected';
     case Cancelled = 'cancelled';
     case Invalidated = 'invalidated';
+    case Completed = 'completed';
 
     public function blocksPublicBooking(): bool
     {
@@ -28,6 +29,7 @@ enum BookingStatus: string
             self::Rejected => 'Elutasítva',
             self::Cancelled => 'Lemondva',
             self::Invalidated => 'Érvénytelenítve',
+            self::Completed => 'Teljesült',
         };
     }
 }

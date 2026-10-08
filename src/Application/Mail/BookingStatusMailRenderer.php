@@ -13,9 +13,9 @@ final readonly class BookingStatusMailRenderer
     public function render(BookingStatusMailData $data): Message
     {
         $subjects = [
-            BookingStatusMailData::CONFIRMED => 'A Bata – foglalás megerősítve – ' . $data->reference,
-            BookingStatusMailData::REJECTED => 'A Bata – foglalási igény elutasítva – ' . $data->reference,
-            BookingStatusMailData::CANCELLED => 'A Bata – foglalás lemondva – ' . $data->reference,
+            BookingStatusMailData::CONFIRMED => 'Foglalás visszaigazolás',
+            BookingStatusMailData::REJECTED => 'Foglalási igényét visszautasítottuk',
+            BookingStatusMailData::CANCELLED => 'Foglalási igényét töröltük',
         ];
 
         return new Message(

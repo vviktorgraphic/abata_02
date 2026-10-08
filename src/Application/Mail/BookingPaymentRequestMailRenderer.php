@@ -18,7 +18,8 @@ final readonly class BookingPaymentRequestMailRenderer
 
     private function template(string $format, BookingPaymentRequestMailData $data): string
     {
-        $path = $this->templateDirectory . '/booking-payment-request.' . $format . '.php';
+        $suffix = $data->templateVersion === 1 ? '-v1' : '';
+        $path = $this->templateDirectory . '/booking-payment-request' . $suffix . '.' . $format . '.php';
         if (!is_file($path)) {
             throw new \RuntimeException('A díjbekérő e-mail sablon nem olvasható.');
         }

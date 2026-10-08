@@ -41,6 +41,7 @@ A jelölések jelentése:
 | [20 – Sprint 11 RC2 release hardening](20_SPRINT11_RC2_RELEASE_HARDENING.md) | RC2 integráció, biztonsági és deployment hardening, release gate-ek |
 | [21 – Legacy CSV import](21_LEGACY_CSV_IMPORT.md) | WP Booking System történeti foglalások előnézete, importja és provenance |
 | [23 – Admin havi foglaltság](23_ADMIN_MONTHLY_OCCUPANCY.md) | Read-only havi napi lista, fordulónapok, kézi és külső blokkolások |
+| [24 – Vendégkommunikáció és életciklus](24_GUEST_COMMUNICATIONS_LIFECYCLE.md) | IFA nélküli előleg, kézi levelek, inline képek, review worker, completed és logout |
 | [Owner decisions pending](OWNER_DECISIONS_PENDING.md) | RC2 production GO előtti tényleges tulajdonosi/hosting döntések |
 | [98 – Nyitott döntések](98_OPEN_DECISIONS.md) | Prioritásos, még tulajdonosi vagy architekturális döntést igénylő kérdések |
 | [99 – Tulajdonosi döntések](99_OWNER_DECISIONS.md) | Dátummal rögzített, lezárt tulajdonosi döntések |

@@ -13,12 +13,14 @@ final class BookingPaymentRequestUiTest extends TestCase
     #[DataProvider('pendingStates')]
     public function testPendingWorkflowRequiresSentRequestAndPreservesOtherActions(?string $state, string $message, bool $canSend, bool $canConfirm): void
     {
-        $payment = $state === null ? null : ['status' => $state, 'advance_amount' => '63000.00', 'sent_at' => $state === 'sent' ? '2026-10-05 12:30:00' : null];
+        $payment = $state === null ? null : ['status' => $state, 'advance_amount' => '31000.00', 'accommodation_fee'=>'62000.00','taxes'=>'2000.00','payment_reference'=>'AB-000123','sent_at' => $state === 'sent' ? '2026-10-05 12:30:00' : null];
         $html = $this->render('pending', $payment);
         self::assertStringContainsString('Foglalás véglegesítése', $html);
         self::assertStringContainsString($message, $html);
-        self::assertStringContainsString('Előleg: 63 000 Ft', $html);
-        self::assertStringNotContainsString('63000.00', $html);
+        self::assertStringContainsString('Fizetendő előleg</dt><dd>31 000 Ft', $html);
+        self::assertStringContainsString('IFA</dt><dd>2 000 Ft – helyben fizetendő', $html);
+        self::assertStringContainsString('Utalási közlemény</dt><dd>AB-000123', $html);
+        self::assertStringNotContainsString('31000.00', $html);
         $xpath = $this->xpath($html);
         foreach (['confirm' => $canConfirm, 'payment-request' => $canSend, 'reject' => true, 'invalidate' => true, 'cancel' => false] as $action => $available) {
             $forms = $xpath->query('//form[@action="/admin/bookings/AB-TEST/' . $action . '"]');
@@ -31,6 +33,7 @@ final class BookingPaymentRequestUiTest extends TestCase
         if ($canConfirm) {
             self::assertStringContainsString('Díjbekérő elküldve: 2026-10-05 12:30:00', $html);
             self::assertStringContainsString('Az előleg beérkezésének ellenőrzése után', $html);
+            self::assertStringContainsString('/payment-reminder"', $html);
         } else {
             self::assertStringContainsString('A foglalás a díjbekérő sikeres elküldése után erősíthető meg.', $html);
         }
@@ -48,30 +51,31 @@ final class BookingPaymentRequestUiTest extends TestCase
 
     public function testStoredAdvanceOverridesCurrentConfigurationPreview(): void
     {
-        $html = $this->render('pending', ['status' => 'failed', 'advance_amount' => '40001.00', 'sent_at' => null]);
-        self::assertStringContainsString('Előleg: 40 001 Ft', $html);
-        self::assertStringNotContainsString('Előleg: 63 000 Ft', $html);
+        $html = $this->render('pending', ['status' => 'failed', 'advance_amount' => '40001.00', 'accommodation_fee'=>'80002.00','taxes'=>'2000.00','payment_reference'=>'AB-000123','sent_at' => null]);
+        self::assertStringContainsString('Fizetendő előleg</dt><dd>40 001 Ft', $html);
+        self::assertStringNotContainsString('Fizetendő előleg</dt><dd>31 000 Ft', $html);
         self::assertStringContainsString('Díjbekérő küldése sikertelen', $html);
     }
 
     public function testConfirmedBookingKeepsCancellationWithoutAnotherPaymentRequest(): void
     {
-        $html = $this->render('confirmed', ['status' => 'sent', 'advance_amount' => '63000.00', 'sent_at' => '2026-10-05 12:30:00']);
+        $html = $this->render('confirmed', ['status' => 'sent', 'advance_amount' => '31000.00', 'sent_at' => '2026-10-05 12:30:00']);
         self::assertStringNotContainsString('Foglalás véglegesítése', $html);
         self::assertStringNotContainsString('/payment-request"', $html);
         self::assertStringNotContainsString('/confirm"', $html);
         self::assertStringContainsString('/cancel"', $html);
         self::assertStringContainsString('/invalidate"', $html);
+        self::assertStringContainsString('/arrival-information"', $html);
     }
 
     private function render(string $status, ?array $payment): string
     {
         return (new AdminView(dirname(__DIR__, 3) . '/templates'))->render('booking-detail', [
             'csrfToken' => 'safe-token',
-            'paymentAdvance' => '63000.00',
+            'paymentAdvance' => '31000.00', 'paymentReference'=>'AB-000123',
             'booking' => [
                 'reference' => 'AB-TEST', 'status' => $status, 'total_amount' => '126000.00',
-                'pricing_snapshot' => [], 'status_history' => [], 'payment_request' => $payment,
+                'pricing_snapshot' => ['accommodation_fee'=>'62000.00','taxes'=>'2000.00','total'=>'64000.00','currency'=>'HUF'], 'status_history' => [], 'payment_request' => $payment,
                 'email_outbox' => $payment === null ? [] : [['type' => 'booking_payment_request', 'status' => $payment['status'], 'attempts' => 1]],
             ],
         ]);
