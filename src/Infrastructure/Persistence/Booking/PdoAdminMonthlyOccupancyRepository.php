@@ -7,7 +7,6 @@ namespace App\Infrastructure\Persistence\Booking;
 use App\Application\Booking\AdminMonthlyOccupancyBuilder;
 use App\Application\Booking\AdminMonthlyOccupancyQuery;
 use App\Application\Booking\AdminMonthlyOccupancyRepository;
-use App\Domain\Booking\BookingStatus;
 use PDO;
 
 final readonly class PdoAdminMonthlyOccupancyRepository implements AdminMonthlyOccupancyRepository
@@ -20,7 +19,7 @@ final readonly class PdoAdminMonthlyOccupancyRepository implements AdminMonthlyO
 
     public function fetch(AdminMonthlyOccupancyQuery $query): array
     {
-        $statusPlaceholders = implode(', ', array_fill(0, count(BookingStatus::BLOCKING_VALUES), '?'));
+        $statusPlaceholders = implode(', ', array_fill(0, count(AdminMonthlyOccupancyBuilder::VISIBLE_BOOKING_STATUSES), '?'));
         $bookings = $this->pdo->prepare(
             "SELECT b.reference, b.guest_name AS contact_name, b.status, b.arrival_date, b.departure_date,
                     CASE WHEN li.id IS NULL THEN 0 ELSE 1 END AS legacy
@@ -31,7 +30,7 @@ final readonly class PdoAdminMonthlyOccupancyRepository implements AdminMonthlyO
              ORDER BY b.arrival_date, b.departure_date, b.id"
         );
         $bookings->execute([
-            ...BookingStatus::BLOCKING_VALUES,
+            ...AdminMonthlyOccupancyBuilder::VISIBLE_BOOKING_STATUSES,
             $query->nextMonthStart->format('Y-m-d'),
             $query->monthStart->format('Y-m-d'),
         ]);

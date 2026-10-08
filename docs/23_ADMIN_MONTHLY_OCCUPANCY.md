@@ -10,7 +10,7 @@ A `GET /admin/bookings/monthly` csak teljes admin sessionnel érhető el. Az opc
 
 A hónap minden napja pontosan egyszer szerepel magyar napnévvel. A booking intervalluma `[arrival_date, departure_date)`: érkezéskor `Érkezés`, belső éjszakán `Foglalt`, távozáskor `Távozás` látható. A távozás önmagában nem blokkol, ezért a sor `Szabad` jelölést is kap. Azonos napi távozás és új érkezés fordulónap; mindkét booking megmarad a listában.
 
-Csak a `BookingStatus::BLOCKING_VALUES` szerinti `pending` és `confirmed` booking vesz részt. A workflow-státusz külön, magyarul látható. A referencia a részletoldalra mutat, a név és legacy provenance látható, e-mail és telefonszám nem.
+A read-only történeti nézet explicit megjelenítési szerződése szerint a `pending`, `confirmed` és `completed` booking vesz részt. Ez szándékosan nem a `BookingStatus::BLOCKING_VALUES`: a `completed` tartózkodás érkezése, foglalt belső napjai és szabad távozási napja történetileg látható marad, miközben továbbra sem blokkol publikus kapacitást és nem kerül iCal exportba. A workflow-státusz külön, magyarul látható. A referencia a részletoldalra mutat, a név és legacy provenance látható, e-mail és telefonszám nem.
 
 Az aktív kézi blokk `[start_date, end_date)` szerint `Blokkolt`. A `external_calendar_events.blocked_period_id` kapcsolattal rendelkező blokk `Külső naptár`, humanizált providerrel, forrásnévvel és összefoglalóval. A besorolás nem indokszöveg alapján történik; UID és raw payload nem jelenik meg. Minden dinamikus szöveg HTML-escape-et kap.
 
@@ -18,7 +18,7 @@ Az aktív kézi blokk `[start_date, end_date)` szerint `Blokkolt`. A `external_c
 
 A `PdoAdminMonthlyOccupancyRepository` kérésenként két prepared queryt futtat:
 
-1. blokkoló bookingok: `arrival_date < nextMonthStart AND departure_date >= monthStart`;
+1. a read modelben látható `pending`, `confirmed` és `completed` bookingok: `arrival_date < nextMonthStart AND departure_date >= monthStart`;
 2. aktív blokkok és külső metaadat: `start_date < nextMonthStart AND end_date > monthStart`.
 
 A napi lista az `AdminMonthlyOccupancyBuilder` memóriabeli read modellje. Nincs N+1, denormalizált cache vagy új adatbázis-séma.

@@ -20,7 +20,7 @@ $renderNavigation = static function (array $data) use ($e, $monthUrl): void { ?>
 <section class="admin-page monthly-occupancy" aria-labelledby="monthly-title">
     <p class="eyebrow">Adminisztráció</p>
     <h1 id="monthly-title">Havi foglaltság</h1>
-    <p class="intro">A havi nézet a függőben lévő és megerősített foglalásokat, valamint az aktív blokkolt időszakokat mutatja. A távozás napja már nem foglalt éjszaka.</p>
+    <p class="intro">A havi nézet a függőben lévő, megerősített és teljesült foglalásokat, valamint az aktív blokkolt időszakokat mutatja. A távozás napja már nem foglalt éjszaka.</p>
     <?php $renderNavigation($occupancy) ?>
     <div class="table-scroll monthly-table-scroll" tabindex="0" role="region" aria-label="<?= $e($occupancy['label']) ?> napi foglaltsága">
         <table class="monthly-table">

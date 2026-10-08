@@ -27,10 +27,12 @@ final class AdminMonthlyOccupancyRepositoryTest extends TestCase
         if (isset($this->pdo) && $this->pdo->inTransaction()) $this->pdo->rollBack();
     }
 
-    public function test_fetches_only_blocking_bookings_and_active_overlapping_blocks_with_source_metadata(): void
+    public function test_fetches_visible_booking_history_and_active_overlapping_blocks_with_source_metadata(): void
     {
         $legacyBooking = $this->booking('MONTHLY-' . bin2hex(random_bytes(4)), 'pending', '2048-10-03', '2048-10-05');
         $this->booking('MONTHLY-' . bin2hex(random_bytes(4)), 'confirmed', '2048-09-28', '2048-10-01');
+        $completedReference = 'MONTHLY-COMPLETED-' . bin2hex(random_bytes(4));
+        $this->booking($completedReference, 'completed', '2048-10-21', '2048-10-23');
         $this->booking('MONTHLY-' . bin2hex(random_bytes(4)), 'cancelled', '2048-10-03', '2048-10-05');
         $this->legacy($legacyBooking);
 
@@ -57,6 +59,11 @@ final class AdminMonthlyOccupancyRepositoryTest extends TestCase
         self::assertSame('Partner forrás', $this->day($result, '2048-10-11')['blocks'][1]['source_name']);
         self::assertSame($manual, $this->day($result, '2048-10-10')['blocks'][0]['id']);
         self::assertSame(['free'], $this->badgeKeys($this->day($result, '2048-10-14')));
+        self::assertSame(['arrival'], $this->badgeKeys($this->day($result, '2048-10-21')));
+        self::assertSame(['occupied'], $this->badgeKeys($this->day($result, '2048-10-22')));
+        self::assertSame(['free', 'departure'], $this->badgeKeys($this->day($result, '2048-10-23')));
+        self::assertSame($completedReference, $this->day($result, '2048-10-22')['bookings'][0]['reference']);
+        self::assertSame('completed', $this->day($result, '2048-10-22')['bookings'][0]['status']);
     }
 
     private function booking(string $reference, string $status, string $arrival, string $departure): int

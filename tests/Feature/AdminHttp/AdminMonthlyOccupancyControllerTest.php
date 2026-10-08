@@ -40,6 +40,7 @@ final class AdminMonthlyOccupancyControllerTest extends TestCase
     {
         $repository = new MonthlyOccupancyFakeRepository([
             ['reference' => 'AB-<1>', 'contact_name' => '<Vendég>', 'status' => 'pending', 'arrival_date' => '2026-10-08', 'departure_date' => '2026-10-09', 'legacy' => true],
+            ['reference' => 'AB-COMPLETE', 'contact_name' => 'Korábbi vendég', 'status' => 'completed', 'arrival_date' => '2026-10-01', 'departure_date' => '2026-10-03', 'legacy' => false],
         ], [
             ['id' => 1, 'start_date' => '2026-10-10', 'end_date' => '2026-10-11', 'reason' => '<ok>', 'external_event_id' => null],
             ['id' => 2, 'start_date' => '2026-10-11', 'end_date' => '2026-10-12', 'reason' => '', 'external_event_id' => 9, 'event_summary' => '<Partner>', 'source_name' => '<Forrás>', 'provider' => 'google_calendar'],
@@ -57,6 +58,8 @@ final class AdminMonthlyOccupancyControllerTest extends TestCase
         self::assertStringContainsString('aria-current="date"', $response->body);
         self::assertStringContainsString('href="/admin/bookings/AB-%3C1%3E"', $response->body);
         self::assertStringContainsString('Függőben', $response->body);
+        self::assertStringContainsString('Teljesült', $response->body);
+        self::assertStringContainsString('status-completed', $response->body);
         self::assertStringContainsString('korábbi import', $response->body);
         self::assertStringContainsString('Google Calendar', $response->body);
         self::assertStringContainsString('&lt;Partner&gt;', $response->body);

@@ -23,6 +23,7 @@ A projekt változásai ebben a fájlban követik a release-eket. A formátum a K
 
 ### Fixed
 
+- A teljesült foglalások megmaradnak az admin havi történeti nézetben anélkül, hogy publikus kapacitást blokkolnának vagy iCalba kerülnének; a státuszlevél-retry csak a kapcsolódó failed levélre reagál, a lemondási indok pedig egyértelműen vendégnek szóló mezőként jelenik meg.
 - Az admin `Árképzés` most egyetlen, nem technikai tulajdonosi workflow: felnőttárak, létrehozható/szerkeszthető/törölhető gyermek ársávok és üzleti előnézet.
 - A legacy `amount=NULL` pricing sorok többé nem okoznak HufFormatter TypeErrort; adatjavító migráció, repository-normalizálás és biztonságos production 500 hibahatár készült.
 - Az admin intrinsic flex/grid/table szélességei nem okoznak dokumentumszintű horizontális túlcsordulást; a széles táblák saját wrapperben görgethetők.

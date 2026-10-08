@@ -37,6 +37,10 @@ Nincs `<=` catch-up, így történeti import vagy egy kihagyott nap nem indít t
 
 A booking részlet immutable bontásban mutatja a szállásdíjat, a helyben fizetendő IFA-t, az előleget és a rövid közleményt. A shared admin fejléc jobb oldalán POST + CSRF alapú, billentyűzettel használható kijelentkezés ikon található; GET logout nincs.
 
+A lemondás `admin_note` mezője vendégnek küldött indoklás, ezért a cancel űrlap ezt explicit jelzi; a confirm, reject és invalidate megjegyzések admin megjegyzésként maradnak címkézve. A generikus státuszlevél-retry csak az aktuális workflow-státuszhoz tartozó failed `booking_confirmed`, `booking_rejected` vagy `booking_cancelled` rekordnál jelenik meg, más failed kommunikáció nem aktiválja.
+
+A `completed` foglalás kizárólag a read-only admin havi történeti nézetben marad látható érkezés/foglalt/távozás bontásban. Ez nem változtatja meg a publikus kapacitás- vagy iCal-szerződést.
+
 Az automatikus levelezés magyar. Nyelvi mező hiányában névből, e-mailből, telefonszámból, megjegyzésből vagy böngészőből nem történik nyelvkövetkeztetés; automatikus angol routing nincs.
 
 Új message type-ok: `booking_payment_reminder`, `booking_arrival_information`, `booking_review_request`. Az audit sent/failed/retry állapotot rögzít PII, teljes body, SMTP credential és kép nélkül. SMTP-elfogadás után az outbox `sent` állapota megelőzi az auditot, ezért későbbi audithiba nem teszi újraküldhetővé a levelet.

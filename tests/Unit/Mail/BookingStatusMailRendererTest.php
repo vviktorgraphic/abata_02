@@ -58,6 +58,15 @@ final class BookingStatusMailRendererTest extends TestCase
         self::assertStringContainsString('automatikus terhelés nem történt', $message->textBody);
     }
 
+    public function testGuestFacingCancellationReasonIsHtmlEscaped(): void
+    {
+        $message = $this->renderer()->render($this->data('cancelled', '<belső> & vendég'));
+
+        self::assertStringContainsString('&lt;belső&gt; &amp; vendég', $message->htmlBody);
+        self::assertStringNotContainsString('<belső>', $message->htmlBody);
+        self::assertStringContainsString('<belső> & vendég', $message->textBody);
+    }
+
     public function testRejectsInvalidatedNotificationConstruction(): void
     {
         $this->expectException(\InvalidArgumentException::class);
@@ -69,7 +78,7 @@ final class BookingStatusMailRendererTest extends TestCase
         return new BookingStatusMailRenderer(dirname(__DIR__, 3) . '/templates/email', 'noreply@example.test');
     }
 
-    private function data(string $status): BookingStatusMailData
+    private function data(string $status, ?string $cancellationReason = null): BookingStatusMailData
     {
         return new BookingStatusMailData(
             'guest@example.test', $status, 'AB-2026-001', '2026-08-10', '2026-08-13',
@@ -77,7 +86,7 @@ final class BookingStatusMailRendererTest extends TestCase
             $status === 'cancelled' ? '45000.00' : null,
             $status === 'cancelled' ? '90000.00' : null,
             'Teszt Vendég',
-            $status === 'cancelled' ? 'Vendég kérésére' : null,
+            $status === 'cancelled' ? ($cancellationReason ?? 'Vendég kérésére') : null,
         );
     }
 }

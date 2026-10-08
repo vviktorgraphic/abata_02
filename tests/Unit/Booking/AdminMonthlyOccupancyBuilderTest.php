@@ -6,6 +6,7 @@ namespace Tests\Unit\Booking;
 
 use App\Application\Booking\AdminMonthlyOccupancyBuilder;
 use App\Application\Booking\AdminMonthlyOccupancyQuery;
+use App\Domain\Booking\BookingStatus;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 
@@ -61,6 +62,22 @@ final class AdminMonthlyOccupancyBuilderTest extends TestCase
         self::assertSame('Szallas.hu', $this->day($result, '2026-10-11')['blocks'][1]['provider_label']);
         self::assertSame(['blocked'], $this->badgeKeys($this->day($result, '2026-10-01')));
         self::assertSame(['free'], $this->badgeKeys($this->day($result, '2026-10-02')));
+    }
+
+    public function test_completed_booking_remains_visible_as_historical_occupancy_without_becoming_blocking(): void
+    {
+        $query = new AdminMonthlyOccupancyQuery('2026-12', new DateTimeImmutable('2026-12-24'));
+        $result = (new AdminMonthlyOccupancyBuilder())->build($query, [
+            $this->booking('COMPLETED', 'completed', '2026-12-21', '2026-12-23'),
+        ], []);
+
+        self::assertSame(['arrival'], $this->badgeKeys($this->day($result, '2026-12-21')));
+        self::assertSame(['occupied'], $this->badgeKeys($this->day($result, '2026-12-22')));
+        self::assertSame(['free', 'departure'], $this->badgeKeys($this->day($result, '2026-12-23')));
+        self::assertSame('completed', $this->day($result, '2026-12-22')['bookings'][0]['status']);
+        self::assertSame(['pending', 'confirmed', 'completed'], AdminMonthlyOccupancyBuilder::VISIBLE_BOOKING_STATUSES);
+        self::assertNotContains('completed', BookingStatus::BLOCKING_VALUES);
+        self::assertFalse(BookingStatus::Completed->blocksPublicBooking());
     }
 
     /** @return array<string, mixed> */

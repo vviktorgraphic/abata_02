@@ -87,7 +87,7 @@ Admin booking lista/részlet, explicit state machine, tranzakciós history/audit
 
 ## Phase 2 admin havi foglaltság – IMPLEMENTED
 
-A védett `/admin/bookings/monthly` read-only oldal Budapest-hónaponként napi bontásban mutatja a pending/confirmed foglalások érkezését, foglalt éjszakáit és távozását, továbbá az aktív kézi és külső naptári blokkolásokat. A lekérdezés két batchelt SQL műveletet használ, a fél-nyitott intervallumot megőrzi, és nem változtat booking-, inventory-, pricing-, payment-, mail- vagy iCal-viselkedést.
+A védett `/admin/bookings/monthly` read-only oldal Budapest-hónaponként napi bontásban mutatja a pending/confirmed, valamint történeti completed foglalások érkezését, foglalt éjszakáit és távozását, továbbá az aktív kézi és külső naptári blokkolásokat. A lekérdezés két batchelt SQL műveletet használ, a fél-nyitott intervallumot megőrzi, és nem változtat booking-, inventory-, pricing-, payment-, mail- vagy iCal-viselkedést; a completed továbbra sem blokkol és nem exportálódik.
 
 ## Sprint 7 – IMPLEMENTED alaphatókör
 

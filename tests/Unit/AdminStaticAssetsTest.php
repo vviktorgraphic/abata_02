@@ -54,4 +54,17 @@ final class AdminStaticAssetsTest extends TestCase
         $package = file_get_contents($root . '/tools/New-ReleasePackage.ps1');
         self::assertStringContainsString('archive --format=tar', $package);
     }
+
+    public function testCompletedStatusHasDedicatedStyleInCanonicalAndFingerprintedAdminCss(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $assets = require $root . '/config/static-assets.php';
+
+        foreach ([$root . '/public/static/css/admin.css', $root . '/public' . $assets['admin_css']] as $path) {
+            $css = file_get_contents($path);
+            self::assertIsString($css);
+            self::assertStringContainsString('.status-completed', $css);
+            self::assertStringContainsString('background:#dbeaf2', $css);
+        }
+    }
 }

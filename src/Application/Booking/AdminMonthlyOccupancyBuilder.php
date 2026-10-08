@@ -10,6 +10,13 @@ use DateTimeZone;
 
 final class AdminMonthlyOccupancyBuilder
 {
+    /** @var list<string> */
+    public const VISIBLE_BOOKING_STATUSES = [
+        BookingStatus::Pending->value,
+        BookingStatus::Confirmed->value,
+        BookingStatus::Completed->value,
+    ];
+
     /**
      * @param list<array<string, mixed>> $bookings
      * @param list<array<string, mixed>> $blocks
@@ -35,7 +42,7 @@ final class AdminMonthlyOccupancyBuilder
 
         foreach ($bookings as $booking) {
             $status = BookingStatus::tryFrom((string) ($booking['status'] ?? ''));
-            if ($status === null || !$status->blocksPublicBooking()) {
+            if ($status === null || !in_array($status->value, self::VISIBLE_BOOKING_STATUSES, true)) {
                 continue;
             }
             $arrival = $this->date((string) ($booking['arrival_date'] ?? ''));

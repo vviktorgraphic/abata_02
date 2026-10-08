@@ -132,6 +132,43 @@ final class AdminBookingUiTest extends TestCase
         ]];
     }
 
+    /** @return iterable<string, array{string, string, bool}> */
+    public static function statusRetryCases(): iterable
+    {
+        yield 'failed confirmation on confirmed booking' => ['confirmed', 'booking_confirmed', true];
+        yield 'failed arrival information is unrelated' => ['confirmed', 'booking_arrival_information', false];
+        yield 'failed review request is unrelated' => ['confirmed', 'booking_review_request', false];
+        yield 'failed rejection on rejected booking' => ['rejected', 'booking_rejected', true];
+        yield 'failed cancellation on cancelled booking' => ['cancelled', 'booking_cancelled', true];
+    }
+
+    #[DataProvider('statusRetryCases')]
+    public function test_status_retry_button_only_tracks_failed_mail_for_current_workflow_status(string $status, string $messageType, bool $visible): void
+    {
+        $html = $this->renderDetail($status, [[
+            'type' => $messageType,
+            'status' => 'failed',
+            'attempts' => 1,
+        ]]);
+
+        self::assertSame(
+            $visible,
+            str_contains($html, 'Sikertelen státuszlevél újraküldése'),
+        );
+    }
+
+    public function test_cancel_note_is_explicitly_guest_facing_while_other_notes_remain_admin_notes(): void
+    {
+        $confirmed = $this->renderDetail('confirmed');
+        self::assertStringContainsString('Indoklás a vendégnek (opcionális)', $confirmed);
+        self::assertStringContainsString('Ez a szöveg megjelenik a vendégnek küldött törlési e-mailben.', $confirmed);
+        self::assertSame(1, substr_count($confirmed, 'Admin megjegyzés (opcionális)'));
+
+        $pending = $this->renderDetail('pending', [], ['status' => 'sent']);
+        self::assertStringNotContainsString('Indoklás a vendégnek', $pending);
+        self::assertSame(3, substr_count($pending, 'Admin megjegyzés (opcionális)'));
+    }
+
     public function test_blocked_period_page_explains_half_open_dates_and_has_no_get_mutation(): void
     {
         $html = $this->view->render('blocked-periods', ['periods'=>[['id'=>4,'start_date'=>'2026-09-01','end_date'=>'2026-09-03','reason'=>'Karbantartás','internal_note'=>null]], 'csrfToken'=>'token']);
@@ -139,5 +176,22 @@ final class AdminBookingUiTest extends TestCase
         self::assertSame(2, substr_count($html, 'method="post"'));
         self::assertStringNotContainsString('method="get" action="/admin/blocked-periods/', $html);
         self::assertStringContainsString('<label for="start_date">', $html);
+    }
+
+    /** @param list<array<string, mixed>> $emailOutbox */
+    private function renderDetail(string $status, array $emailOutbox = [], ?array $paymentRequest = null): string
+    {
+        return $this->view->render('booking-detail', [
+            'csrfToken' => 'safe-token',
+            'booking' => [
+                'reference' => 'AB-RETRY',
+                'status' => $status,
+                'total_amount' => '0.00',
+                'pricing_snapshot' => [],
+                'status_history' => [],
+                'email_outbox' => $emailOutbox,
+                'payment_request' => $paymentRequest,
+            ],
+        ]);
     }
 }

@@ -6,6 +6,7 @@
 - Kézi, idempotens előleg-emlékeztető és confirmed foglaláshoz küldhető érkezési tájékoztató készült. Az érkezési levél négy CID-es JPEG-et használ; a kulcsszéf képe redaktált, az unsafe forrás nincs a release assetek között.
 - Az egzakt távozási napon review levél, az egzakt következő napon `Teljesült` státusz futtatható a lifecycle CLI-vel. Történeti catch-up nincs, production cron nincs engedélyezve.
 - A shared admin fejléc CSRF-védett POST kijelentkezés ikont kapott.
+- A pre-deploy hotfix megtartja a `Teljesült` foglalásokat a read-only havi történetben, pontosítja a státuszlevél-retry feltételét és egyértelműen vendégnek szólóként címkézi a lemondási indokot; a publikus blocking és iCal viselkedés változatlan.
 
 ## Static path compatibility hotfix
 
