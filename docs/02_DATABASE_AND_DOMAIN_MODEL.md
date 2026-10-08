@@ -288,6 +288,10 @@ Az egy tranzakción belüli invariáns szerint booking nem maradhat status histo
 ## Sprint 5 admin modell – IMPLEMENTED
 
 Átmenetek: `pending -> confirmed|rejected|invalidated`, `confirmed -> cancelled|invalidated`. A booking, history, audit és státusz-outbox egy tranzakció. A single-property inventory lock szerializálja a create/confirm/blocked create készletellenőrzését. A `012_add_blocked_period_management.sql` auditálható, aktív jelzős soft delete-et vezet be.
+
+## Phase 2 havi foglaltsági read model – IMPLEMENTED, SÉMAVÁLTOZÁS NÉLKÜL
+
+Az admin havi nézet a meglévő `bookings`, `legacy_booking_imports`, `blocked_periods`, `external_calendar_events` és `calendar_sources` relációkból épül fel. A foglalás lekérdezési határa `arrival_date < nextMonthStart AND departure_date >= monthStart`; a blokkolásé `start_date < nextMonthStart AND end_date > monthStart AND is_active = TRUE`. A `>=` biztosítja a hónap első napjára eső távozási eseményt. Új tábla, cache vagy migráció nem készült.
 ## Sprint 10 séma – IMPLEMENTED
 
 A `017_add_ical_automation.sql` az external eventhez `missing_since`, a sync loghoz updated/duplicate/inactive/grace/retry/recovered számlálókat ad. A `019_add_ical_missing_instant.sql` az abszolút `missing_since_timestamp` epoch értékkel teszi DST-biztossá a legalább 24 órás grace-t; a helyi DATETIME csak üzemeltetői megjelenítés.

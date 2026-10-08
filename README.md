@@ -127,6 +127,7 @@ A `composer backup:database` webrooton/repositoryn kívüli könyvtárba készí
 - `GET /admin/login` – admin belépési oldal
 - `POST /admin/login` – jelszavas első faktor, CSRF- és rate-limit védelemmel
 - `GET /admin/2fa` – e-mailes kód megadása pending sessionben
+- `GET /admin/bookings/monthly?month=YYYY-MM` – hitelesített, read-only havi foglaltsági lista
 - `POST /admin/2fa/verify` – második faktor ellenőrzése
 - `POST /admin/2fa/resend` – új kód kérése resend limittel
 - `GET /admin` – minimális, teljes 2FA-val védett dashboard
@@ -269,6 +270,8 @@ A demo seed szemléltető fejlesztési árat tartalmaz, production árként nem 
 ## Sprint 5 – admin foglaláskezelés
 
 **IMPLEMENTED:** védett `/admin/bookings` lista/részlet kereséssel, szűréssel és lapozással; confirm/reject/cancel/invalidate; audit/history/outbox; konkurens confirm elleni inventory lock; blocked-period soft delete; státuszlevél és CSRF/no-store/rate-limit. A sikertelen státuszlevél a részletoldalról biztonságosan újraküldhető.
+
+**IMPLEMENTED Phase 2:** a védett `/admin/bookings/monthly` oldal a kiválasztott Budapest-hónap minden napját megjeleníti. Külön jelöli az érkezést, foglalt éjszakát, távozást, fordulónapot, kézi blokkot és relációval azonosított külső naptárblokkot; a távozás napja önmagában szabad. A nézet read-only és két batchelt adatbázis-lekérdezést használ.
 
 **PLANNED:** általános cron retry, maximális attempts és stale `processing` reclaim tulajdonosi döntés után.
 

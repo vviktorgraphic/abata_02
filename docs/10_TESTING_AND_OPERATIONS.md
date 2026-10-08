@@ -294,6 +294,21 @@ git diff --check
 git status
 ```
 
+## Phase 2 havi foglaltsági nézet ellenőrzése
+
+**AUTOMATIZÁLTAN LEFEDETT:** szigorú `YYYY-MM` feldolgozás és Budapest-alapértelmezés; évhatáros navigáció; a hónap összes napja; pending/confirmed érkezés, belső nap és távozás; hónapkezdő távozás; hónapvégi átnyúlás; szabad távozási nap; fordulónap; lezárt státuszok kizárása; legacy jelölés; aktív kézi és relációval azonosított külső blokkok; fél-nyitott blokkhatár; forrás-humanizálás; HTML-escape; auth és 422 ág; pontosan két repository query szerződése.
+
+PowerShellből célzottan, majd teljesen:
+
+```powershell
+docker compose exec app vendor/bin/phpunit tests/Unit/Booking/AdminMonthlyOccupancyQueryTest.php tests/Unit/Booking/AdminMonthlyOccupancyBuilderTest.php tests/Feature/AdminHttp/AdminMonthlyOccupancyControllerTest.php
+docker compose exec app vendor/bin/phpunit tests/Integration/Booking/AdminMonthlyOccupancyRepositoryTest.php
+docker compose exec app vendor/bin/phpunit
+git diff --check
+```
+
+Kézi smoke során ellenőrizendő a `/admin/bookings/monthly`, egy 28/29/30/31 napos hónap, az előző/következő/mai hónap link, a vízszintes mobil scroll és egy távozás+érkezés fordulónap. Az oldal read-only; migrációt nem igényel.
+
 ## Sprint 6 ellenőrzési mátrix
 
 **AUTOMATIZÁLTAN LEFEDETT:** 1/2/3/4–6/7+ éjszakás sávok; mindhárom alapegység; seasonal/weekend sorrend; priority és silent-conflict tiltás; fix díj, IFA és konfigurált exemption; HALF_UP kerekítés és snapshot immutability; policy kötelezőség, version/URL snapshot és tranzakciós rollback; pricing CRUD active/inactive/conflict; preview és booking közös engine adaptere; a pontos 7/8/6/0 napos lemondási határok; immutable accommodation-fee alap; cancellation persistence/history/audit/outbox; admin auth/CSRF/no-store/IDOR/numeric validation; policy/detail/e-mail/branding megjelenítés.

@@ -108,6 +108,7 @@ $router->post('/admin/2fa/verify', static fn () => $admin()['two_factor']->verif
 $router->post('/admin/2fa/resend', static fn () => $admin()['two_factor']->resend($_POST, $context())->send());
 $router->get('/admin', static fn () => $admin()['dashboard']->show()->send());
 $router->get('/admin/bookings', static fn (array $query) => $admin()['bookings']->index($query)->send());
+$router->get('/admin/bookings/monthly', static fn (array $query) => $admin()['monthly_occupancy']->index($query)->send());
 $router->get('/admin/users', static fn (array $query) => $admin()['users']->index(
     notificationsUpdated: ($query['notifications-updated'] ?? null) === '1',
 )->send());

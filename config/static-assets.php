@@ -4,7 +4,7 @@ $root = dirname(__DIR__);
 $assets = [
     'booking_css' => '/static/css/booking.a9b92500f481.css',
     'booking_js' => '/static/js/booking-calendar.008ba7834fdd.js',
-    'admin_css' => '/static/css/admin.0614c5c3a45c.css',
+    'admin_css' => '/static/css/admin.ee9ea8b52ef5.css',
     'admin_js' => '/static/js/admin-auth.67fef7d8207e.js',
 ];
 foreach ($assets as $key => $path) {

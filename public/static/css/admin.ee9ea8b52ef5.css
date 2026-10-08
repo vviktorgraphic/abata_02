@@ -87,3 +87,19 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 @media (max-width:36rem) { .pricing-editor .field-grid { grid-template-columns:1fr; } }
 @media (max-width:30rem) { .users-toolbar { align-items:stretch; } .users-toolbar .button-link,.users-toolbar button { justify-content:center; flex:1 1 10rem; } }
 @media (max-width:30rem) { .brand-header { gap:.75rem; } .brand-header nav { width:100%; } .admin-main { padding-inline:.5rem; } .admin-page { padding-inline:.75rem; } }
+.month-navigation { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:.75rem; margin:1.25rem 0; }
+.month-navigation .button-secondary { display:inline-flex; align-items:center; min-height:2.75rem; padding:.5rem .8rem; border:2px solid var(--color-primary); border-radius:.25rem; color:var(--color-primary); text-decoration:none; font-weight:800; }
+.month-navigation strong { min-width:10rem; text-align:center; }
+.monthly-table { min-width:72rem; }
+.monthly-table th:first-child { width:8.5rem; }
+.monthly-table td { vertical-align:top; }
+.monthly-table tbody tr.is-weekend { background:#f7f7fb; }
+.monthly-table tbody tr.is-today { background:#fff4d9; box-shadow:inset .3rem 0 0 var(--color-accent); }
+.monthly-badges { white-space:normal; }
+.occupancy-badge { display:inline-block; margin:.1rem .2rem .1rem 0; padding:.2rem .5rem; border-radius:1rem; background:var(--neutral-300); font-size:.84rem; font-weight:800; white-space:nowrap; }
+.occupancy-free { background:#d8f1df; }.occupancy-arrival { background:#d8e9ff; }.occupancy-occupied { background:#ffe4af; }.occupancy-departure { background:#e4dcf5; }.occupancy-blocked { color:#fff; background:#8b1d32; }.occupancy-external { color:#fff; background:#34516e; }
+.occupancy-events { min-width:16rem; margin:0; padding-left:1.15rem; white-space:normal; }
+.occupancy-events li + li { margin-top:.45rem; }
+.occupancy-events small { display:block; color:var(--neutral-700); }
+.muted { color:var(--neutral-700); }
+@media (max-width:36rem) { .month-navigation { align-items:stretch; flex-direction:column; } .month-navigation .button-secondary,.month-navigation strong { justify-content:center; width:100%; text-align:center; } }

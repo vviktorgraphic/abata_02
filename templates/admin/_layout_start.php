@@ -9,5 +9,5 @@
     <script src="<?= htmlspecialchars($staticAssets['admin_js'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>" defer></script>
 </head>
 <body>
-<header class="brand-header"><a class="brand" href="/admin" aria-label="A Bata admin kezdőlap">A Bata</a><nav aria-label="Admin navigáció"><a href="/admin/bookings">Foglalások</a><a href="/admin/bookings/import">Korábbi import</a><a href="/admin/blocked-periods">Blokkolt időszakok</a><a href="/admin/pricing">Árképzés</a><a href="/admin/users">Felhasználók</a><a href="/admin/calendar">Naptárszinkron</a></nav></header>
+<header class="brand-header"><a class="brand" href="/admin" aria-label="A Bata admin kezdőlap">A Bata</a><nav aria-label="Admin navigáció"><a href="/admin/bookings">Foglalások</a><a href="/admin/bookings/monthly">Havi foglaltság</a><a href="/admin/bookings/import">Korábbi import</a><a href="/admin/blocked-periods">Blokkolt időszakok</a><a href="/admin/pricing">Árképzés</a><a href="/admin/users">Felhasználók</a><a href="/admin/calendar">Naptárszinkron</a></nav></header>
 <main class="admin-main">

@@ -40,6 +40,7 @@ A jelölések jelentése:
 | [19 – Pricing admin UX fix](19_PRICING_ADMIN_UX_FIX.md) | Tulajdonosi árkezelés, ársávtörlés, HUF runtime és reszponzív javítás |
 | [20 – Sprint 11 RC2 release hardening](20_SPRINT11_RC2_RELEASE_HARDENING.md) | RC2 integráció, biztonsági és deployment hardening, release gate-ek |
 | [21 – Legacy CSV import](21_LEGACY_CSV_IMPORT.md) | WP Booking System történeti foglalások előnézete, importja és provenance |
+| [23 – Admin havi foglaltság](23_ADMIN_MONTHLY_OCCUPANCY.md) | Read-only havi napi lista, fordulónapok, kézi és külső blokkolások |
 | [Owner decisions pending](OWNER_DECISIONS_PENDING.md) | RC2 production GO előtti tényleges tulajdonosi/hosting döntések |
 | [98 – Nyitott döntések](98_OPEN_DECISIONS.md) | Prioritásos, még tulajdonosi vagy architekturális döntést igénylő kérdések |
 | [99 – Tulajdonosi döntések](99_OWNER_DECISIONS.md) | Dátummal rögzített, lezárt tulajdonosi döntések |
@@ -82,6 +83,10 @@ A fejlesztő agent először ezt az indexet, majd az érintett modul dokumentuma
 ## Sprint 5 – IMPLEMENTED
 
 Admin booking lista/részlet, explicit state machine, tranzakciós history/audit/outbox, kétprocesszes confirm race teszt, blocked-period kezelés, státuszlevelek és védett A Bata admin UI. A production SMTP és az automatikus retry továbbra is **PLANNED**.
+
+## Phase 2 admin havi foglaltság – IMPLEMENTED
+
+A védett `/admin/bookings/monthly` read-only oldal Budapest-hónaponként napi bontásban mutatja a pending/confirmed foglalások érkezését, foglalt éjszakáit és távozását, továbbá az aktív kézi és külső naptári blokkolásokat. A lekérdezés két batchelt SQL műveletet használ, a fél-nyitott intervallumot megőrzi, és nem változtat booking-, inventory-, pricing-, payment-, mail- vagy iCal-viselkedést.
 
 ## Sprint 7 – IMPLEMENTED alaphatókör
 

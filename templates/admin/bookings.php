@@ -1,6 +1,7 @@
 <?php declare(strict_types=1); $title = 'Foglalások – A Bata'; require __DIR__ . '/_layout_start.php'; $e = static fn (mixed $v): string => htmlspecialchars((string) $v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>
 <section class="admin-page" aria-labelledby="bookings-title">
  <p class="eyebrow">Adminisztráció</p><h1 id="bookings-title">Foglalások</h1>
+ <p><a class="button-link" href="/admin/bookings/monthly">Havi foglaltság megnyitása</a></p>
  <form class="filters" method="get" action="/admin/bookings" aria-label="Foglalások szűrése">
   <fieldset class="filter-group filter-group-primary"><legend>Gyors szűrés</legend><div class="filter-fields">
    <div class="filter-field filter-field-search"><label for="q">Keresés</label><input id="q" name="q" maxlength="100" value="<?= $e($filters['q'] ?? '') ?>" placeholder="Referencia, név, e-mail vagy telefon"></div>

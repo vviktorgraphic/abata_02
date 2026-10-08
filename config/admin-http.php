@@ -18,6 +18,7 @@ use App\Http\Controller\Admin\LoginController;
 use App\Http\Controller\Admin\LogoutController;
 use App\Http\Controller\Admin\TwoFactorController;
 use App\Http\Controller\Admin\BookingManagementController;
+use App\Http\Controller\Admin\MonthlyOccupancyController;
 use App\Http\Controller\Admin\BlockedPeriodController;
 use App\Http\Controller\Admin\PricingAdminController;
 use App\Http\Controller\Admin\OccupancyPricingAdminController;
@@ -25,6 +26,7 @@ use App\Http\Controller\Admin\AdminActionGuard;
 use App\Http\Controller\Admin\CalendarAdminController;
 use App\Http\Controller\Admin\SecurityAdminActionRateLimiter;
 use App\Infrastructure\Persistence\Booking\PdoAdminBookingQueryRepository;
+use App\Infrastructure\Persistence\Booking\PdoAdminMonthlyOccupancyRepository;
 use App\Infrastructure\Persistence\Booking\PdoBlockedPeriodRepository;
 use App\Infrastructure\Persistence\Booking\TransactionalBookingRepository;
 use App\Infrastructure\Persistence\Pricing\PdoPricingEngineAdapter;
@@ -148,6 +150,7 @@ return [
     'two_factor' => new TwoFactorController($workflow, $view, $csrf),
     'dashboard' => new DashboardController($workflow, $view, $csrf, $queries),
     'bookings' => new BookingManagementController($workflow, $view, $csrf, $actionGuard, $queries, $transitions, $statusNotifications, $paymentRequests, $paymentConfiguration),
+    'monthly_occupancy' => new MonthlyOccupancyController($workflow, $view, new PdoAdminMonthlyOccupancyRepository($pdo)),
     'legacy_import' => new LegacyBookingImportController(
         $workflow, $view, $csrf, $actionGuard, $storage,
         new LegacyImportService($pdo, new PdoLegacyImportProvenanceRepository($pdo), new LegacyImportCsvParser()),

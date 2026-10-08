@@ -74,7 +74,7 @@ A router egzakt útvonalillesztést, `GET` és `POST` regisztrációt tud. A han
 stored_start < requested_to AND stored_end > requested_from
 ```
 
-A booking adapter konfigurálható blokkoló státuszlistát használ; jelenleg ez `['confirmed']`. Csak dátumokat olvas, ezért az availability válaszba nem kerül vendég-PII.
+A booking adapter az egységes domain-szerződés szerinti blokkoló státuszlistát használ; jelenleg ez `pending` és `confirmed`. Csak dátumokat olvas, ezért az availability válaszba nem kerül vendég-PII.
 
 **PLANNED:** Írásra külön repository portok szükségesek. Az availability read portot nem szabad vendégadat-entitással kibővíteni. Mentéskor a konkurenciavédelmet adatbázis-tranzakcióval és dokumentált zárolási stratégiával kell megoldani.
 

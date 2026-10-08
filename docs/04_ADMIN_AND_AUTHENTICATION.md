@@ -159,6 +159,14 @@ Az admin/auth sprint csak akkor fogadható el, ha:
 ## Booking management – IMPLEMENTED Sprint 5
 
 A 2FA-val hitelesített admin lista-, részlet- és blocked-period oldalt kap. Minden válasz no-store; a POST-ok form Content-Type-, 8 KiB body-, CSRF-, admin/action rate-limit-, mező-whitelist- és 500 karakteres note ellenőrzést használnak, PRG redirecttel.
+
+## Havi foglaltsági lista – IMPLEMENTED Phase 2
+
+A hitelesített, kizárólag olvasási célú `GET /admin/bookings/monthly?month=YYYY-MM` oldal minden kiválasztott Budapest-hónap minden napját pontosan egyszer jeleníti meg. A hiányzó hónap az aktuális Budapest-hónapra áll; a nem kanonikus paraméter biztonságos HTTP 422 választ ad. Az előző, következő és mai hónap linkjei szerveroldaliak.
+
+A napi lista az egységes `BookingStatus::BLOCKING_VALUES` szerződésből csak a `pending` és `confirmed` foglalásokat használja. A `[arrival, departure)` szabály szerint külön érkezés-, foglalt- és távozás-eseményt jelenít meg; a csak távozást tartalmazó nap szabad, egy fordulónap pedig mindkét foglalást megtartja. Az aktív kézi blokkolás és a reláció alapján azonosított külső naptáresemény elkülönül. A havi nézet nem mutat e-mailt, telefonszámot, külső UID-t vagy nyers payloadot, és nem módosít állapotot.
+
+A repository hónaponként pontosan két batchelt prepared lekérdezést végez: egyet a foglalásokra és egyet az aktív blokkolásokra a külső forrás metaadataival. A napi read model PHP-ban épül fel; nincs naponkénti vagy foglalásonkénti további lekérdezés.
 ## Sprint 10 pricing admin + tulajdonosi UX-javítás – IMPLEMENTED
 
 A teljes 2FA-val védett `GET /admin/pricing` az egyetlen normál árkezelési oldal. Kizárólag a hétköznapi/hétvégi felnőttárat, a minimum életkor szerint rendezett gyermek ársávokat és az üzleti nyelvű előnézetet mutatja; a legacy/person mód, rule type, sorrend, aktív jelző, rule ID és konfigurációverzió nem része a tulajdonosi felületnek. A felnőttár mentése explicit person módra vált; addig a korábbi árak maradnak érvényben.
