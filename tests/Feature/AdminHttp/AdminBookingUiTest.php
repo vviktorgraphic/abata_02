@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\AdminHttp;
 
+use App\Application\Booking\BookingModificationPreview;
+use App\Application\Booking\ConfirmedBookingModification;
 use App\Domain\Booking\CancellationResult;
+use App\Domain\Pricing\PricingResult;
 use App\Http\Controller\Admin\AdminView;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -132,6 +135,62 @@ final class AdminBookingUiTest extends TestCase
         ]];
     }
 
+    public function test_successful_modification_preview_targets_stable_anchor_and_remains_visible(): void
+    {
+        $preview = new BookingModificationPreview(
+            42,
+            3,
+            new ConfirmedBookingModification('2026-09-05', '2026-09-08', 2, [2, 6, 11]),
+            new PricingResult('96000.00', '90000.00', '6000.00', 'HUF', [], [], []),
+            '45000.00',
+            'pricing-hash',
+        );
+
+        $html = $this->renderModificationDetail([
+            'modificationForm' => [
+                'arrival_date' => '2026-09-05',
+                'departure_date' => '2026-09-08',
+                'adults' => '2',
+                'children' => '3',
+                'child_ages' => ['2', '6', '11'],
+                'idempotency_key' => 'preview-key',
+            ],
+            'modificationPreview' => $preview,
+            'modificationPreviewSignature' => 'preview-signature',
+        ]);
+
+        self::assertStringContainsString('id="booking-modification"', $html);
+        self::assertStringContainsString('action="/admin/bookings/AB-MOD/modification-preview#booking-modification"', $html);
+        self::assertStringContainsString('<dt>Gyermekek</dt><dd>3 (2, 6 és 11 éves)</dd>', $html);
+        self::assertStringContainsString('<dt>Új végösszeg</dt><dd>96 000 Ft</dd>', $html);
+        self::assertStringContainsString('value="preview-signature"', $html);
+    }
+
+    public function test_failed_modification_preview_targets_same_anchor_and_preserves_form_and_error(): void
+    {
+        $html = $this->renderModificationDetail([
+            'modificationForm' => [
+                'arrival_date' => '2026-09-05',
+                'departure_date' => '2026-09-05',
+                'adults' => '2',
+                'children' => '2',
+                'child_ages' => ['4', '8'],
+                'idempotency_key' => 'failed-preview-key',
+            ],
+            'modificationErrors' => [
+                'departure_date' => 'A távozásnak az érkezés után kell lennie.',
+            ],
+        ]);
+
+        self::assertStringContainsString('id="booking-modification"', $html);
+        self::assertStringContainsString('action="/admin/bookings/AB-MOD/modification-preview#booking-modification"', $html);
+        self::assertStringContainsString('A módosítás nem készíthető elő.', $html);
+        self::assertStringContainsString('A távozásnak az érkezés után kell lennie.', $html);
+        self::assertStringContainsString('value="2026-09-05"', $html);
+        self::assertStringContainsString('data-initial-ages="[&quot;4&quot;,&quot;8&quot;]"', $html);
+        self::assertStringContainsString('value="failed-preview-key"', $html);
+    }
+
     /** @return iterable<string, array{string, string, bool}> */
     public static function statusRetryCases(): iterable
     {
@@ -193,5 +252,37 @@ final class AdminBookingUiTest extends TestCase
                 'payment_request' => $paymentRequest,
             ],
         ]);
+    }
+
+    /** @param array<string, mixed> $variables */
+    private function renderModificationDetail(array $variables): string
+    {
+        return $this->view->render('booking-detail', array_merge([
+            'csrfToken' => 'safe-token',
+            'booking' => [
+                'id' => 42,
+                'reference' => 'AB-MOD',
+                'status' => 'confirmed',
+                'contact_name' => 'Vendég',
+                'email' => 'guest@example.test',
+                'phone' => '+36 1 234 5678',
+                'arrival_date' => '2026-09-01',
+                'departure_date' => '2026-09-03',
+                'nights' => 2,
+                'adults' => 2,
+                'children' => 0,
+                'children_ages' => [],
+                'total_amount' => '60000.00',
+                'pricing_snapshot' => [],
+                'status_history' => [],
+                'email_outbox' => [],
+                'created_at' => '2026-08-01 10:00:00',
+                'updated_at' => '2026-08-01 10:00:00',
+            ],
+            'modificationForm' => [],
+            'modificationPreview' => null,
+            'modificationErrors' => [],
+            'modificationPreviewSignature' => null,
+        ], $variables));
     }
 }

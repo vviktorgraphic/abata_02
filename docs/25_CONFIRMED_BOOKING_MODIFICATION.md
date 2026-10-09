@@ -8,6 +8,8 @@ A teljes 2FA-val hitelesített admin kizárólag `confirmed` foglalás érkezés
 
 Az admin előbb az „Új ár előnézete” műveletet futtatja. A szerver a publikus foglalással közös kapacitás- és gyermekéletkor-szabályokat, a 30 éjszakás és 365 napos határt, az aktív ársáv/érkezési override minimum–maximum tartózkodást, valamint a teljes aktuális pricing konfigurációt ellenőrzi. A publikus két napos előfoglalási korlát az admin módosításra nem vonatkozik; ezen túl új dátumszabály nincs bevezetve.
 
+Az előnézeti űrlap sikeres és hibás válasz után is a stabil `#booking-modification` szakaszra pozicionál. A szerveroldali válasz megőrzi a beküldött mezőértékeket, és ugyanebben a blokkban mutatja az előnézetet vagy a validációs, foglaltsági és árképzési hibát; ehhez nem szükséges AJAX. Az admin foglalási összegzések a gyermekek számát és életkorát természetes magyar felsorolással jelenítik meg, például `3 (2, 6 és 11 éves)`.
+
 Az előnézet aláírása a foglalási referenciához, a `modification_version` értékhez és a kanonikus mezőkhöz kötött. A mentés minden ellenőrzést és az árazást megismétli; kliensről érkező összeget nem fogad el. Stale verzió, megváltozott adatok vagy foglaltság esetén új előnézet szükséges.
 
 ## Tranzakció, foglaltság és idempotencia
