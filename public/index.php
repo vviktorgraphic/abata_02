@@ -141,6 +141,18 @@ $router->post('/admin/bookings/import/commit', static fn () => $admin()['legacy_
     isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
 )->send());
 $router->get('/admin/bookings/{reference}', static fn (array $_query, array $params) => $admin()['bookings']->detail($params['reference'])->send());
+$router->post('/admin/bookings/{reference}/modification-preview', static fn (array $_query, array $params) => $admin()['bookings']->previewModification(
+    $params['reference'], $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
+    isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
+)->send());
+$router->post('/admin/bookings/{reference}/modify', static fn (array $_query, array $params) => $admin()['bookings']->saveModification(
+    $params['reference'], $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
+    isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
+)->send());
+$router->post('/admin/bookings/{reference}/modifications/{modificationId}/retry-email', static fn (array $_query, array $params) => $admin()['bookings']->retryModificationNotification(
+    $params['reference'], $params['modificationId'], $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
+    isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
+)->send());
 $router->post('/admin/bookings/{reference}/retry-email', static fn (array $_query, array $params) => $admin()['bookings']->retryNotification(
     $params['reference'], $_POST, $_SERVER['CONTENT_TYPE'] ?? null, isset($_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null
 )->send());

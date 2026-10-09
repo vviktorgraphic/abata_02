@@ -169,6 +169,10 @@ A hitelesített, kizárólag olvasási célú `GET /admin/bookings/monthly?month
 A napi lista külön read-model szerződésből a `pending`, `confirmed` és történeti `completed` foglalásokat használja. A `[arrival, departure)` szabály szerint külön érkezés-, foglalt- és távozás-eseményt jelenít meg; a csak távozást tartalmazó nap szabad, egy fordulónap pedig mindkét foglalást megtartja. A `completed` ettől nem kerül a publikus blokkolási státuszok közé és nem kerül iCal exportba. Az aktív kézi blokkolás és a reláció alapján azonosított külső naptáresemény elkülönül. A havi nézet nem mutat e-mailt, telefonszámot, külső UID-t vagy nyers payloadot, és nem módosít állapotot.
 
 A repository hónaponként pontosan két batchelt prepared lekérdezést végez: egyet a foglalásokra és egyet az aktív blokkolásokra a külső forrás metaadataival. A napi read model PHP-ban épül fel; nincs naponkénti vagy foglalásonkénti további lekérdezés.
+
+## Megerősített foglalás módosítása — IMPLEMENTED Phase 6
+
+A booking részletoldalon csak `confirmed` státusznál jelenik meg a dátum- és létszámmódosító űrlap. A kapcsolattartási és megjegyzésmezők nem szerkeszthetők. Kötelező szerveroldali ár-előnézet után a mentés CSRF-, admin action rate-limit-, aláírt preview-, idempotencia- és optimista verzióvédelemmel fut. A változtatás nem ír hamis státusztörténetet; külön `booking_modified` audit és before/after módosítási előzmény készül. Részletek: [Phase 6 szerződés](25_CONFIRMED_BOOKING_MODIFICATION.md).
 ## Sprint 10 pricing admin + tulajdonosi UX-javítás – IMPLEMENTED
 
 A teljes 2FA-val védett `GET /admin/pricing` az egyetlen normál árkezelési oldal. Kizárólag a hétköznapi/hétvégi felnőttárat, a minimum életkor szerint rendezett gyermek ársávokat és az üzleti nyelvű előnézetet mutatja; a legacy/person mód, rule type, sorrend, aktív jelző, rule ID és konfigurációverzió nem része a tulajdonosi felületnek. A felnőttár mentése explicit person módra vált; addig a korábbi árak maradnak érvényben.

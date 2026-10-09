@@ -9,8 +9,8 @@ use DateTimeZone;
 
 final readonly class BookingCreateRequestValidator
 {
-    public const MAX_PHYSICAL_GUESTS = 5;
-    public const MAX_CHARGEABLE_GUESTS = 4;
+    public const MAX_PHYSICAL_GUESTS = GuestCapacityPolicy::MAX_PHYSICAL_GUESTS;
+    public const MAX_CHARGEABLE_GUESTS = GuestCapacityPolicy::MAX_CHARGEABLE_GUESTS;
 
     public function __construct(
         private DateTimeImmutable $today,
@@ -21,6 +21,7 @@ final readonly class BookingCreateRequestValidator
         private int $maximumAdults = self::MAX_CHARGEABLE_GUESTS,
         private int $maximumChildren = self::MAX_CHARGEABLE_GUESTS,
         private int $maximumNotesLength = 2000,
+        private GuestCapacityPolicy $capacityPolicy = new GuestCapacityPolicy(),
     ) {
         if ($minimumAdvanceDays < 2) {
             throw new \InvalidArgumentException('Minimum advance days must be at least two.');
@@ -80,13 +81,8 @@ final readonly class BookingCreateRequestValidator
         }
 
         if ($adults !== null && $children !== null && !isset($errors['adults'], $errors['children'], $errors['child_ages'])) {
-            $physicalGuests = $adults + count($childAges);
-            $chargeableGuests = $adults + count(array_filter($childAges, static fn (int $age): bool => $age >= 4));
-            if ($physicalGuests > self::MAX_PHYSICAL_GUESTS) {
-                $errors['guests'] = 'A szállás legfeljebb 5 vendéget fogad, a gyermekeket is beleszámítva.';
-            } elseif ($chargeableGuests > self::MAX_CHARGEABLE_GUESTS) {
-                $errors['guests'] = 'Legfeljebb 4 fizető vendég foglalható; a 4 éves vagy idősebb gyermekek beleszámítanak.';
-            }
+            $violation = $this->capacityPolicy->violation($adults, array_values($childAges));
+            if ($violation !== null) $errors['guests'] = $violation;
         }
 
         $notes = trim((string) ($payload['notes'] ?? ''));

@@ -78,7 +78,7 @@ final class PdoAdminBookingQueryRepository
                     b.booking_policy_accepted_at, b.booking_policy_version, b.booking_policy_url,
                     b.cancelled_at, b.cancellation_penalty_rate, b.cancellation_penalty_amount,
                     b.cancellation_currency, b.cancellation_rule_version, b.cancellation_calculation_snapshot,
-                    b.created_at, b.updated_at,
+                    b.created_at, b.updated_at, b.modification_version,
                     li.source_system AS legacy_source_system, li.source_booking_id AS legacy_source_booking_id,
                     li.source_status AS legacy_source_status, li.imported_at AS legacy_imported_at,
                     li.pricing_unavailable AS legacy_pricing_unavailable
@@ -138,6 +138,8 @@ final class PdoAdminBookingQueryRepository
             'emailOutbox' => $emails,
             'created_at' => (string) $row['created_at'],
             'updated_at' => (string) $row['updated_at'],
+            'modification_version' => (int) $row['modification_version'],
+            'modifications' => $this->modifications($bookingId),
             'legacy_source_system' => $row['legacy_source_system'] !== null ? (string) $row['legacy_source_system'] : null,
             'legacy_source_booking_id' => $row['legacy_source_booking_id'] !== null ? (string) $row['legacy_source_booking_id'] : null,
             'legacy_source_status' => $row['legacy_source_status'] !== null ? (string) $row['legacy_source_status'] : null,
@@ -222,6 +224,32 @@ final class PdoAdminBookingQueryRepository
             'updated_at' => (string) $row['updated_at'],
             'sent_at' => $row['sent_at'] !== null ? (string) $row['sent_at'] : null,
         ], $statement->fetchAll());
+    }
+
+    /** @return list<array<string,mixed>> */
+    private function modifications(int $bookingId): array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT m.id, m.version, m.changed_by_admin_id, m.before_snapshot, m.after_snapshot,
+                    m.unchanged_deposit_amount, m.currency, m.created_at,
+                    e.status AS email_status, e.attempts AS email_attempts
+             FROM booking_modifications m
+             LEFT JOIN email_outbox e ON e.booking_id = m.booking_id
+                AND e.message_type = \'booking_modified\'
+                AND e.deduplication_key = CONCAT(\'modification:\', m.id)
+             WHERE m.booking_id = :booking_id ORDER BY m.version DESC'
+        );
+        $statement->execute(['booking_id' => $bookingId]);
+        return array_map(fn (array $row): array => [
+            'id' => (int) $row['id'], 'version' => (int) $row['version'],
+            'changed_by_admin_id' => (int) $row['changed_by_admin_id'],
+            'before' => $this->decodeJson((string) $row['before_snapshot'], 'A régi módosítási pillanatkép érvénytelen.'),
+            'after' => $this->decodeJson((string) $row['after_snapshot'], 'Az új módosítási pillanatkép érvénytelen.'),
+            'unchanged_deposit_amount' => $row['unchanged_deposit_amount'] !== null ? (string) $row['unchanged_deposit_amount'] : null,
+            'currency' => (string) $row['currency'], 'created_at' => (string) $row['created_at'],
+            'email_status' => $row['email_status'] !== null ? (string) $row['email_status'] : null,
+            'email_attempts' => (int) ($row['email_attempts'] ?? 0),
+        ], $statement->fetchAll(PDO::FETCH_ASSOC));
     }
 
     /** @return array<string, mixed>|null */

@@ -155,6 +155,10 @@ Az űrlap JSON-ként hívja a `POST /api/bookings` végpontot, kliens által gen
 Minden új igény `pending`, azonnal blokkolja a saját fél-nyitott időszakát, és automatikus lejárat nincs. Mentéskor a szerver tranzakciós készletzár mellett újraellenőrzi a `pending`, `confirmed` bookingokat és blocked periodokat. A kapcsolattartó adatai a bookingon maradnak; további vendégnevek nem szükségesek, külön csak a gyermekéletkorok tárolódnak.
 
 Commit után a rendszer megkísérli az e-mail kézbesítését. SMTP-hibánál a booking megmarad, a válasz `email_status=failed`. Ugyanazzal a kulccsal és payload-dal az ismétlés ugyanazt a referenciát adja, nem hoz létre új bookingot.
+
+## Admin módosítás és publikus készlet — IMPLEMENTED Phase 6
+
+A megerősített foglalás admin módosítása ugyanazt az egyetlen szálláshely-inventory lockot és fél-nyitott overlap képletet használja, mint a publikus booking create. Emiatt a publikus létrehozás és az admin mentés nem tud párhuzamosan ugyanarra a kapacitásra sikeresen commitolni. A mentett új intervallum azonnal jelenik meg az availabilityben és az iCal exportban; a régi intervallum többé nem blokkol. A publikus két napos előfoglalási korlát kizárólag a publikus flow része, admin módosításnál nem fut.
 ## Sprint 6 policy acceptance — IMPLEMENTED
 
 A publikus foglalás létrehozásához az adatkezelési elfogadástól külön `booking_policy_accepted=true` szükséges. A checkbox nincs előre kijelölve, a „Foglalási szabályzat” linkje konfigurációból érkezik. A szerver a boolean értéket önállóan validálja; hiány vagy hamis érték esetén `422`, booking, idempotencia-, snapshot- és outbox rekord nélkül.

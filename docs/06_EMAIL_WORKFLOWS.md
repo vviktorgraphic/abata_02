@@ -190,3 +190,7 @@ Confirmed/rejected/cancelled outbox ugyanabban a tranzakcióban készül, SMTP c
 ## Sprint 6 cancellation notification — IMPLEMENTED
 
 A `confirmed -> cancelled` tranzakció cancellation snapshotot és státusz-email outbox rekordot hoz létre. SMTP I/O továbbra is csak commit után történik. A vendéglevél közli, hogy a lemondás kötbérmentes, vagy megadja az immutable accommodation-fee snapshotból számolt 50%-os kötbért HUF-ban. A szöveg nem állít automatikus terhelést vagy beszedést. A Bata branding a HTML- és plain-text változatban megmarad.
+
+## Foglalásmódosítási értesítés — IMPLEMENTED Phase 6
+
+A confirmed booking mentési tranzakciója módosításonként egy `booking_modified` outbox rekordot ír. Az egyediség kulcsa a booking, recipient, message type és `modification:{id}` deduplikációs kulcs. SMTP csak commit után fut; transporthiba `failed`, admin retry lehetséges, sikeres rekord nem claimelhető újra. A tárgy `Foglalásának adatai módosultak`; a levél az új időszakot/létszámot/árakat és a változatlan korábbi előleget tartalmazza, az általános mail identity és Reply-To beállítást használja.

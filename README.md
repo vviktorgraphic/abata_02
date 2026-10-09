@@ -279,6 +279,10 @@ A demo seed szemléltető fejlesztési árat tartalmaz, production árként nem 
 
 **PLANNED:** általános cron retry, maximális attempts és stale `processing` reclaim tulajdonosi döntés után.
 
+## Phase 6 – megerősített foglalás módosítása
+
+**IMPLEMENTED:** a booking részletoldalon a `confirmed` foglalás dátuma és létszáma kötelező szerveroldali előnézet után módosítható. A mentés inventory lockkal, optimista verzióval és idempotenciával újraellenőrzi a foglaltságot, a közös pricing engine-nel újraszámol, before/after auditot és retry-képes vendégértesítést készít. A korábbi előleg és díjbekérő változatlan; a státusz és státusztörténet nem módosul. Lásd [Phase 6 dokumentáció](docs/25_CONFIRMED_BOOKING_MODIFICATION.md).
+
 ## Sprint 6 – pricing, policy és lemondás
 
 **IMPLEMENTED:** egyetlen szerveroldali pricing engine kezeli a tartózkodáshossz-sávot, mindhárom alapegységet, szezonális és konfigurált hétvégi adjustmentet, fix díjat, IFA-t és admin által megadott exemption kulcsokat. Azonos nyertes prioritás konfigurációs hiba; a publikus booking és az admin preview ugyanazt az engine-t használja. A konkrét production értékek nincsenek előre feltételezve.

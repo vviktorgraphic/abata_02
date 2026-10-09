@@ -7,11 +7,21 @@ namespace App\Http\Controller\Admin;
 use App\Application\Booking\AdminBookingDetailQuery;
 use App\Application\Booking\AdminBookingListQuery;
 use App\Application\Booking\BookingConflict;
+use App\Application\Booking\BookingModificationNotAllowed;
+use App\Application\Booking\BookingModificationPreviewSigner;
+use App\Application\Booking\BookingModificationStale;
 use App\Application\Booking\BookingNotFound;
+use App\Application\Booking\ConfirmedBookingModificationValidator;
+use App\Application\Booking\IdempotencyConflict;
+use App\Application\Mail\BookingModificationNotificationDispatcher;
+use App\Application\Pricing\PricingConfigurationException;
+use App\Domain\Booking\BookingValidationFailed;
+use App\Domain\Pricing\OccupancyStayLengthViolation;
 use App\Domain\Booking\BookingTransitionNotAllowed;
 use App\Domain\Booking\CancellationPolicy;
 use App\Infrastructure\Persistence\Booking\PdoAdminBookingQueryRepository;
 use App\Infrastructure\Persistence\Booking\TransactionalBookingRepository;
+use App\Infrastructure\Persistence\Booking\TransactionalConfirmedBookingModificationService;
 use DateTimeImmutable;
 use DateTimeZone;
 
@@ -28,6 +38,10 @@ final readonly class BookingManagementController
         private ?\App\Application\Mail\BookingPaymentRequestDispatcher $paymentRequests = null,
         private ?\App\Application\Mail\BookingPaymentRequestConfiguration $paymentConfiguration = null,
         private ?\App\Application\Mail\BookingManualCommunicationDispatcher $manualCommunications = null,
+        private ?TransactionalConfirmedBookingModificationService $modifications = null,
+        private ?ConfirmedBookingModificationValidator $modificationValidator = null,
+        private ?BookingModificationPreviewSigner $modificationSigner = null,
+        private ?BookingModificationNotificationDispatcher $modificationNotifications = null,
     ) {}
 
     /** @param array<string, mixed> $query */
@@ -51,6 +65,99 @@ final readonly class BookingManagementController
     public function detail(string $identifier): AdminResponse
     {
         if ($this->auth->currentAdmin() === null) return new RedirectResponse('/admin/login');
+        return $this->renderDetail($identifier);
+    }
+
+    /** @param array<string,mixed> $form */
+    public function previewModification(string $reference, array $form, ?string $contentType, ?int $contentLength): AdminResponse
+    {
+        $authorization = $this->guard->authorizeForm('booking.modification_preview', $form, $contentType, $contentLength);
+        if (!$authorization->allowed()) return $authorization->rejection;
+        if ($this->modifications === null || $this->modificationValidator === null || $this->modificationSigner === null) {
+            return $this->error(503, 'A foglalásmódosítás jelenleg nem érhető el.');
+        }
+        try {
+            $request = $this->modificationValidator->validate($form);
+            $preview = $this->modifications->preview($reference, $request);
+            return $this->renderDetail($reference, 200, $form, $preview, [],
+                $this->modificationSigner->sign($reference, $preview->version, $request, $preview->pricingHash));
+        } catch (BookingValidationFailed $error) {
+            return $this->renderDetail($reference, 422, $form, null, $error->errors());
+        } catch (BookingNotFound) {
+            return $this->error(404, 'A foglalás nem található.');
+        } catch (BookingModificationNotAllowed $error) {
+            return $this->renderDetail($reference, 409, $form, null, ['form' => $error->getMessage()]);
+        } catch (BookingConflict) {
+            return $this->renderDetail($reference, 409, $form, null, ['dates' => 'A megadott időszak foglalt vagy aktív blokkolással ütközik.']);
+        } catch (OccupancyStayLengthViolation $error) {
+            return $this->renderDetail($reference, 422, $form, null, ['departure_date' => $error->getMessage()]);
+        } catch (PricingConfigurationException|\App\Application\Pricing\MissingChildPriceBandException|\App\Application\Pricing\PersonPricingNotConfiguredException) {
+            return $this->renderDetail($reference, 422, $form, null, ['pricing' => 'A megadott adatokhoz jelenleg nincs érvényes árbeállítás.']);
+        }
+    }
+
+    /** @param array<string,mixed> $form */
+    public function saveModification(string $reference, array $form, ?string $contentType, ?int $contentLength): AdminResponse
+    {
+        $authorization = $this->guard->authorizeForm('booking.modify', $form, $contentType, $contentLength);
+        if (!$authorization->allowed()) return $authorization->rejection;
+        if ($this->modifications === null || $this->modificationValidator === null || $this->modificationSigner === null || $this->modificationNotifications === null) {
+            return $this->error(503, 'A foglalásmódosítás jelenleg nem érhető el.');
+        }
+        try {
+            $request = $this->modificationValidator->validate($form);
+            $version = filter_var($form['expected_version'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
+            $signature = is_string($form['preview_signature'] ?? null) ? $form['preview_signature'] : '';
+            $pricingHash = is_string($form['expected_pricing_hash'] ?? null) ? $form['expected_pricing_hash'] : '';
+            $idempotencyKey = is_string($form['idempotency_key'] ?? null) ? $form['idempotency_key'] : '';
+            if ($version === false || !$this->modificationSigner->verify($signature, $reference, (int) $version, $request, $pricingHash)) {
+                throw new BookingModificationStale('Az előnézet lejárt vagy megváltozott. Készítsen új előnézetet.');
+            }
+            $result = $this->modifications->modify($reference, $request, (int) $version, $pricingHash, $idempotencyKey, (int) $authorization->admin['id']);
+            $delivery = $this->modificationNotifications->dispatch($result->modificationId, (int) $authorization->admin['id']);
+            return new RedirectResponse('/admin/bookings/' . rawurlencode($reference) . '?modified=' . rawurlencode($delivery->status));
+        } catch (BookingValidationFailed $error) {
+            return $this->renderDetail($reference, 422, $form, null, $error->errors());
+        } catch (BookingNotFound) {
+            return $this->error(404, 'A foglalás nem található.');
+        } catch (BookingModificationNotAllowed $error) {
+            return $this->renderDetail($reference, 409, $form, null, ['form' => $error->getMessage()]);
+        } catch (BookingModificationStale|IdempotencyConflict $error) {
+            return $this->renderDetail($reference, 409, $form, null, ['stale' => $error->getMessage()]);
+        } catch (BookingConflict) {
+            return $this->renderDetail($reference, 409, $form, null, ['dates' => 'A foglaltság az előnézet óta megváltozott. Készítsen új előnézetet.']);
+        } catch (OccupancyStayLengthViolation $error) {
+            return $this->renderDetail($reference, 422, $form, null, ['departure_date' => $error->getMessage()]);
+        } catch (PricingConfigurationException|\App\Application\Pricing\MissingChildPriceBandException|\App\Application\Pricing\PersonPricingNotConfiguredException) {
+            return $this->renderDetail($reference, 422, $form, null, ['pricing' => 'Az árbeállítás az előnézet óta megváltozott vagy hiányos. Készítsen új előnézetet.']);
+        } catch (\InvalidArgumentException $error) {
+            return $this->renderDetail($reference, 422, $form, null, ['form' => $error->getMessage()]);
+        }
+    }
+
+    /** @param array<string,mixed> $form */
+    public function retryModificationNotification(string $reference, string $modificationId, array $form, ?string $contentType, ?int $contentLength): AdminResponse
+    {
+        $authorization = $this->guard->authorizeForm('email.booking_modified_retry', $form, $contentType, $contentLength);
+        if (!$authorization->allowed()) return $authorization->rejection;
+        if ($this->modificationNotifications === null || !ctype_digit($modificationId)) return $this->error(404, 'A módosítás nem található.');
+        $booking = $this->queries->fetchBookingDetail(new AdminBookingDetailQuery($reference));
+        if ($booking === null) return $this->error(404, 'A foglalás nem található.');
+        $known = array_filter($booking['modifications'] ?? [], static fn (array $item): bool => $item['id'] === (int) $modificationId);
+        if ($known === []) return $this->error(404, 'A módosítás nem található.');
+        $result = $this->modificationNotifications->dispatch((int) $modificationId, (int) $authorization->admin['id']);
+        return new RedirectResponse('/admin/bookings/' . rawurlencode($reference) . '?modified=' . rawurlencode($result->status));
+    }
+
+    /** @param array<string,mixed> $modificationForm @param array<string,string> $modificationErrors */
+    private function renderDetail(
+        string $identifier,
+        int $status = 200,
+        array $modificationForm = [],
+        ?\App\Application\Booking\BookingModificationPreview $modificationPreview = null,
+        array $modificationErrors = [],
+        ?string $modificationPreviewSignature = null,
+    ): AdminResponse {
         $booking = $this->queries->fetchBookingDetail(new AdminBookingDetailQuery($identifier));
         if ($booking === null) return $this->error(404, 'A foglalás nem található.');
         $snapshot = $booking['pricing_snapshot'] ?? [];
@@ -72,11 +179,20 @@ final readonly class BookingManagementController
                 $paymentConfigurationError = 'A díjbekérő előlegbeállítása vagy az immutable szállásdíj-pillanatkép érvénytelen.';
             }
         }
+        if ($booking['status'] === 'confirmed' && $modificationForm === []) {
+            $modificationForm = [
+                'arrival_date' => $booking['arrival_date'], 'departure_date' => $booking['departure_date'],
+                'adults' => $booking['adults'], 'children' => $booking['children'],
+                'child_ages' => $booking['children_ages'], 'idempotency_key' => bin2hex(random_bytes(16)),
+            ];
+        }
         return new HtmlResponse($this->view->render('booking-detail', [
             'booking' => $booking, 'csrfToken' => $this->csrf->token(), 'cancellationPreview' => $cancellationPreview,
             'paymentAdvance' => $paymentAdvance, 'paymentConfigurationError' => $paymentConfigurationError,
             'paymentReference' => $booking['payment_request']['payment_reference'] ?? \App\Application\Mail\PaymentReference::forBookingId((int)$booking['id']),
-        ]));
+            'modificationForm' => $modificationForm, 'modificationPreview' => $modificationPreview,
+            'modificationErrors' => $modificationErrors, 'modificationPreviewSignature' => $modificationPreviewSignature,
+        ]), $status);
     }
 
     /** @param array<string, mixed> $form */

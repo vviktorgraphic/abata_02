@@ -198,3 +198,7 @@ A v3 snapshot tartalmazza a configuration verziót, felnőttárakat, sávokat, g
 ## Ügyfélteszt utáni ármegjelenítés – IMPLEMENTED
 
 A közös pricing engine minden támogatott módban kizárólag a felnőttek számával képezi az IFA-mennyiséget; a quote, az immutable booking snapshot, az admin preview és az e-mail ugyanebből az eredményből dolgozik. Korábbi snapshot nem számolódik újra. A publikus árösszesítőben az egyéjszakás felár nem jelenik meg külön soron: a megjelenített `Szállásdíj` a teljes nem-adó részösszeg, az `IFA/adók` külön sor marad, ezért a végösszeg mindig e két sor összege. Az immutable `accommodation_fee`, az admin és a snapshot tételes bontása változatlanul megőrzi a felárat és az esetleges külön fix díjakat; a lemondási alap számítása nem változik.
+
+## Confirmed booking újraárazás — IMPLEMENTED Phase 6
+
+Admin dátum- vagy létszámmódosításkor a korábbi immutable létrehozási snapshot helyére az explicit módosításkor számított új immutable snapshot kerül, miközben a régi teljes snapshot a `booking_modifications.before_snapshot` részében megmarad. Az új számítás a mindenkori közös engine teljes konfigurációját használja, kliensoldali összeget nem fogad el. A fizetési/díjbekérő snapshot nem íródik át, az előleg változatlan. Egy későbbi lemondás az új snapshot `accommodation_fee` értékéből számol, a policy és rule version nem változik.

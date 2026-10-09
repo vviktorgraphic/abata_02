@@ -48,6 +48,12 @@ final readonly class PdoPricingEngineAdapter implements BookingPricingProvider, 
         return $this->calculateResult($this->pdo, $input);
     }
 
+    /** Uses the caller-owned transaction and connection for an atomic recalculation. */
+    public function calculateFor(PDO $pdo, PricingInput $input): PricingResult
+    {
+        return $this->calculateResult($pdo, $input);
+    }
+
     private function calculateResult(PDO $pdo, PricingInput $input): PricingResult
     {
         try {

@@ -331,3 +331,11 @@ A hitelesített admin GET route-ok: `/admin/calendar`, `/admin/calendar/sources`
 `GET /admin/pricing` megjeleníti a felnőttárakat, gyermek ársávokat és preview űrlapot. `POST /admin/pricing` `action=settings|band|delete` formot fogad teljes admin/CSRF/action-guard és optimistic-version védelemmel; sikerre PRG redirect, stale verzióra `409`, hibás/hiányzó egész HUF vagy overlap esetén `422`. A kompatibilitási `GET /admin/pricing/person` a kanonikus oldalra irányít; a korábbi általános legacy rule CRUD nem publikus admin route.
 
 A publikus `POST /api/bookings` sikeres válasza a kanonikus `total_amount` mellett `formatted_total_amount` mezőt ad (például `20 000 Ft`). Person módban hiányzó gyermek ársáv `503` / `CHILD_PRICE_BAND_MISSING`, és nincs booking/outbox/idempotency maradvány.
+
+### Admin confirmed booking modification — IMPLEMENTED Phase 6
+
+- `POST /admin/bookings/{reference}/modification-preview`: form payloadként dátumok, felnőtt-/gyermekszám, `child_ages[]` és idempotenciakulcs; sikerre mentési előnézet, validációra `422`, foglaltságra vagy nem confirmed státuszra `409`.
+- `POST /admin/bookings/{reference}/modify`: ugyanazok a mezők, továbbá szerver által aláírt `preview_signature` és `expected_version`; sikerre PRG redirect, stale előnézetre `409`.
+- `POST /admin/bookings/{reference}/modifications/{modificationId}/retry-email`: kizárólag az adott booking sikertelen módosítási levelének újraküldése.
+
+Mindhárom route teljes admin-authot, form Content-Type-ot, body limitet, CSRF-et és action rate limitet követel; JSON publikus API nem készült ehhez az admin művelethez.

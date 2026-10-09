@@ -42,4 +42,31 @@ document.addEventListener('DOMContentLoaded', () => {
             window.matchMedia('(max-width: 42rem)').addEventListener('change', () => closeNavigation());
         }
     }
+
+    const modificationForm = document.querySelector('[data-booking-modification-form]');
+    if (modificationForm instanceof HTMLFormElement) {
+        const childCount = modificationForm.querySelector('[data-modification-child-count]');
+        const ageContainer = modificationForm.querySelector('[data-modification-child-ages]');
+        if (childCount instanceof HTMLSelectElement && ageContainer instanceof HTMLElement) {
+            let initialAges = [];
+            try { initialAges = JSON.parse(ageContainer.dataset.initialAges || '[]'); } catch { initialAges = []; }
+            const renderAges = () => {
+                const current = Array.from(ageContainer.querySelectorAll('input')).map((input) => input.value);
+                ageContainer.replaceChildren();
+                for (let index = 0; index < Number(childCount.value); index += 1) {
+                    const wrapper = document.createElement('div');
+                    const label = document.createElement('label');
+                    const input = document.createElement('input');
+                    input.type = 'number'; input.min = '0'; input.max = '17'; input.required = true;
+                    input.name = 'child_ages[]'; input.id = `modification-child-age-${index + 1}`;
+                    input.value = current[index] ?? initialAges[index] ?? '';
+                    label.htmlFor = input.id; label.textContent = `${index + 1}. gyermek életkora`;
+                    wrapper.append(label, input); ageContainer.append(wrapper);
+                }
+                initialAges = [];
+            };
+            childCount.addEventListener('change', renderAges);
+            renderAges();
+        }
+    }
 });

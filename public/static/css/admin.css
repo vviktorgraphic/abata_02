@@ -108,4 +108,10 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 .occupancy-events li + li { margin-top:.45rem; }
 .occupancy-events small { display:block; color:var(--neutral-700); }
 .muted { color:var(--neutral-700); }
+.booking-modification { margin-top:1.5rem; padding:clamp(1rem,2vw,1.5rem); border:2px solid var(--color-accent); border-radius:.35rem; background:#fffaf1; }
+.booking-modification h2,.modification-preview h3 { margin-top:0; }
+.modification-child-ages:empty { display:none; }
+.modification-preview { margin-top:1.25rem; background:var(--color-background); }
+.modification-preview form { margin-top:1rem; }
+.modification-preview button { width:auto; }
 @media (max-width:36rem) { .month-navigation { align-items:stretch; flex-direction:column; } .month-navigation .button-secondary,.month-navigation strong { justify-content:center; width:100%; text-align:center; } }

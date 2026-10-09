@@ -159,6 +159,17 @@ $manualCommunications = new App\Application\Mail\BookingManualCommunicationDispa
     $paymentConfiguration,
     $audit,
 );
+$pricingEngine = new PdoPricingEngineAdapter($pdo);
+$bookingModifications = new App\Infrastructure\Persistence\Booking\TransactionalConfirmedBookingModificationService($pdo, $pricingEngine);
+$bookingModificationNotifications = new App\Application\Mail\BookingModificationNotificationDispatcher(
+    new App\Infrastructure\Persistence\Booking\PdoBookingModificationOutbox($pdo),
+    new App\Application\Mail\BookingModificationMailRenderer(
+        $root . '/templates/email', $mailConfig['from_email'], $mailConfig['from_name'],
+        $mailConfig['guest_reply_to_email'], $mailConfig['guest_reply_to_name'],
+    ),
+    new SmtpMailer(new SmtpConfiguration($mailConfig['host'], $mailConfig['port'], $mailConfig['encryption'], $username, $password, $mailConfig['timeout_seconds'], $mailConfig['production'])),
+    $audit,
+);
 $calendarLogs = new PdoCalendarSyncLogRepository($pdo);
 $calendarImporter = (require __DIR__ . '/calendar-services.php')($pdo);
 
@@ -170,7 +181,13 @@ return [
     'login' => new LoginController($workflow, $view, $csrf),
     'two_factor' => new TwoFactorController($workflow, $view, $csrf),
     'dashboard' => new DashboardController($workflow, $view, $csrf, $queries),
-    'bookings' => new BookingManagementController($workflow, $view, $csrf, $actionGuard, $queries, $transitions, $statusNotifications, $paymentRequests, $paymentConfiguration, $manualCommunications),
+    'bookings' => new BookingManagementController(
+        $workflow, $view, $csrf, $actionGuard, $queries, $transitions, $statusNotifications,
+        $paymentRequests, $paymentConfiguration, $manualCommunications, $bookingModifications,
+        App\Application\Booking\ConfirmedBookingModificationValidator::forBudapestToday(),
+        new App\Application\Booking\BookingModificationPreviewSigner($authConfig['rate_limit_pepper']),
+        $bookingModificationNotifications,
+    ),
     'monthly_occupancy' => new MonthlyOccupancyController($workflow, $view, new PdoAdminMonthlyOccupancyRepository($pdo)),
     'legacy_import' => new LegacyBookingImportController(
         $workflow, $view, $csrf, $actionGuard, $storage,
@@ -190,7 +207,7 @@ return [
         $csrf,
         $actionGuard,
         new PdoPricingRuleRepository($pdo),
-        new PdoPricingEngineAdapter($pdo),
+        $pricingEngine,
         $audit,
     ),
     'occupancy_pricing' => new OccupancyPricingAdminController(
