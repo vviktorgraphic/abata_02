@@ -106,6 +106,8 @@ Staging smoke:
 
 A lifecycle cron engedélyezése előtt candidate környezetben raw MIME fejlécen igazold a `From: A Bata <aktuális MAIL_FROM_EMAIL>` és vendéglevélnél a `Reply-To: A Bata <info@abata.hu>` értéket. Ugyanebben a smoke-ban igazold, hogy a 2FA- és admin új-foglalás értesítő nem tartalmaz guest Reply-To fejlécet. Valós review e-mail vagy production lifecycle worker futtatása ebben az előkészítő fázisban tilos.
 
+A release biztonságos alapértéke `BOOKING_LIFECYCLE_ENABLED=false` és üres `BOOKING_LIFECYCLE_START_DATE`; ebben az állapotban a CLI worker DB/SMTP inicializálás nélkül `booking_lifecycle_disabled` JSON eseménnyel, 0-s exit kóddal tér vissza. Cutovernél előbb tulajdonosi döntéssel rögzíts egy Budapest szerint érvényes `BOOKING_LIFECYCLE_START_DATE=YYYY-MM-DD` értéket, amelynél korábbi rekordot az automatika nem érinthet. Csak ezután állítható `BOOKING_LIFECYCLE_ENABLED=true`, majd kontrollált kézi futás és outbox/status/audit ellenőrzés után engedélyezhető külön műveletként a cron. A dátumot ez a release nem találja ki és cront nem telepít.
+
 ## Release elfogadás és rollback
 
 Release előtt: tiszta commit/tag, review, teljes tesztcsomag, dependency audit, migrációlista, backup igazolás, jogi release-kapuk, HTTPS/SMTP smoke és cPanel document-root ellenőrzés szükséges.

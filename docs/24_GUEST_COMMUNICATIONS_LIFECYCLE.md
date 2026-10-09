@@ -25,11 +25,11 @@ Az érkezési levél négy repositoryban tárolt JPEG képet ágyaz be `multipar
 
 ## Automatikus review és completed
 
-`composer booking:lifecycle` sorrendben értékeléskérőt küld kizárólag `confirmed` és Budapest szerint `departure_date == today` bookinghoz, majd `completed` státuszra vált kizárólag `confirmed` és `departure_date == yesterday` bookingot.
+`BOOKING_LIFECYCLE_ENABLED=false` mellett a `composer booking:lifecycle` sikeres, géppel olvasható no-op választ ad még DB- vagy SMTP-inicializálás előtt. Bekapcsoláskor a Budapest szerint értelmezett, valid `BOOKING_LIFECYCLE_START_DATE=YYYY-MM-DD` kötelező. A start dátumnál korábbi foglalást a worker sem review, sem completion célból nem érinti.
 
-Nincs `<=` catch-up, így történeti import vagy egy kihagyott nap nem indít tömeges utólagos levelezést/státuszváltást. Az outbox és a booking sorzárak miatt az ismételt futás idempotens. A completed státusz magyar címkéje `Teljesült`, nem blokkol kapacitást és nem kerül iCal exportba. A státusztörténet és `booking.completed_auto` audit ugyanabban a tranzakcióban készül.
+Bekapcsolva az értékeléskérő catch-up tartománya `departure_date >= start_date AND departure_date <= today`, kizárólag `confirmed` vagy `completed` státuszhoz. A `sent` outbox nem küldhető újra; a `pending` és `failed` rekord későbbi futásban is claimelhető, ezért a departure napján elbukott review a booking független completion átmenete után is újrapróbálható. A completion tartománya `departure_date >= start_date AND departure_date < today`, kizárólag `confirmed` státuszhoz. Az outbox- és booking-sorzárak miatt az ismételt futás idempotens. A completed státusz magyar címkéje `Teljesült`, nem blokkol kapacitást és nem kerül iCal exportba. A státusztörténet és `booking.completed_auto` audit ugyanabban a tranzakcióban, sikeres átmenetenként pontosan egyszer készül.
 
-**CRON NOT ENABLED.** A worker elkészült, de production ütemezése külön deployment művelet és kézi smoke után engedélyezhető. Példa, amelyet csak az ellenőrzött cPanel PHP/útvonalakkal szabad véglegesíteni:
+**CRON NOT ENABLED.** A worker elkészült, de production aktiválási dátuma és ütemezése külön cutover döntés és kézi smoke után engedélyezhető. Előbb a start dátumot kell jóváhagyni, majd `BOOKING_LIFECYCLE_ENABLED=true` mellett kézi, ellenőrzött futást végezni; csak ezután vehető fel cron. Példa, amelyet csak az ellenőrzött cPanel PHP/útvonalakkal szabad véglegesíteni:
 
 ```text
 15 1 * * * cd /home/<account>/apps/foglalo/current && /usr/local/bin/php bin/booking-lifecycle-worker.php >> /home/<account>/logs/foglalo/booking-lifecycle.log 2>&1

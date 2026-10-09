@@ -17,6 +17,16 @@ $root=dirname(__DIR__);
 try {
     require $root.'/vendor/autoload.php';
     App\Bootstrap\EnvironmentBootstrap::load($root);
+    $lifecycle=require $root.'/config/booking-lifecycle.php';
+    if (!$lifecycle['enabled']) {
+        fwrite(STDOUT,json_encode([
+            'event'=>'booking_lifecycle_disabled',
+            'review_sent'=>0,
+            'review_failed'=>0,
+            'completed'=>0,
+        ],JSON_THROW_ON_ERROR|JSON_UNESCAPED_SLASHES).PHP_EOL);
+        exit(0);
+    }
     $pdo=ConnectionFactory::create(require $root.'/config/database.php');
     $mail=require $root.'/config/mail.php';
     $smtp=new SmtpMailer(new SmtpConfiguration($mail['host'],$mail['port'],$mail['encryption'],
@@ -25,7 +35,7 @@ try {
         new BookingReviewMailRenderer(
             $root.'/templates/email', $mail['from_email'], $mail['from_name'],
             $mail['guest_reply_to_email'], $mail['guest_reply_to_name'],
-        ), $smtp, new PdoAuditLog($pdo)))->run();
+        ), $smtp, (string)$lifecycle['start_date'], new PdoAuditLog($pdo)))->run();
     fwrite(STDOUT,json_encode(['event'=>'booking_lifecycle_completed']+$result,JSON_THROW_ON_ERROR|JSON_UNESCAPED_SLASHES).PHP_EOL);
     exit($result['review_failed']===0?0:2);
 } catch (Throwable) {

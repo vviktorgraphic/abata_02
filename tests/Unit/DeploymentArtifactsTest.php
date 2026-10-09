@@ -18,6 +18,8 @@ final class DeploymentArtifactsTest extends TestCase
         self::assertStringContainsString('MAIL_ENCRYPTION=<tls-or-ssl>', $contents);
         self::assertStringContainsString('DB_PASSWORD=<secret-from-hosting-secret-store>', $contents);
         self::assertStringContainsString('AUTH_RATE_LIMIT_PEPPER=<long-random-secret>', $contents);
+        self::assertStringContainsString('BOOKING_LIFECYCLE_ENABLED=false', $contents);
+        self::assertStringContainsString("BOOKING_LIFECYCLE_START_DATE=\n", str_replace("\r\n", "\n", $contents));
         self::assertStringNotContainsString('change-me', $contents);
         self::assertStringNotContainsString('localhost', $contents);
     }

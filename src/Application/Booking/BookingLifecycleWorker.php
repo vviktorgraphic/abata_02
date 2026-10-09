@@ -17,6 +17,7 @@ final readonly class BookingLifecycleWorker
         private BookingLifecycleRepository $repository,
         private BookingReviewMailRenderer $renderer,
         private Mailer $mailer,
+        private string $startDate,
         private ?AuditLog $auditLog = null,
         private ?\Closure $clock = null,
     ) {}
@@ -28,7 +29,7 @@ final readonly class BookingLifecycleWorker
         if (!$now instanceof \DateTimeImmutable) throw new \LogicException('Lifecycle clock must return DateTimeImmutable.');
         $today=$now->setTimezone(new \DateTimeZone('Europe/Budapest'))->format('Y-m-d');
         $sent=0; $failed=0;
-        foreach ($this->repository->claimReviewRequests($today) as $item) {
+        foreach ($this->repository->claimReviewRequests($this->startDate, $today) as $item) {
             if ($item['retry']) $this->audit('email.review_request_retry','pending',$item['booking_id'],$item['id']);
             try { $this->mailer->send($this->renderer->render($item['payload'])); }
             catch (\Throwable) {
@@ -40,7 +41,7 @@ final readonly class BookingLifecycleWorker
             $this->audit('email.review_request_sent','sent',$item['booking_id'],$item['id']);
             ++$sent;
         }
-        $completed=$this->repository->completeDeparted($now->modify('-1 day')->format('Y-m-d'));
+        $completed=$this->repository->completeDeparted($this->startDate, $today);
         return ['review_sent'=>$sent,'review_failed'=>$failed,'completed'=>count($completed)];
     }
 

@@ -50,6 +50,7 @@ $check('legal document URLs', static function () use ($root): void {
     require $root . '/config/house-rules.php';
 });
 $check('booking notification configuration', static function () use ($root): void { require $root . '/config/booking-notifications.php'; });
+$check('booking lifecycle configuration', static function () use ($root): void { require $root . '/config/booking-lifecycle.php'; });
 $check('admin session configuration', static function () use ($root): void {
     $config = require $root . '/config/auth.php';
     if (($config['session_idle_timeout_seconds'] ?? 0) < 1800

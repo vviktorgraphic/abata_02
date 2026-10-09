@@ -23,6 +23,7 @@ A projekt változásai ebben a fájlban követik a release-eket. A formátum a K
 
 ### Fixed
 
+- A booking lifecycle worker alapértelmezetten DB/SMTP nélküli no-op, explicit aktiválási dátummal pedig biztonságosan pótolja a kimaradt review és `confirmed → completed` műveleteket anélkül, hogy régi importált foglalást érintene.
 - A MIME `From` fejléc ténylegesen használja az `A Bata` feladónevet, minden vendég booking levél konfigurált `info@abata.hu` Reply-To címet kap, miközben a 2FA és admin értesítések guest Reply-To nélkül maradnak.
 - Az érkezési tájékoztató négy inline CID képe desktopon egységes, explicit 600 px szélességet kapott, miközben mobilon aránytartóan zsugorodik.
 - Az admin fejléc bejelentkezés előtt már nem renderel védett menüpontokat vagy logoutot; autentikált mobilnézetben hozzáférhető, bezárható hamburger navigáció jelenik meg.

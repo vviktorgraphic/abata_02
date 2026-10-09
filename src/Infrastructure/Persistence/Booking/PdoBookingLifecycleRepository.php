@@ -11,13 +11,14 @@ final readonly class PdoBookingLifecycleRepository implements BookingLifecycleRe
 {
     public function __construct(private PDO $pdo) {}
 
-    public function claimReviewRequests(string $today): array
+    public function claimReviewRequests(string $startDate, string $today): array
     {
+        $this->date($startDate);
         $this->date($today);
         $this->pdo->beginTransaction();
         try {
-            $q=$this->pdo->prepare("SELECT id,guest_email FROM bookings WHERE status='confirmed' AND departure_date=:today FOR UPDATE");
-            $q->execute(['today'=>$today]);
+            $q=$this->pdo->prepare("SELECT id,guest_email FROM bookings WHERE status IN ('confirmed','completed') AND departure_date>=:start_date AND departure_date<=:today ORDER BY departure_date,id FOR UPDATE");
+            $q->execute(['start_date'=>$startDate,'today'=>$today]);
             $bookings=$q->fetchAll(PDO::FETCH_ASSOC);
             $items=[];
             foreach ($bookings as $booking) {
@@ -50,20 +51,22 @@ final readonly class PdoBookingLifecycleRepository implements BookingLifecycleRe
         $q=$this->pdo->prepare("UPDATE email_outbox SET status='failed',attempts=attempts+1,sent_at=NULL,last_error=:reason WHERE id=:id AND message_type='booking_review_request' AND status='processing'");$q->execute(['id'=>$outboxId,'reason'=>mb_substr($safeReason,0,500)]);
     }
 
-    public function completeDeparted(string $yesterday): array
+    public function completeDeparted(string $startDate, string $today): array
     {
-        $this->date($yesterday); $this->pdo->beginTransaction();
+        $this->date($startDate); $this->date($today); $this->pdo->beginTransaction();
         try {
-            $q=$this->pdo->prepare("SELECT id FROM bookings WHERE status='confirmed' AND departure_date=:departure FOR UPDATE");$q->execute(['departure'=>$yesterday]);
-            $ids=array_map('intval',$q->fetchAll(PDO::FETCH_COLUMN));
-            foreach($ids as $id){
+            $q=$this->pdo->prepare("SELECT id,departure_date FROM bookings WHERE status='confirmed' AND departure_date>=:start_date AND departure_date<:today ORDER BY departure_date,id FOR UPDATE");$q->execute(['start_date'=>$startDate,'today'=>$today]);
+            $bookings=$q->fetchAll(PDO::FETCH_ASSOC); $completedIds=[];
+            foreach($bookings as $booking){
+                $id=(int)$booking['id'];
                 $update=$this->pdo->prepare("UPDATE bookings SET status='completed' WHERE id=:id AND status='confirmed'");$update->execute(['id'=>$id]);
                 if($update->rowCount()!==1)continue;
                 $history=$this->pdo->prepare("INSERT INTO booking_status_history (booking_id,old_status,new_status,changed_by_admin_id,note) VALUES (:id,'confirmed','completed',NULL,'Automatic lifecycle completion')");$history->execute(['id'=>$id]);
                 $audit=$this->pdo->prepare("INSERT INTO audit_logs (event_type,admin_id,target_type,target_id,outcome,metadata_json) VALUES ('booking.completed_auto',NULL,'booking',:target_id,'success',:metadata)");
-                $audit->execute(['target_id'=>(string)$id,'metadata'=>json_encode(['departure_date'=>$yesterday],JSON_THROW_ON_ERROR)]);
+                $audit->execute(['target_id'=>(string)$id,'metadata'=>json_encode(['departure_date'=>(string)$booking['departure_date']],JSON_THROW_ON_ERROR)]);
+                $completedIds[]=$id;
             }
-            $this->pdo->commit(); return $ids;
+            $this->pdo->commit(); return $completedIds;
         }catch(\Throwable $e){if($this->pdo->inTransaction())$this->pdo->rollBack();throw $e;}
     }
 
