@@ -4,11 +4,12 @@ namespace App\Infrastructure\Persistence\Booking;
 
 use App\Application\Mail\BookingModificationMailData;
 use App\Application\Mail\BookingModificationOutbox;
+use App\Application\Mail\EmailOutboxRetryPolicy;
 use PDO;
 
 final readonly class PdoBookingModificationOutbox implements BookingModificationOutbox
 {
-    public function __construct(private PDO $pdo) {}
+    public function __construct(private PDO $pdo, private EmailOutboxRetryPolicy $retryPolicy = new EmailOutboxRetryPolicy()) {}
 
     public function findForDelivery(int $modificationId): ?array
     {
@@ -17,9 +18,9 @@ final readonly class PdoBookingModificationOutbox implements BookingModification
         $claim = $this->pdo->prepare(
             "UPDATE email_outbox SET status = 'processing'
              WHERE message_type = 'booking_modified' AND deduplication_key = :deduplication_key
-               AND status IN ('pending', 'failed')"
+               AND status IN ('pending', 'failed') AND attempts < :max_attempts"
         );
-        $claim->execute(['deduplication_key' => $key]);
+        $claim->execute(['deduplication_key' => $key, 'max_attempts' => $this->retryPolicy->maxAttempts()]);
         if ($claim->rowCount() !== 1) return null;
         $statement = $this->pdo->prepare(
             "SELECT id, booking_id, recipient, payload FROM email_outbox
@@ -42,14 +43,14 @@ final readonly class PdoBookingModificationOutbox implements BookingModification
 
     public function markSent(int $outboxId): void
     {
-        $statement = $this->pdo->prepare("UPDATE email_outbox SET status='sent', attempts=attempts+1, last_error=NULL, sent_at=CURRENT_TIMESTAMP WHERE id=:id AND status='processing'");
-        $statement->execute(['id' => $outboxId]);
+        $statement = $this->pdo->prepare("UPDATE email_outbox SET status='sent', attempts=attempts+1, last_error=NULL, sent_at=CURRENT_TIMESTAMP WHERE id=:id AND status='processing' AND attempts < :max_attempts");
+        $statement->execute(['id' => $outboxId, 'max_attempts' => $this->retryPolicy->maxAttempts()]);
     }
 
     public function markFailed(int $outboxId, string $safeReason): void
     {
-        $statement = $this->pdo->prepare("UPDATE email_outbox SET status='failed', attempts=attempts+1, last_error=:reason, sent_at=NULL WHERE id=:id AND status='processing'");
-        $statement->execute(['id' => $outboxId, 'reason' => mb_substr($safeReason, 0, 500)]);
+        $statement = $this->pdo->prepare("UPDATE email_outbox SET status='failed', attempts=attempts+1, last_error=:reason, sent_at=NULL WHERE id=:id AND status='processing' AND attempts < :max_attempts");
+        $statement->execute(['id' => $outboxId, 'reason' => mb_substr($safeReason, 0, 500), 'max_attempts' => $this->retryPolicy->maxAttempts()]);
     }
 
     public function status(int $modificationId): string

@@ -37,14 +37,13 @@ A lezárt döntések forrása a [tulajdonosi döntési napló](99_OWNER_DECISION
 ## Sprint 4 után nyitott
 
 - Production árak; gyermekár/kedvezmény; IFA és mentességek; hétvégi/szezonális kombináció; fix díjak és kerekítési üzleti szabályok.
-- Outbox retry ütemezés, maximális próbálkozás, stale `processing` reclaim, admin resend és e-mail retention.
+- E-mail retention és az új rekordos manuális resend szabálya. Az automatikus outbox retry ütemezés, maximum és stale reclaim Phase 10-ben RESOLVED/IMPLEMENTED.
 - Publikus booking rate-limit production küszöbök és trusted originlista. Az adatkezelési tájékoztató URL-je RESOLVED: `/adatkezelesi_tajekoztato`.
 - Booking, gyermekéletkor, idempotencia és e-mail rekordok retention/törlési szabálya; az idempotencia automatikus időalapú cleanupja a jelenlegi döntés szerint nincs.
 
 ## Sprint 5 után nyitott
 
-- Automatikus státusz-email retry ütemezés, maximális attempts és stale `processing` reclaim.
-- Production SMTP/TLS és e-mail retention.
+- Production SMTP/TLS, e-mail retention és új rekordos manuális resend. Az automatikus státusz-email retry Phase 10-ben RESOLVED/IMPLEMENTED.
 - Pricing Administration konkrét értékei és kombinációs szabályai.
 
 **RESOLVED Sprint 5:** `pending -> confirmed|rejected|invalidated`, `confirmed -> cancelled|invalidated`.
@@ -79,7 +78,7 @@ A lezárt döntések forrása a [tulajdonosi döntési napló](99_OWNER_DECISION
 
 - Production/staging HTTPS, SMTP-kézbesítés, backup-restore és RPO/RTO smoke eredménye.
 - Backup retention és futási gyakoriság.
-- iCal sync, outbox retry és cleanup worker, valamint ezek retry/lock/retention és ütemezési szabályai.
+- iCal/outbox production cron aktiválás, monitorozás és retention. Az outbox retry/lock/stale szabályai Phase 10-ben RESOLVED; cleanup nincs engedélyezve.
 - Monitoring szolgáltató, elérhetőségi cél és végleges riasztási küszöbök.
 
 **IMPLEMENTED Sprint 9:** cPanel deployment/rollback runbook; Apache HTTPS redirect sablon; production environment mezőleltár; biztonságos backup/restore CLI; DB-readiness health endpoint; monitoring és cron inventory dokumentáció.
@@ -88,6 +87,15 @@ A lezárt döntések forrása a [tulajdonosi döntési napló](99_OWNER_DECISION
 - Jóváhagyott production hétköznapi/hétvégi felnőttár, gyermek ársávok és összegek; IFA és jogi mentességi kategóriák.
 - iCal cron tényleges cPanel PHP/release/log útvonala, aktiválása, monitor/SLA/escalation és logretention.
 - Valós Google Calendar/Szallas.hu automatikus worker smoke és cPanel lock/retry futás bizonyítéka.
-- Exporttoken-rotáció átfedési ideje, általános outbox retry/stale reclaim és online fizetés.
+- Exporttoken-rotáció átfedési ideje és online fizetés. Az általános outbox retry/stale reclaim Phase 10-ben RESOLVED/IMPLEMENTED.
 
 **RESOLVED Sprint 10:** worker belépési pont, forrásonkénti MySQL lock, átmeneti retry, legalább 24 órás DST-biztos grace, explicit legacy/person mód, gyermekkorhatár és ársáv-validáció, egész-HUF megjelenítés.
+
+## RESOLVED Phase 10 — e-mail outbox worker
+
+- Maximum 5 teljes kézbesítési kísérlet ugyanazon outbox rekordon.
+- Failed backoff: 5 perc, 15 perc, 1 óra, 6 óra; az ötödik után nincs automatikus vagy meglévő same-record manuális retry.
+- A `processing` lease 15 perc után stale; recovery egy konzervatív attemptet számol és nem küld azonnal.
+- Tervezett cronritmus 5 perc, de production aktiválása külön deployment művelet és továbbra is OPEN.
+- Automatikus outbox retention/törlés nincs. A későbbi retention szabály külön owner/legal döntés.
+- Automatikus retry és stale recovery IMPLEMENTED; bounce/complaint, provider-idempotencia és új rekordos manuális resend DEFERRED.

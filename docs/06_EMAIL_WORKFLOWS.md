@@ -6,8 +6,8 @@
 
 > A production SMTP paraméterezés, SPF/DKIM/DMARC előkészítés és staging kézbesítési smoke végrehajtható lépéseit a [production deployment runbook](15_DEPLOYMENT.md#production-smtp) tartalmazza. Provider rekordot, credentialt vagy enforcement policyt a rendszer nem feltételez.
 
-**Állapot:** 2FA, booking-request és booking-status/cancellation e-mail, outbox és manuális failed resend IMPLEMENTED; automatikus retry/stale reclaim PLANNED
-**Utolsó ellenőrzés:** 2026-10-12, `release/rc2` baseline `21d15ea`
+**Állapot:** 2FA, booking e-mailek, tranzakciós outbox, manuális failed retry, automatikus retry worker és stale reclaim IMPLEMENTED; production cron aktiválása NOT YET ENABLED
+**Utolsó ellenőrzés:** 2026-10-12, `release/rc2` Phase 10 munkafa
 
 Ez a dokumentum az 1.0 tranzakciós e-mail folyamatait tervezi. Kapcsolódó dokumentumok: [admin és hitelesítés](04_ADMIN_AND_AUTHENTICATION.md), [adatbázis- és domainmodell](02_DATABASE_AND_DOMAIN_MODEL.md), [árképzés](05_PRICING.md), [iCal](07_ICAL_SYNC.md), [biztonság](09_SECURITY.md), [tesztelés és üzemeltetés](10_TESTING_AND_OPERATIONS.md).
 
@@ -15,7 +15,7 @@ Ez a dokumentum az 1.0 tranzakciós e-mail folyamatait tervezi. Kapcsolódó dok
 
 **IMPLEMENTED Sprint 3:** `Mailer` port, strukturált `Message`, HTML/plain-text 2FA sablonrenderer, tesztelhető in-memory mailer és socket-alapú SMTP adapter. Az adapter Mailpithez plain SMTP-t, production konfigurációhoz titkosítást és opcionális authentikációt támogat; a PHP `mail()` függvényét nem használja. Transporthiba nem adja vissza a provider nyers válaszát, így credential vagy PII nem kerül kivételszövegbe.
 
-**IMPLEMENTED:** booking request és confirmed/rejected/cancelled outbox, commit utáni SMTP, valamint sikertelen státuszlevél védett admin újraküldése. Az új public booking pontosan egy `booking_request_received` üzenetet queue-z a vendégnek (`A Bata – Foglalását megkaptuk`), továbbá címzettenként egy `booking_request_admin_notification` sort (`Új foglalási igény érkezett`). A címzettek az aktív, adminfelületen kijelölt felhasználók normalizált, egyedi címei; ha ilyen nincs, kizárólag a `BOOKING_NOTIFICATION_EMAIL` fallback használatos. A második levél a konfigurált `BOOKING_ADMIN_BASE_URL` alatt védett admin booking-linket tartalmazza. Minden címzett külön claim-, attempts-, hiba- és sent állapotot kap; egy admin kézbesítési hibája nem állítja meg a többit, és nem módosítja a publikus API vendéglevélből származó `email_status` értékét. Replay/idempotens újraküldés nem hoz létre és nem küld új példányt. **PLANNED:** automatikus retry worker, stale claim reclaim, provider-idempotencia és bounce/complaint kezelés.
+**IMPLEMENTED:** booking request és confirmed/rejected/cancelled outbox, commit utáni SMTP, sikertelen státuszlevél védett admin újraküldése, valamint a Phase 10 automatikus retry/stale-recovery rétege. Az új public booking pontosan egy `booking_request_received` üzenetet queue-z a vendégnek (`A Bata – Foglalását megkaptuk`), továbbá címzettenként egy `booking_request_admin_notification` sort (`Új foglalási igény érkezett`). A címzettek az aktív, adminfelületen kijelölt felhasználók normalizált, egyedi címei; ha ilyen nincs, kizárólag a `BOOKING_NOTIFICATION_EMAIL` fallback használatos. A második levél a konfigurált `BOOKING_ADMIN_BASE_URL` alatt védett admin booking-linket tartalmazza. Minden címzett külön claim-, attempts-, hiba- és sent állapotot kap; egy admin kézbesítési hibája nem állítja meg a többit, és nem módosítja a publikus API vendéglevélből származó `email_status` értékét. Replay/idempotens újraküldés nem hoz létre és nem küld új példányt. **DEFERRED:** provider-idempotencia és bounce/complaint kezelés.
 
 **DECISION REQUIRED:** a production host tulajdonosi értéke `s54.tarhely.com`, de a port, TLS mód, authentikáció, felhasználónév, feladó cím és reply-to továbbra is nyitott. Ezek hiányában production SMTP smoke nem tekinthető teljesítettnek.
 
@@ -35,7 +35,7 @@ docker compose exec app php -r "require 'vendor/autoload.php'; `$c=require 'conf
 
 Ezután staging címzettel valós TLS-kézfogást és kézbesítést kell smoke tesztelni. A parancs sikeressége csak konfiguráció-validáció, nem igazolja a szolgáltató elérhetőségét vagy a DNS/SPF/DKIM/DMARC beállítást.
 
-**IMPLEMENTED:** mailer absztrakció, SMTP klienskonfiguráció, HTML/plain-text 2FA, booking-request és booking-status/cancellation sablon, tranzakciós outbox, commit utáni küldés és failed státuszlevél admin újraküldése. **PLANNED:** automatikus retry worker/cron, stale claim recovery, bounce/complaint kezelés és általános e-mail adminnapló.
+**IMPLEMENTED:** mailer absztrakció, SMTP klienskonfiguráció, HTML/plain-text 2FA és booking sablonok, tranzakciós outbox, commit utáni küldés, same-record manuális retry öt próbáig, automatikus retry worker és stale claim recovery. **NOT YET ENABLED:** production cron. **DEFERRED:** bounce/complaint kezelés, provider-idempotencia, új rekordos manuális resend és teljes e-mail adminmodul.
 
 ## 2. Transport és komponensek — IMPLEMENTED alap, PLANNED worker/provider elemek
 
@@ -87,38 +87,35 @@ Az URL-ek csak konfigurált HTTPS alkalmazásalapról és útvonalból épülhet
 - HTML egyszerű, reszponzív és külső JavaScript nélküli; lényegi információ kép nélkül is olvasható.
 - A template preview tesztadatot használ, valódi PII-t nem. Tesztküldés egyértelműen tesztként jelölt és auditált.
 
-## 5. Outbox, idempotencia és konzisztencia — PLANNED
+## 5. Outbox, idempotencia és konzisztencia — IMPLEMENTED
 
-Az üzleti állapotváltozás és az outbox bejegyzés ugyanabban az adatbázis-tranzakcióban történjen. SMTP-küldés csak commit után, külön feldolgozóban történik. Így adatbázis rollback után nem megy téves levél, SMTP-kiesés pedig nem görgeti vissza az üzleti műveletet.
+Az üzleti állapotváltozás és az outbox bejegyzés ugyanabban az adatbázis-tranzakcióban történik; SMTP csak commit után fut. A Phase 10 worker kizárólag már létező rekordokat dolgoz fel, nem generál díjbekérőt, emlékeztetőt, érkezési tájékoztatót vagy más opcionális kommunikációt.
 
-Javasolt idempotenciakulcs:
+A worker egy nem blokkoló `GET_LOCK('abata_email_outbox_worker', 0)` kapcsolat-lockot használ. Második példány sikeres no-op. A rekord `processing` állapotba csak az előző `status` és `attempts` értékére feltételes `UPDATE` után kerülhet, ezért a webes azonnali dispatcherrel folytatott versenyben csak az egyik fél küld. Egy futás legfeljebb 25 rekordot érint és sorosan küld.
 
-```text
-event_type : aggregate_id : aggregate_version : recipient_identity_hash : template_version
-```
+Támogatott immutable payload-típusok: `booking_request_received`, `booking_request_admin_notification`, `booking_confirmed`, `booking_rejected`, `booking_cancelled`, `booking_payment_request`, `booking_payment_reminder`, `booking_arrival_information`, `booking_modified`, `booking_review_request`. Ismeretlen típust a worker nem próbál renderelni, nem módosít és csak PII-mentes darabszámban jelent. A 2FA kifejezetten kizárt, mert mindig friss auth-kódot és külön rate-limit folyamatot igényel.
 
-Az idempotenciakulcs adatbázis-szinten egyedi. A worker atomi claim/lock segítségével vált `pending → processing` állapotba. Siker után ugyanaz a rekord nem küldhető újra automatikusan. Bizonytalan SMTP-kimenetelnél (timeout a szolgáltató elfogadása után) fennállhat duplikáció; ahol elérhető, stabil provider message/idempotency ID használandó.
+Bizonytalan SMTP-kimenetelnél – például ha a provider elfogadta a levelet, de a folyamat a DB-véglegesítés előtt megszakadt – provider-idempotencia nélkül elméletileg duplikált kézbesítés lehetséges. A konzervatív stale recovery ezt a bizonytalan kísérletet beleszámítja.
 
-> **DECISION REQUIRED:** outbox és napló egy vagy külön táblában legyen-e, claim mechanizmus, batch méret és worker cron gyakorisága. Minden sémaváltozás verziózott migrációt igényel.
+## 6. Állapotok, retry és hibakezelés — IMPLEMENTED
 
-## 6. Állapotok, retry és hibakezelés — PLANNED
+Az owner-approved szabály egyetlen `EmailOutboxRetryPolicy` objektumban él:
 
-Tervezett állapotok: `pending`, `processing`, `sent`, `retry_scheduled`, `failed_permanent`, `cancelled`, valamint admin által új eseményként létrehozott `manual_resend` kapcsolat.
+- maximum 5 teljes kézbesítési kísérlet;
+- első sikertelen kísérlet után 5 perc, második után 15 perc, harmadik után 1 óra, negyedik után 6 óra;
+- az ötödik hiba végleges ugyanazon a rekordon;
+- a legalább 15 perce `processing` rekord stale;
+- a cron célgyakorisága 5 perc.
 
-- Átmeneti hibák (timeout, kapcsolat, SMTP `4xx`, szolgáltatói ideiglenes limit): exponenciális backoff jitterrel.
-- Tartós hibák (érvénytelen cím, SMTP `5xx`, tiltott feladó, renderelési/konfigurációs hiba): automatikus retry nélkül `failed_permanent`, adminjelzéssel.
-- Szemléltető retry-sor: 1, 5, 15, 60 perc, majd 6 óra; ez **nem végleges üzemi érték**.
-- Minden kísérlet növeli a számlálót és rögzíti az időt, eredménykategóriát és redaktált hibát.
-- Beragadt `processing` rekord lease lejárta után biztonságosan újra claimelhető.
-- A worker hibája nem állíthatja le a teljes batch feldolgozását; rekordonként izolált hiba kell.
-
-> **DECISION REQUIRED:** maximális próbálkozásszám, backoff idők, lease timeout, riasztási küszöb és bounce/complaint utáni címletiltás.
+A stale rekord atomikusan `failed` lesz, `attempts` értéke eggyel nő, `last_error` pontosan `Stale processing lease recovered.`, és a recovery időpontjától induló backoff előtt nem küldhető újra. A deterministic JSON/payload/render hiba SMTP nélkül azonnal végleges, öt próbás `failed` állapotot és kizárólag `Stored e-mail payload could not be rendered.` okot kap. Transporthiba eggyel növeli az attempts értéket, `sent_at=NULL`, a tárolt ok `E-mail transport failure.`; egy rekord hibája nem állítja meg a batch későbbi rekordjait. Siker az SMTP-elfogadást jelenti, `sent`, eggyel növelt attempts, törölt hiba és kitöltött `sent_at` mellett.
 
 ### 6.1 Admin újraküldés
 
-Az admin nem állíthat egy hibás rekordot egyszerűen vissza `pending` állapotba. Újraküldés új outbox rekordot és új idempotenciakulcsot hoz létre, hivatkozik az eredetire, kötelező indokot kér, jogosultság- és CSRF-védett, auditált. A felület mutassa a címzett maszkolt formáját, sablonverziót, állapotot, próbálkozásokat és redaktált hibát. 2FA kód kézi újraküldése tilos; új kódot kell generálni az auth rate limitjeivel.
+A meglévő CSRF-, auth- és rate-limit védett, ugyanazon rekordot használó manuális retry megmarad, és az automatikus várakozást operátori döntéssel megkerülheti. Minden claim útvonal közös korlátja `attempts < 5`; öt próbánál nincs hatodik küldés és a gomb eltűnik. A booking részlet `attempts / 5` formában külön jelzi az automatikus retryra váró failed, a limitet elért failed, a processing és a sent állapotot. Új rekordos manuális resend **DEFERRED**. 2FA esetén továbbra is új kód készül a hitelesítési rate limitekkel.
 
-## 7. Naplózás, PII és megőrzés — PLANNED
+## 7. Naplózás, PII és megőrzés — IMPLEMENTED auditminimum, retention OPEN
+
+A worker PII-mentes `email.outbox_stale_recovered`, `email.outbox_retry_sent`, `email.outbox_retry_failed` és `email.outbox_payload_failed` auditot ír `admin_id=NULL` értékkel. Csak belső booking/outbox azonosító, message type és attempt szám tárolható. Auditírási hiba SMTP-elfogadás után nem teheti újra retry-képessé a már elküldött rekordot.
 
 Az e-mail napló tartalmazhat: belső rekordazonosító, eseménytípus, aggregate hivatkozás, template ID/verzió, idempotenciakulcs vagy hash, maszkolt címzett, állapot, próbálkozásszám, ütemezett/elküldött idő, provider message ID és redaktált hibakategória.
 
@@ -130,7 +127,7 @@ Nem naplózható:
 - szükségtelen teljes e-mail-cím, vendégnév, telefonszám, megjegyzés;
 - nyers szolgáltatói válasz kontrollálatlanul.
 
-A template input minimális, strukturált whitelist alapján készüljön. A tartalomhoz és naplóhoz csak jogosult admin férhet hozzá; export auditált. Adatmegőrzési idő után törlés vagy anonimizálás szükséges, a jogi/számviteli igények és backup-retention összehangolásával.
+A template input minimális, strukturált whitelist alapján készül. A tartalomhoz és naplóhoz csak jogosult admin férhet hozzá. A Phase 10 nem töröl, archivál, anonimizál vagy purge-ol outbox rekordot, és cleanup cron sincs. A későbbi retention/törlési szabály továbbra is külön owner/legal döntés.
 
 > **DECISION REQUIRED:** e-mail esemény-, tartalom- és provider-log megőrzési ideje, hozzáférési szerepkörök és törlési/anonimizálási eljárás.
 
@@ -161,7 +158,7 @@ A template input minimális, strukturált whitelist alapján készüljön. A tar
 3. Booking/státusz esemény és outbox rekord atomi; rollbackelt műveletből nem megy levél.
 4. Az idempotenciakulcs egyedi, ismételt esemény/cron nem okoz második automatikus küldést.
 5. Unit/integrációs teszt fedi a retry-besorolást, backoffot, claimet, lease-helyreállítást és tartós hibát.
-6. Admin újraküldés új, hivatkozott rekord, jogosultság- és CSRF-védett, indokolt és auditált.
+6. A meglévő same-record admin retry jogosultság-, CSRF- és rate-limit védett, öt kísérletnél leáll; az új rekordos, indokolt resend külön DEFERRED workflow.
 7. Sem alkalmazási, SMTP-, exception- vagy auditnaplóban nincs credential, 2FA-kód, token vagy szükségtelen PII.
 8. Mailpitben fejlesztői smoke teszt igazolja mindkét MIME-változatot; stagingen SMTP/TLS és kézbesíthetőségi smoke teszt fut.
 9. SPF, DKIM és DMARC ellenőrzési eredménye production release checklist része.
@@ -176,17 +173,35 @@ A template input minimális, strukturált whitelist alapján készüljön. A tar
 - **DEFERRED:** érkezés előtti emlékeztető végleges aktiválása.
 - **OUT OF SCOPE:** marketingkampány, hírlevél és PHP `mail()` alapú küldés.
 
+### Phase 10 CLI és cron — IMPLEMENTED kód, production aktiválás nélkül
+
+Fejlesztői kézi futás PowerShellből:
+
+```powershell
+docker compose exec app composer email:outbox
+```
+
+A `bin/process-email-outbox.php` a közös environment bootstrapet használja, kimenete csak a `stale_recovered`, `claimed`, `sent`, `failed`, `final_failed` és `unsupported` számlálókat tartalmazza. No-work és már foglalt worker-lock esetén exit `0`; konfigurációs, adatbázis- vagy worker-infrastruktúrahibánál nem nulla; rekordszintű SMTP-hiba mellett a futás folytatódik és exit `0` marad.
+
+Dokumentált, de **NOT YET ENABLED** production célritmus:
+
+```cron
+*/5 * * * * /ABSOLUTE/PHP/PATH /ABSOLUTE/RELEASE/PATH/bin/process-email-outbox.php
+```
+
+A valós PHP/release útvonalat a hosting adja. A Phase 10 nem módosít production cront és nem futtat production workert.
+
 ## 12. Sprint 4 booking-request e-mail — IMPLEMENTED
 
 A booking tranzakció az SMTP művelet előtt létrehozza az egyedi outbox rekordot. Commit után az adapter atomi `pending` → `processing` claimet végez, majd a meglévő `Mailer` porton HTML és plain-text levelet küld. Siker esetén `sent`, biztonságosan kezelt transporthiba esetén `failed` állapot készül. A booking mindkét esetben `pending` marad.
 
 A levél az A Bata nevet, publikus referenciát, dátumokat, éjszakák és vendégek számát, gyermekkorokat, végösszeget és HUF pénznemet tartalmazza, továbbá jelzi, hogy ez csak igény, amely admin jóváhagyás után válik véglegessé.
 
-**TECHNICAL DEBT / PLANNED:** booking-request levélhez nincs admin resend, továbbá nincs automatikus retry worker vagy stale `processing` recovery. A failed státuszlevél adminból újraküldhető. Ha a folyamat a claim után a végállapot frissítése előtt megszakad, a rekord `processing` állapotban maradhat; ezt időkorlátos reclaimmel és cron-kompatibilis retryval kell kezelni.
+**IMPLEMENTED Phase 10:** a booking-request levélhez továbbra sincs admin resend, de a pending/failed rekordot az automatikus worker feldolgozza, a legalább 15 perce `processing` rekordot pedig konzervatívan helyreállítja.
 
 ## Státuszértesítések – IMPLEMENTED Sprint 5
 
-Confirmed/rejected/cancelled outbox ugyanabban a tranzakcióban készül, SMTP commit után fut, és sent/failed auditot ír. Hiba nem rollbackeli a bookingot; failed levél adminból újraküldhető. Invalidated és belső admin note nem kerül vendéglevélbe. Az automatikus retry/max-attempt/stale reclaim továbbra is **PLANNED / OWNER DECISION REQUIRED**.
+Confirmed/rejected/cancelled outbox ugyanabban a tranzakcióban készül, SMTP commit után fut, és sent/failed auditot ír. Hiba nem rollbackeli a bookingot; failed levél adminból és az owner-approved Phase 10 policy szerint automatikusan is újrapróbálható, összesen legfeljebb öt kísérletig. Invalidated és belső admin note nem kerül vendéglevélbe.
 ## Sprint 6 cancellation notification — IMPLEMENTED
 
 A `confirmed -> cancelled` tranzakció cancellation snapshotot és státusz-email outbox rekordot hoz létre. SMTP I/O továbbra is csak commit után történik. A vendéglevél közli, hogy a lemondás kötbérmentes, vagy megadja az immutable accommodation-fee snapshotból számolt 50%-os kötbért HUF-ban. A szöveg nem állít automatikus terhelést vagy beszedést. A Bata branding a HTML- és plain-text változatban megmarad.

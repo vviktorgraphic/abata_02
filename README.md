@@ -16,6 +16,8 @@ A kézi Szallas.hu iCal import az explicit `VALUE=DATE` mellett a szolgáltató 
 
 **Phase 9 IMPLEMENTED:** a teljes 2FA-val védett admin felület aláírt ár- és foglaltsági előnézet után normál `pending` foglalást rögzíthet. A közös tranzakció inventory lockot, idempotenciát és immutable pricing snapshotot használ; az admin csatorna nem fabrikál publikus jogi elfogadást és nem küld automatikus létrehozáskori e-mailt. Részletek: [admin kézi foglalásrögzítés](docs/28_ADMIN_MANUAL_BOOKING_CREATION.md).
 
+**Phase 10 IMPLEMENTED:** a meglévő booking outbox rekordokat cron-kompatibilis worker küldi és próbálja újra legfeljebb öt teljes kísérletig (5 perc, 15 perc, 1 óra, 6 óra), a legalább 15 perce beragadt `processing` állapotot konzervatívan helyreállítja. A production cron még nincs aktiválva; retention/törlés nincs. Részletek: [e-mail folyamatok](docs/06_EMAIL_WORKFLOWS.md#phase-10-cli-és-cron--implemented-kód-production-aktiválás-nélkül).
+
 ## Rendszerspecifikáció
 
 Az aktuális implementáció és a tervezett 1.0 célrendszer elsődleges, verziókezelt specifikációja a [docs/README.md](docs/README.md) indexből érhető el. A dokumentáció az **IMPLEMENTED** és **PLANNED** állapotot elkülönítve kezeli; fejlesztés előtt az érintett fejezeteket a kóddal, migrációkkal és tesztekkel együtt kell ellenőrizni.
@@ -111,6 +113,14 @@ docker compose exec app composer test
 ```
 
 Docker nélkül, telepített függőségekkel: `composer test`.
+
+Az e-mail outbox worker helyi kézi futtatása:
+
+```powershell
+docker compose exec app composer email:outbox
+```
+
+No-work vagy már foglalt globális worker-lock esetén a parancs sikeres no-op. A repository az ötperces production cronritmust csak dokumentálja; cront nem aktivál.
 
 Release előtti staging ellenőrzéshez a csomagolt release gyökerében futtasd a `php bin/preflight.php` parancsot; a CLI automatikusan betölti a `.env` fájlt, ezért annak shellből történő `source`-olása nem szükséges.
 
@@ -255,7 +265,7 @@ A forrásfájl legyen a repositoryn kívül, a konténerbeli másolat pedig csak
 
 **IMPLEMENTED:** két hónapos publikus naptár, availability, admin-auth alapok és `POST /api/bookings`. Az új publikus igény `pending`, azonnal blokkolja a készletet és nem jár le automatikusan; a `confirmed` booking és a blocked period szintén blokkol. A mentés idempotens, tranzakciós, HUF ár-pillanatképet és e-mail outbox rekordot hoz létre; SMTP-hiba nem törli a bookingot.
 
-**IMPLEMENTED:** teljes admin booking workflow, pricing admin CRUD/preview, kötelező és verziózott booking-policy elfogadás, immutable pricing/cancellation snapshot, 7 naptári napos kötbérmentes határ és későbbi 50%-os kötbér, valamint automatikus iCal import worker. **PLANNED:** általános e-mail retry és online fizetés. A pontos határt a [rendszerspecifikáció](docs/README.md) tartja nyilván.
+**IMPLEMENTED:** teljes admin booking workflow, pricing admin CRUD/preview, kötelező és verziózott booking-policy elfogadás, immutable pricing/cancellation snapshot, 7 naptári napos kötbérmentes határ és későbbi 50%-os kötbér, automatikus iCal import worker, valamint általános booking e-mail retry és stale recovery. **PLANNED:** online fizetés; production cron aktiválása külön deployment lépés. A pontos határt a [rendszerspecifikáció](docs/README.md) tartja nyilván.
 
 ## Sprint 4 API smoke PowerShellből
 
@@ -286,7 +296,7 @@ A demo seed szemléltető fejlesztési árat tartalmaz, production árként nem 
 
 **IMPLEMENTED Phase 2 + Phase 3 hotfix:** a védett `/admin/bookings/monthly` oldal a kiválasztott Budapest-hónap minden napját megjeleníti. Külön jelöli a pending, confirmed és történeti completed foglalások érkezését, foglalt éjszakáját, távozását, a fordulónapot, kézi blokkot és relációval azonosított külső naptárblokkot; a távozás napja önmagában szabad. A completed továbbra sem blokkol publikus kapacitást és nem kerül iCal exportba. A nézet read-only és két batchelt adatbázis-lekérdezést használ.
 
-**PLANNED:** általános cron retry, maximális attempts és stale `processing` reclaim tulajdonosi döntés után.
+**IMPLEMENTED Phase 10:** automatikus cron-kompatibilis retry, maximum 5 attempts és 15 perces stale `processing` reclaim. A production cron nincs aktiválva.
 
 ## Phase 6 – megerősített foglalás módosítása
 

@@ -15,7 +15,7 @@ A repositoryban szereplő automatizált tesztek és Sprint 9 runbookok **IMPLEME
 
 | Szint | Cél és példák | Jelenlegi állapot | 1.0 elfogadás |
 |---|---|---|---|
-| Unit | tiszta domain szabályok: fél-nyitott intervallum, napállapot, validáció | **IMPLEMENTED:** availability, booking state machine, összetett pricing, cancellation, auth/2FA, e-mail, iCal parser/exporter/import és SSRF kontroll | további cron/retry szabályok PLANNED |
+| Unit | tiszta domain szabályok: fél-nyitott intervallum, napállapot, validáció | **IMPLEMENTED:** availability, booking state machine, összetett pricing, cancellation, auth/2FA, e-mail retry/backoff/stale policy, iCal parser/exporter/import és SSRF kontroll | további provider/bounce szabályok DEFERRED |
 | Integration | PDO repository, migráció, tranzakció, MySQL-specifikus viselkedés | **IMPLEMENTED** availability read repositoryra, DB elérhetőség esetén | **PLANNED:** write race, új táblák, rollback/restore utáni séma |
 | Feature | controller és use case együtt, kontrollált függőségekkel | **IMPLEMENTED:** availability, admin auth/booking/pricing, policy checkbox, booking create és tokenes iCal export HTTP-szerződés | teljes interaktív browser dispatch audit PLANNED |
 | API contract | metódus, schema, státuszkód, auth, PII és hibaválasz | részben **IMPLEMENTED** az availability válaszra | **PLANNED:** minden [API](08_API_REFERENCE.md) végpontra pozitív/negatív szerződés, különösen `POST /api/booking/validate` |
@@ -62,7 +62,7 @@ Példa: `[2026-08-01, 2026-08-05)` és `[2026-08-05, 2026-08-08)` nem ütközik;
 
 ### E-mail idempotencia
 
-**PLANNED:** egy domain-esemény és sablonverzió legfeljebb egy aktív küldési rekordot hoz létre; timeout utáni retry nem duplikál; permanens hiba és admin újraküldés auditált; HTML/plain-text tartalom escapingje és header injection védelme tesztelt. Mailpit csak fejlesztői/staging tesztcímzettekkel használható. Részletek: [e-mail folyamatok](06_EMAIL_WORKFLOWS.md).
+**IMPLEMENTED Phase 10:** a pending rekord azonnal, a failed rekord 5m/15m/1h/6h backoff után claimelhető; öt attempts után nincs új claim. A 15 perces stale processing recovery, globális nem blokkoló DB-lock, feltételes sor-claim, 25-ös batch, minden stabil booking message type renderelése, payload permanent failure, transport failure, batch-folytatás, manuális retry cap és ismeretlen típus változatlanul hagyása automatizáltan tesztelt. Mailpit csak fejlesztői/staging tesztcímzettekkel használható. Részletek: [e-mail folyamatok](06_EMAIL_WORKFLOWS.md).
 
 ### Cron újrafutás
 
@@ -141,13 +141,26 @@ Migrációt nem szabad automatikusan minden webkéréskor vagy app induláskor f
 
 ### Cron
 
-**PLANNED:** A cPanel cron abszolút PHP- és scriptútvonalat használ, nem függ working directorytól, Dockertől vagy PowerShelltől:
+**IMPLEMENTED CLI-k / production aktiválás PENDING:** A cPanel cron abszolút PHP- és scriptútvonalat használ, nem függ working directorytól, Dockertől vagy PowerShelltől:
 
 ```text
 /usr/local/bin/php /home/CPANEL_USER/app/bin/ical-sync.php
+*/5 * * * * /ABSOLUTE/PHP/PATH /ABSOLUTE/RELEASE/PATH/bin/process-email-outbox.php
 ```
 
-Ugyanez a minta alkalmazandó e-mail retry és más ütemezett job belépési pontjára. A pontos PHP útvonalat a tárhelyszolgáltató/cPanel adja. Secret nem lehet parancssori argumentum; nem nulla exit code és strukturált, rotált napló szükséges. Az iCal script Sprint 10-ben **IMPLEMENTED**: `php bin/ical-sync.php`.
+Az e-mail worker `composer email:outbox` vagy `php bin/process-email-outbox.php` paranccsal futtatható. A pontos PHP útvonalat a tárhelyszolgáltató/cPanel adja. Secret nem lehet parancssori argumentum; nem nulla exit code és strukturált, rotált napló szükséges. A repository csak dokumentálja az ötperces célt: production cron nincs aktiválva.
+
+## Phase 10 e-mail worker ellenőrzés
+
+PowerShell-kompatibilis helyi ellenőrzés:
+
+```powershell
+docker compose exec app composer email:outbox
+docker compose exec app vendor/bin/phpunit tests/Unit/Mail/EmailOutboxRetryPolicyTest.php tests/Unit/Mail/EmailOutboxWorkerTest.php
+docker compose exec app vendor/bin/phpunit tests/Integration/Booking/PdoEmailOutboxWorkerRepositoryTest.php tests/Integration/Booking/ManualEmailRetryCapTest.php
+```
+
+No-work és lock-held futás exit `0`. A kimenet nem tartalmazhat címzettet, nevet, tárgyat, payloadot vagy SMTP-választ. A production aktiválás előtt külön staging Mailpit/sandbox SMTP smoke, abszolút hosting útvonal, logrotáció és alert szükséges. Outbox retention/cleanup nincs.
 
 ## Sprint 10 operations ellenőrzés
 
@@ -277,7 +290,7 @@ git status --short
 
 Ezután a [booking API](08_API_REFERENCE.md#post-apibookings--implemented) PowerShell smoke-ja és a `http://localhost:8025` Mailpit felület ellenőrzendő. A seedelt ár szemléltető, productionben tilos változtatás nélkül használni.
 
-**PLANNED / TECHNICAL DEBT:** valódi párhuzamos production-terhelési próba; stale `processing` outbox reclaim és retry cron; production SMTP/TLS kézbesíthetőség; teljes böngésző- és accessibility audit; admin jóváhagyáskor confirmed race teszt.
+**PLANNED / TECHNICAL DEBT:** valódi párhuzamos production-terhelési próba és cron aktiválás; production SMTP/TLS kézbesíthetőség; bounce/complaint és provider-idempotencia; teljes böngésző- és accessibility audit; admin jóváhagyáskor confirmed race teszt. A stale `processing` outbox reclaim és retry worker automatizált lefedése IMPLEMENTED.
 
 ## Sprint 5 PowerShell release ellenőrzés
 

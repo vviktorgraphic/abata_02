@@ -251,6 +251,17 @@ final class AdminBookingUiTest extends TestCase
         self::assertSame(3, substr_count($pending, 'Admin megjegyzés (opcionális)'));
     }
 
+    public function test_retry_limit_is_visible_and_same_record_retry_is_hidden(): void
+    {
+        $html = $this->renderDetail('confirmed', [[
+            'type' => 'booking_confirmed', 'status' => 'failed', 'attempts' => 5,
+        ]]);
+
+        self::assertStringContainsString('5 / 5 kísérlet', $html);
+        self::assertStringContainsString('Küldés sikertelen, küldési korlát elérve', $html);
+        self::assertStringNotContainsString('Sikertelen státuszlevél újraküldése', $html);
+    }
+
     public function test_blocked_period_page_explains_half_open_dates_and_has_no_get_mutation(): void
     {
         $html = $this->view->render('blocked-periods', ['periods'=>[['id'=>4,'start_date'=>'2026-09-01','end_date'=>'2026-09-03','reason'=>'Karbantartás','internal_note'=>null]], 'csrfToken'=>'token']);

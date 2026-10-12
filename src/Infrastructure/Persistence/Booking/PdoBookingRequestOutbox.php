@@ -6,11 +6,12 @@ namespace App\Infrastructure\Persistence\Booking;
 
 use App\Application\Mail\BookingRequestMailData;
 use App\Application\Mail\BookingRequestOutbox;
+use App\Application\Mail\EmailOutboxRetryPolicy;
 use PDO;
 
 final readonly class PdoBookingRequestOutbox implements BookingRequestOutbox
 {
-    public function __construct(private PDO $pdo)
+    public function __construct(private PDO $pdo, private EmailOutboxRetryPolicy $retryPolicy = new EmailOutboxRetryPolicy())
     {
     }
 
@@ -21,26 +22,34 @@ final readonly class PdoBookingRequestOutbox implements BookingRequestOutbox
         }
 
         $select = $this->pdo->prepare(
-            'SELECT id FROM email_outbox
+            'SELECT id, attempts FROM email_outbox
              WHERE booking_id = :booking_id AND message_type = :message_type AND status = \'pending\'
+               AND attempts < :max_attempts
              ORDER BY id LIMIT 1'
         );
         $claim = $this->pdo->prepare(
-            'UPDATE email_outbox SET status = \'processing\' WHERE id = :id AND status = \'pending\''
+            'UPDATE email_outbox SET status = \'processing\'
+             WHERE id = :id AND status = \'pending\' AND attempts = :expected_attempts
+               AND attempts < :max_attempts'
         );
         do {
-            $select->execute(['booking_id' => $bookingId, 'message_type' => $messageType]);
-            $id = $select->fetchColumn();
-            if ($id === false) {
+            $select->execute(['booking_id' => $bookingId, 'message_type' => $messageType, 'max_attempts' => $this->retryPolicy->maxAttempts()]);
+            $candidate = $select->fetch(PDO::FETCH_ASSOC);
+            if ($candidate === false) {
                 return null;
             }
-            $claim->execute(['id' => (int) $id]);
+            $id = (int) $candidate['id'];
+            $claim->execute([
+                'id' => $id,
+                'expected_attempts' => (int) $candidate['attempts'],
+                'max_attempts' => $this->retryPolicy->maxAttempts(),
+            ]);
         } while ($claim->rowCount() !== 1);
 
         $statement = $this->pdo->prepare(
             'SELECT id, recipient, payload FROM email_outbox WHERE id = :id AND status = \'processing\''
         );
-        $statement->execute(['id' => (int) $id]);
+        $statement->execute(['id' => $id]);
         $row = $statement->fetch(PDO::FETCH_ASSOC);
         if ($row === false) {
             return null;
@@ -63,18 +72,20 @@ final readonly class PdoBookingRequestOutbox implements BookingRequestOutbox
     {
         $statement = $this->pdo->prepare(
             'UPDATE email_outbox SET status = \'sent\', attempts = attempts + 1,
-             last_error = NULL, sent_at = CURRENT_TIMESTAMP WHERE id = :id'
+             last_error = NULL, sent_at = CURRENT_TIMESTAMP
+             WHERE id = :id AND status = \'processing\' AND attempts < :max_attempts'
         );
-        $statement->execute(['id' => $outboxId]);
+        $statement->execute(['id' => $outboxId, 'max_attempts' => $this->retryPolicy->maxAttempts()]);
     }
 
     public function markFailed(int $outboxId, string $safeReason): void
     {
         $statement = $this->pdo->prepare(
             'UPDATE email_outbox SET status = \'failed\', attempts = attempts + 1,
-             last_error = :reason, sent_at = NULL WHERE id = :id'
+             last_error = :reason, sent_at = NULL
+             WHERE id = :id AND status = \'processing\' AND attempts < :max_attempts'
         );
-        $statement->execute(['id' => $outboxId, 'reason' => mb_substr($safeReason, 0, 500)]);
+        $statement->execute(['id' => $outboxId, 'reason' => mb_substr($safeReason, 0, 500), 'max_attempts' => $this->retryPolicy->maxAttempts()]);
     }
 
     public function statusForBooking(int $bookingId): string

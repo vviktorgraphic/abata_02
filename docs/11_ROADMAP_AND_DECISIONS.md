@@ -1,12 +1,12 @@
 # Roadmap és döntési napló
 
-**Állapot:** Sprint 1–9 alkalmazási és deployment-readiness scope IMPLEMENTED, környezetfüggő release-kapuk nyitottak
-**Utolsó ellenőrzött állapot:** `release/rc2` baseline `21d15ea`, 2026-10-12
+**Állapot:** Phase 10 automatikus e-mail outbox retry/stale recovery IMPLEMENTED, környezetfüggő release-kapuk nyitottak
+**Utolsó ellenőrzött állapot:** `release/rc2` Phase 10 munkafa, 2026-10-12
 
 ## Kiindulási helyzet
 
 **IMPLEMENTED:** technikai alap, MySQL séma, migrációfuttató, publikus két hónapos naptár, read-only availability API, mentés nélküli booking-validáció és demo seeder.
-**IMPLEMENTED:** admin authentication/2FA, admin booking management, tranzakciós booking persistence, legacy és személyalapú közös pricing engine, immutable snapshotok, booking/státusz outbox, kézi és automatikus lock/retry/grace iCal import és tokenes export, továbbá production runbookok. **PLANNED / RELEASE GATE:** jóváhagyott jogi/production pricing tartalom, környezetben végrehajtott production/staging smoke és automatikus e-mail retry.
+**IMPLEMENTED:** admin authentication/2FA, admin booking management, tranzakciós booking persistence, legacy és személyalapú közös pricing engine, immutable snapshotok, booking/státusz outbox, automatikus e-mail retry/stale recovery, kézi és automatikus lock/retry/grace iCal import és tokenes export, továbbá production runbookok. **PLANNED / RELEASE GATE:** jóváhagyott jogi/production pricing tartalom, környezetben végrehajtott production/staging smoke és cronaktiválás.
 **IMPLEMENTED Phase 9:** teljes admin sessionnel védett, pending-only kézi foglalásrögzítés aláírt read-only előnézettel és a publikus create-tel közös inventory/idempotencia/pricing tranzakcióval. Az admin csatorna nem fabrikál publikus jogi elfogadást és nem küld automatikus create e-mailt.
 
 ## Tervezett sprintek
@@ -32,7 +32,7 @@
 | ADR-005 | IMPLEMENTED | Fél-nyitott `[arrival, departure)` intervallum | Azonos napi turnover ütközés nélkül modellezhető. |
 | ADR-006 | IMPLEMENTED | Egyetlen szálláshely | Nincs property azonosító a jelenlegi sémában; multi-property **OUT OF SCOPE** 1.0-ban. |
 | ADR-007 | IMPLEMENTED | Repository rétegek read és booking write oldalon | A booking create tranzakciós PDO adapterrel, application/domain határral működik. |
-| ADR-008 | IMPLEMENTED alap | SMTP transport és booking e-mail outbox/log | Közvetlen `mail()` nincs; atomi egyszeri claim működik, retry/admin resend és production SMTP-paraméterek még nyitottak. |
+| ADR-008 | IMPLEMENTED | SMTP transport és booking e-mail outbox/log | Közvetlen `mail()` nincs; atomi claim, öt próbás automatikus retry, 15 perces stale recovery és capelt meglévő manuális retry működik. Production SMTP/cron, bounce/complaint és új rekordos resend külön kapu. |
 | ADR-009 | IMPLEMENTED | E-mailes 2FA az 1.0-ban | TOTP bővíthetőség megmarad, de TOTP **DEFERRED**. |
 | ADR-010 | IMPLEMENTED | Query-tokenes iCal export feed | A token hashként tárolt, rotálható capability secret; a feed PII nélkül `pending` és `confirmed` bookingot exportál. |
 | ADR-011 | IMPLEMENTED alap | Importált iCal esemény külön entitás | Nem keverhető belső bookinggal; forrás és UID alapján idempotensen külön blocked periodhoz kapcsolódik. Eltűnés/grace PLANNED. |
@@ -84,7 +84,7 @@ Tulajdonosi döntés után ebben a fájlban dátummal, indoklással és érintet
 
 Az admin authentication foundation komponensei **IMPLEMENTED** állapotúak: credential check, e-mailes 2FA, session/CSRF, rate limiting, audit persistence, mailer/SMTP, migráció és minimális auth UI. A végleges elfogadás feltétele a composition root bekötése, friss adatbázisos migráció, teljes teszt és Mailpit/browser smoke.
 
-Az admin booking CRUD, a legacy/person pricing admin/engine, valamint a kézi és automatikus iCal import/tokenes export **IMPLEMENTED**. Az általános automatikus e-mail retry rendszer továbbra is **PLANNED**; a production iCal cron aktiválása környezeti lépés.
+Az admin booking CRUD, a legacy/person pricing admin/engine, a kézi és automatikus iCal import/tokenes export, valamint az általános automatikus e-mail retry rendszer **IMPLEMENTED**. A production cronok aktiválása környezeti lépés.
 
 Nyitott kapuk: abszolút session maximum; production SMTP port/TLS/auth/feladó; végleges rate-limit küszöbök és retention.
 
@@ -92,15 +92,15 @@ Nyitott kapuk: abszolút session maximum; production SMTP port/TLS/auth/feladó;
 
 **IMPLEMENTED Sprint 4 történeti alap, Phase 1B-ben felülírva:** `POST /api/bookings`, tranzakciós készletzár, idempotencia, gyermekéletkorok és immutable snapshot/outbox. A Phase 1B óta a pending is blokkol; a Sprint 6 ezt közös összetett HUF pricing engine-re bővítette.
 
-**IMPLEMENTED a későbbi sprintekben:** admin approval/list/detail, legacy/person pricing és kézi/automatikus iCal import/tokenes export. **PLANNED:** production pricing értékek, outbox retry/stale claim recovery és online fizetés.
+**IMPLEMENTED a későbbi sprintekben:** admin approval/list/detail, legacy/person pricing, kézi/automatikus iCal import/tokenes export és outbox retry/stale claim recovery. **PLANNED:** production pricing értékek és online fizetés.
 
 ## Sprint 5 teljesítési állapot
 
-**IMPLEMENTED:** admin lista/részlet, explicit state machine, tranzakciós státuszváltás/history/audit/outbox, concurrency lock, blocked-period kezelés, státusz-email és security guard. A pricing és a kézi/automatikus iCal folyamat későbbi sprintben elkészült. **PLANNED:** automatikus outbox retry/stale reclaim és payment.
+**IMPLEMENTED:** admin lista/részlet, explicit state machine, tranzakciós státuszváltás/history/audit/outbox, concurrency lock, blocked-period kezelés, státusz-email és security guard. A pricing, iCal és Phase 10 outbox retry/stale reclaim később elkészült. **PLANNED:** online payment.
 
 ## Sprint 6 teljesítési állapot
 
-**IMPLEMENTED:** pricing admin CRUD/active state és közös booking/preview engine; policy checkbox és verziózott elfogadási snapshot; 7 naptári napos kötbérmentes határ, azon belül immutable accommodation fee 50%-a; cancellation snapshot, audit és vendéglevél. **NEXT:** iCal vagy production hardening a nyitott tulajdonosi döntések lezárása után. **PLANNED:** production árértékek, hétvégi napok, IFA érték/jogi mentességi kategóriák, online beszedés és automatikus outbox retry.
+**IMPLEMENTED:** pricing admin CRUD/active state és közös booking/preview engine; policy checkbox és verziózott elfogadási snapshot; 7 naptári napos kötbérmentes határ, azon belül immutable accommodation fee 50%-a; cancellation snapshot, audit és vendéglevél. Az automatikus outbox retry Phase 10-ben elkészült. **PLANNED:** production árértékek, online beszedés és fennmaradó környezeti release-kapuk.
 
 ## Sprint 7 teljesítési állapot
 
@@ -108,14 +108,14 @@ Nyitott kapuk: abszolút session maximum; production SMTP port/TLS/auth/feladó;
 
 ## Sprint 9 teljesítési állapot
 
-**IMPLEMENTED:** cPanel/Apache deployment runbook, backup/restore, `/health`, monitoring és a Sprint 10 iCal worker. **PLANNED / BLOCKED:** outbox retry és cleanup worker; az iCal production cron aktiválása környezeti smoke/monitor döntés. A staging/production és owner/legal kapuk továbbra is nyitottak.
+**IMPLEMENTED:** cPanel/Apache deployment runbook, backup/restore, `/health`, monitoring, iCal worker és Phase 10 outbox retry worker. **PLANNED / BLOCKED:** production cronaktiválás és környezeti smoke/monitor döntés. Outbox cleanup nincs engedélyezve; retention külön döntés. A staging/production és owner/legal kapuk továbbra is nyitottak.
 ## Sprint 10 teljesítési állapot
 
-**IMPLEMENTED:** automatikus iCal CLI, source lock, átmeneti hibák korlátozott retry-ja, teljes-feed reconciliation és DST-biztos minimum 24 órás grace; egységes HUF formatter; explicit legacy/person pricing, gyermek ársávok, optimistic admin mentés, v3 éjszakánkénti snapshot és cancellation regresszió. **DEPLOYMENT PENDING:** valós cPanel cron, provider smoke és tulajdonos által jóváhagyott production árkonfiguráció. **PLANNED:** outbox retry, tokenrotációs átfedés és online fizetés.
+**IMPLEMENTED:** automatikus iCal CLI, source lock, átmeneti hibák korlátozott retry-ja, teljes-feed reconciliation és DST-biztos minimum 24 órás grace; egységes HUF formatter; explicit legacy/person pricing, gyermek ársávok, optimistic admin mentés, v3 éjszakánkénti snapshot és cancellation regresszió. A Phase 10 outbox retry külön elkészült. **DEPLOYMENT PENDING:** valós cPanel cron, provider smoke és tulajdonos által jóváhagyott production árkonfiguráció. **PLANNED:** tokenrotációs átfedés és online fizetés.
 
 ## Phase 6–7 teljesítési állapot
 
-**IMPLEMENTED Phase 6:** confirmed booking módosítás aláírt előnézettel, stale/concurrency védelemmel, inventory lockkal, aktuális újraárazással, változatlan korábbi előleggel, history/audit/outbox és vendégértesítés támogatással. **IMPLEMENTED Phase 7 readiness:** owner UAT dokumentáció és GET-only read-only smoke. **PRODUCTION DISABLED/PENDING:** lifecycle és cron; Szallas.hu új feedre váltása provider cutover. **DEFERRED / DECISION REQUIRED:** általános outbox retry/stale reclaim és online fizetés.
+**IMPLEMENTED Phase 6:** confirmed booking módosítás aláírt előnézettel, stale/concurrency védelemmel, inventory lockkal, aktuális újraárazással, változatlan korábbi előleggel, history/audit/outbox és vendégértesítés támogatással. **IMPLEMENTED Phase 7 readiness:** owner UAT dokumentáció és GET-only read-only smoke. **PRODUCTION DISABLED/PENDING:** lifecycle és cron; Szallas.hu új feedre váltása provider cutover. **IMPLEMENTED Phase 10:** általános outbox retry/stale reclaim. **DEFERRED:** online fizetés.
 
 ## Phase 8 teljesítési állapot
 
@@ -126,3 +126,9 @@ Nyitott kapuk: abszolút session maximum; production SMTP port/TLS/auth/feladó;
 **IMPLEMENTED:** admin kézi foglalás létrehozása `GET /admin/bookings/create`, `POST /admin/bookings/create/preview` és `POST /admin/bookings/create` útvonalakon. Az előnézet read-only availabilityt és a közös pricing engine-t használ; az aláírt mentés inventory lock alatt újraellenőrzi a foglaltságot és az árat. A booking normál `pending`, immutable pricing snapshotot és idempotenciarekordot kap, ezért külön read-model logika nélkül blokkol availabilityben, megjelenik a listában/dashboardon/havi nézetben, és iCalba kerül.
 
 **IMPLEMENTED csatornaspecifikus határ:** a publikus minimum előfoglalási nap nem vonatkozik az adminra, de a múltbeli érkezés, stay/horizon/capacity/child-age szabály változatlan. Minden jogi acceptance mező `NULL`; acceptance audit és automatikus create outbox nincs. A létrehozó admin kezdeti status historyban és PII-mentes `booking.admin_created` auditban rögzül. Nincs új migráció, kézi ár vagy production művelet. Részletek: [Admin kézi foglalásrögzítés](28_ADMIN_MANUAL_BOOKING_CREATION.md).
+
+## Phase 10 teljesítési állapot
+
+**IMPLEMENTED:** cron-kompatibilis `bin/process-email-outbox.php` és `composer email:outbox`; nem blokkoló globális DB-lock; feltételes sor-claim; 25 rekordos szekvenciális batch; 5m/15m/1h/6h retry; öt teljes kísérletes korlát; 15 perces stale processing recovery; deterministic payload final failure; PII-mentes audit és CLI-summary. A worker a tíz meglévő stabil booking payload/renderert támogatja, a 2FA-t és ismeretlen típust nem érinti. Nincs új migráció és nincs retention/törlés.
+
+**NOT YET ENABLED:** production cron. **DEFERRED:** bounce/complaint, provider message idempotency, új rekordos manuális resend. A következő termékfejlesztési fázis előtt a production jogi/pricing/SMTP és cron-monitorozási kapukat kell lezárni.

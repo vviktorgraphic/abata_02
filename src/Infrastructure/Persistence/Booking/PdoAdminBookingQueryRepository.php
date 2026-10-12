@@ -256,7 +256,7 @@ final class PdoAdminBookingQueryRepository
     private function paymentRequest(int $bookingId): ?array
     {
         $statement = $this->pdo->prepare(
-            "SELECT status, sent_at, payload FROM email_outbox
+            "SELECT status, attempts, sent_at, payload FROM email_outbox
              WHERE booking_id = :id AND message_type = 'booking_payment_request' LIMIT 1"
         );
         $statement->execute(['id' => $bookingId]);
@@ -265,7 +265,7 @@ final class PdoAdminBookingQueryRepository
         $payload = $this->decodeJson((string) $row['payload'], 'Stored payment request is invalid.');
 
         return [
-            'status' => $row['status'], 'sent_at' => $row['sent_at'],
+            'status' => $row['status'], 'attempts' => (int) $row['attempts'], 'sent_at' => $row['sent_at'],
             'advance_amount' => $payload['advance_amount'] ?? null,
             'advance_percent' => $payload['advance_percent'] ?? null,
             'accommodation_fee' => $payload['accommodation_fee'] ?? null,

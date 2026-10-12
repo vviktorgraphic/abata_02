@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace App\Infrastructure\Persistence\Booking;
 
 use App\Application\Booking\BookingLifecycleRepository;
+use App\Application\Mail\EmailOutboxRetryPolicy;
 use PDO;
 
 final readonly class PdoBookingLifecycleRepository implements BookingLifecycleRepository
 {
-    public function __construct(private PDO $pdo) {}
+    public function __construct(private PDO $pdo, private EmailOutboxRetryPolicy $retryPolicy = new EmailOutboxRetryPolicy()) {}
 
     public function claimReviewRequests(string $startDate, string $today): array
     {
@@ -22,19 +23,20 @@ final readonly class PdoBookingLifecycleRepository implements BookingLifecycleRe
             $bookings=$q->fetchAll(PDO::FETCH_ASSOC);
             $items=[];
             foreach ($bookings as $booking) {
-                $out=$this->pdo->prepare("SELECT id,status,payload FROM email_outbox WHERE booking_id=:id AND message_type='booking_review_request' FOR UPDATE");
+                $out=$this->pdo->prepare("SELECT id,status,payload,attempts FROM email_outbox WHERE booking_id=:id AND message_type='booking_review_request' FOR UPDATE");
                 $out->execute(['id'=>$booking['id']]);
                 $row=$out->fetch(PDO::FETCH_ASSOC);
                 $retry=$row !== false && $row['status']==='failed';
-                if ($row !== false && !in_array($row['status'],['pending','failed'],true)) continue;
+                if ($row !== false && (!in_array($row['status'],['pending','failed'],true)
+                    || !$this->retryPolicy->canAttempt((int)$row['attempts']))) continue;
                 $payload=['recipient'=>(string)$booking['guest_email'],'template_version'=>1];
                 if ($row === false) {
                     $insert=$this->pdo->prepare("INSERT INTO email_outbox (booking_id,message_type,recipient,subject,payload) VALUES (:id,'booking_review_request',:recipient,'Értékelés',:payload)");
                     $insert->execute(['id'=>$booking['id'],'recipient'=>$booking['guest_email'],'payload'=>json_encode($payload,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE)]);
                     $outboxId=(int)$this->pdo->lastInsertId();
                 } else { $outboxId=(int)$row['id']; $payload=json_decode((string)$row['payload'],true,512,JSON_THROW_ON_ERROR); }
-                $claim=$this->pdo->prepare("UPDATE email_outbox SET status='processing' WHERE id=:id AND status IN ('pending','failed')");
-                $claim->execute(['id'=>$outboxId]);
+                $claim=$this->pdo->prepare("UPDATE email_outbox SET status='processing' WHERE id=:id AND status IN ('pending','failed') AND attempts < :max_attempts");
+                $claim->execute(['id'=>$outboxId,'max_attempts'=>$this->retryPolicy->maxAttempts()]);
                 if ($claim->rowCount()===1) $items[]=['id'=>$outboxId,'booking_id'=>(int)$booking['id'],'payload'=>$payload,'retry'=>$retry];
             }
             $this->pdo->commit(); return $items;
@@ -43,12 +45,12 @@ final readonly class PdoBookingLifecycleRepository implements BookingLifecycleRe
 
     public function markReviewSent(int $outboxId): void
     {
-        $q=$this->pdo->prepare("UPDATE email_outbox SET status='sent',attempts=attempts+1,sent_at=CURRENT_TIMESTAMP,last_error=NULL WHERE id=:id AND message_type='booking_review_request' AND status='processing'");$q->execute(['id'=>$outboxId]);
+        $q=$this->pdo->prepare("UPDATE email_outbox SET status='sent',attempts=attempts+1,sent_at=CURRENT_TIMESTAMP,last_error=NULL WHERE id=:id AND message_type='booking_review_request' AND status='processing' AND attempts < :max_attempts");$q->execute(['id'=>$outboxId,'max_attempts'=>$this->retryPolicy->maxAttempts()]);
     }
 
     public function markReviewFailed(int $outboxId,string $safeReason): void
     {
-        $q=$this->pdo->prepare("UPDATE email_outbox SET status='failed',attempts=attempts+1,sent_at=NULL,last_error=:reason WHERE id=:id AND message_type='booking_review_request' AND status='processing'");$q->execute(['id'=>$outboxId,'reason'=>mb_substr($safeReason,0,500)]);
+        $q=$this->pdo->prepare("UPDATE email_outbox SET status='failed',attempts=attempts+1,sent_at=NULL,last_error=:reason WHERE id=:id AND message_type='booking_review_request' AND status='processing' AND attempts < :max_attempts");$q->execute(['id'=>$outboxId,'reason'=>mb_substr($safeReason,0,500),'max_attempts'=>$this->retryPolicy->maxAttempts()]);
     }
 
     public function completeDeparted(string $startDate, string $today): array

@@ -6,11 +6,12 @@ namespace App\Infrastructure\Persistence\Booking;
 
 use App\Application\Mail\BookingStatusMailData;
 use App\Application\Mail\BookingStatusNotificationOutbox;
+use App\Application\Mail\EmailOutboxRetryPolicy;
 use PDO;
 
 final readonly class PdoBookingStatusNotificationOutbox implements BookingStatusNotificationOutbox
 {
-    public function __construct(private PDO $pdo)
+    public function __construct(private PDO $pdo, private EmailOutboxRetryPolicy $retryPolicy = new EmailOutboxRetryPolicy())
     {
     }
 
@@ -22,9 +23,10 @@ final readonly class PdoBookingStatusNotificationOutbox implements BookingStatus
         }
         $claim = $this->pdo->prepare(
             "UPDATE email_outbox SET status = 'processing'
-             WHERE booking_id = :booking_id AND message_type = :message_type AND status IN ('pending', 'failed')"
+             WHERE booking_id = :booking_id AND message_type = :message_type
+               AND status IN ('pending', 'failed') AND attempts < :max_attempts"
         );
-        $claim->execute(['booking_id' => $bookingId, 'message_type' => $messageType]);
+        $claim->execute(['booking_id' => $bookingId, 'message_type' => $messageType, 'max_attempts' => $this->retryPolicy->maxAttempts()]);
         if ($claim->rowCount() !== 1) {
             return null;
         }
@@ -56,18 +58,20 @@ final readonly class PdoBookingStatusNotificationOutbox implements BookingStatus
     {
         $statement = $this->pdo->prepare(
             "UPDATE email_outbox SET status = 'sent', attempts = attempts + 1,
-             last_error = NULL, sent_at = CURRENT_TIMESTAMP WHERE id = :id AND status = 'processing'"
+             last_error = NULL, sent_at = CURRENT_TIMESTAMP
+             WHERE id = :id AND status = 'processing' AND attempts < :max_attempts"
         );
-        $statement->execute(['id' => $outboxId]);
+        $statement->execute(['id' => $outboxId, 'max_attempts' => $this->retryPolicy->maxAttempts()]);
     }
 
     public function markFailed(int $outboxId, string $safeReason): void
     {
         $statement = $this->pdo->prepare(
             "UPDATE email_outbox SET status = 'failed', attempts = attempts + 1,
-             last_error = :reason, sent_at = NULL WHERE id = :id AND status = 'processing'"
+             last_error = :reason, sent_at = NULL
+             WHERE id = :id AND status = 'processing' AND attempts < :max_attempts"
         );
-        $statement->execute(['id' => $outboxId, 'reason' => mb_substr($safeReason, 0, 500)]);
+        $statement->execute(['id' => $outboxId, 'reason' => mb_substr($safeReason, 0, 500), 'max_attempts' => $this->retryPolicy->maxAttempts()]);
     }
 
     public function status(int $bookingId, string $status): string

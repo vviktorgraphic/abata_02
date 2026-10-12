@@ -7,12 +7,13 @@ namespace App\Infrastructure\Persistence\Booking;
 use App\Application\Mail\BookingManualCommunicationOutbox;
 use App\Application\Mail\BookingPaymentRequestConfiguration;
 use App\Application\Mail\BookingPaymentRequestMailData;
+use App\Application\Mail\EmailOutboxRetryPolicy;
 use PDO;
 
 final readonly class PdoBookingManualCommunicationOutbox implements BookingManualCommunicationOutbox
 {
     private const TYPES = ['booking_payment_reminder', 'booking_arrival_information'];
-    public function __construct(private PDO $pdo) {}
+    public function __construct(private PDO $pdo, private EmailOutboxRetryPolicy $retryPolicy = new EmailOutboxRetryPolicy()) {}
 
     public function claim(string $reference, string $type, BookingPaymentRequestConfiguration $configuration): ?array
     {
@@ -33,7 +34,8 @@ final readonly class PdoBookingManualCommunicationOutbox implements BookingManua
             $existing = $this->pdo->prepare('SELECT * FROM email_outbox WHERE booking_id=:booking_id AND message_type=:type FOR UPDATE');
             $existing->execute(['booking_id'=>$booking['id'],'type'=>$type]);
             $row = $existing->fetch(PDO::FETCH_ASSOC);
-            if ($row !== false && !in_array($row['status'], ['pending','failed'], true)) {
+            if ($row !== false && (!in_array($row['status'], ['pending','failed'], true)
+                || !$this->retryPolicy->canAttempt((int) $row['attempts']))) {
                 $this->pdo->commit();
                 return null;
             }
@@ -51,8 +53,13 @@ final readonly class PdoBookingManualCommunicationOutbox implements BookingManua
                 $id = (int)$row['id'];
                 $payload = json_decode((string)$row['payload'], true, 512, JSON_THROW_ON_ERROR);
             }
-            $claim = $this->pdo->prepare("UPDATE email_outbox SET status='processing' WHERE id=:id AND status IN ('pending','failed')");
-            $claim->execute(['id'=>$id]);
+            $claim = $this->pdo->prepare("UPDATE email_outbox SET status='processing'
+                WHERE id=:id AND status IN ('pending','failed') AND attempts < :max_attempts");
+            $claim->execute(['id'=>$id,'max_attempts'=>$this->retryPolicy->maxAttempts()]);
+            if ($claim->rowCount() !== 1) {
+                $this->pdo->commit();
+                return null;
+            }
             $this->pdo->commit();
             return ['id'=>$id,'booking_id'=>(int)$booking['id'],'type'=>$type,'payload'=>$payload,'retry'=>$retry];
         } catch (\Throwable $e) {
@@ -73,15 +80,15 @@ final readonly class PdoBookingManualCommunicationOutbox implements BookingManua
     public function markSent(int $outboxId, string $type): void
     {
         $this->assertType($type);
-        $q=$this->pdo->prepare("UPDATE email_outbox SET status='sent',attempts=attempts+1,sent_at=CURRENT_TIMESTAMP,last_error=NULL WHERE id=:id AND message_type=:type AND status='processing'");
-        $q->execute(['id'=>$outboxId,'type'=>$type]);
+        $q=$this->pdo->prepare("UPDATE email_outbox SET status='sent',attempts=attempts+1,sent_at=CURRENT_TIMESTAMP,last_error=NULL WHERE id=:id AND message_type=:type AND status='processing' AND attempts < :max_attempts");
+        $q->execute(['id'=>$outboxId,'type'=>$type,'max_attempts'=>$this->retryPolicy->maxAttempts()]);
     }
 
     public function markFailed(int $outboxId, string $type, string $safeReason): void
     {
         $this->assertType($type);
-        $q=$this->pdo->prepare("UPDATE email_outbox SET status='failed',attempts=attempts+1,sent_at=NULL,last_error=:reason WHERE id=:id AND message_type=:type AND status='processing'");
-        $q->execute(['id'=>$outboxId,'type'=>$type,'reason'=>mb_substr($safeReason,0,500)]);
+        $q=$this->pdo->prepare("UPDATE email_outbox SET status='failed',attempts=attempts+1,sent_at=NULL,last_error=:reason WHERE id=:id AND message_type=:type AND status='processing' AND attempts < :max_attempts");
+        $q->execute(['id'=>$outboxId,'type'=>$type,'reason'=>mb_substr($safeReason,0,500),'max_attempts'=>$this->retryPolicy->maxAttempts()]);
     }
 
     /** @return array<string,mixed> */

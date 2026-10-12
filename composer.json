@@ -29,6 +29,7 @@
         "backup:database": "php bin/backup-database.php",
         "booking:lifecycle": "php bin/booking-lifecycle-worker.php",
         "db:check": "php bin/db-check.php",
+        "email:outbox": "php bin/process-email-outbox.php",
         "ical:sync": "php bin/ical-sync.php",
         "migrate": "php bin/migrate.php",
         "migration:status": "php bin/migration-status.php",

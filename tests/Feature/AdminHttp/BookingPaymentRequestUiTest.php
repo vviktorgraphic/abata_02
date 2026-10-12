@@ -68,6 +68,17 @@ final class BookingPaymentRequestUiTest extends TestCase
         self::assertStringContainsString('/arrival-information"', $html);
     }
 
+    public function testFifthFailedAttemptHidesPaymentRequestRetry(): void
+    {
+        $html = $this->render('pending', [
+            'status'=>'failed','attempts'=>5,'advance_amount'=>'31000.00','accommodation_fee'=>'62000.00',
+            'taxes'=>'2000.00','payment_reference'=>'AB-000123','sent_at'=>null,
+        ]);
+
+        self::assertStringContainsString('elérte az 5 kísérletes küldési korlátot', $html);
+        self::assertStringNotContainsString('Díjbekérő újraküldése', $html);
+    }
+
     private function render(string $status, ?array $payment): string
     {
         return (new AdminView(dirname(__DIR__, 3) . '/templates'))->render('booking-detail', [
@@ -76,7 +87,7 @@ final class BookingPaymentRequestUiTest extends TestCase
             'booking' => [
                 'reference' => 'AB-TEST', 'status' => $status, 'total_amount' => '126000.00',
                 'pricing_snapshot' => ['accommodation_fee'=>'62000.00','taxes'=>'2000.00','total'=>'64000.00','currency'=>'HUF'], 'status_history' => [], 'payment_request' => $payment,
-                'email_outbox' => $payment === null ? [] : [['type' => 'booking_payment_request', 'status' => $payment['status'], 'attempts' => 1]],
+                'email_outbox' => $payment === null ? [] : [['type' => 'booking_payment_request', 'status' => $payment['status'], 'attempts' => $payment['attempts'] ?? 1]],
             ],
         ]);
     }
