@@ -40,7 +40,7 @@
 | Modul | Állapot | Követelmény | Elfogadási feltétel |
 |---|---|---|---|
 | Login | IMPLEMENTED | E-mail + jelszó, majd kötelező e-mailes 2FA | Helyes jelszó önmagában nem nyit adminoldalt; hibák nem fedik fel a fiók létét. |
-| Dashboard | IMPLEMENTED alap | Minimális védett céloldal; üzleti összesítések még nincsenek | Csak teljes sessionnel érhető el. |
+| Dashboard | IMPLEMENTED Phase 8 | Védett, read-only napi operatív összesítés mai érkezőkkel/távozókkal és hét napos előretekintéssel | Csak teljes sessionnel érhető el; Budapest-dátumot, prepared batchelt lekérdezéseket és PII-szegény listákat használ. |
 | Foglaláslista | IMPLEMENTED | Lapozás, keresés és szűrés | Minden paraméter validált; PII csak hitelesített adminnak jelenik meg. |
 | Foglalás részlete | IMPLEMENTED | Vendég-, státusz-, ár-, policy-, audit- és e-mail adatok | Nem létező rekord biztonságos választ ad. |
 | Státuszkezelés | IMPLEMENTED | Csak engedélyezett átmenetek | Tiltott átmenet nem módosít adatot; siker esetén status history és audit rekord készül. |

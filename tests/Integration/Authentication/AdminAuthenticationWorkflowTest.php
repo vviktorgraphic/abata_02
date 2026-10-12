@@ -24,6 +24,8 @@ use App\Infrastructure\Database\ConnectionFactory;
 use App\Infrastructure\Persistence\Auth\AdminSessionRepository;
 use App\Infrastructure\Persistence\Auth\PdoAdminCredentialRepository;
 use App\Infrastructure\Persistence\Auth\PdoTwoFactorCodeStore;
+use App\Infrastructure\Persistence\Booking\PdoAdminDashboardRepository;
+use App\Application\Booking\BudapestAdminDashboardClock;
 use App\Security\Csrf\CsrfTokenManager;
 use App\Security\RateLimit\AuthenticationRateLimitPolicies;
 use App\Security\RateLimit\RateLimitClock;
@@ -115,6 +117,8 @@ final class AdminAuthenticationWorkflowTest extends TestCase
                 $workflow,
                 new AdminView(dirname(__DIR__, 3) . '/templates'),
                 new CsrfTokenManager($storage),
+                new PdoAdminDashboardRepository($pdo),
+                new BudapestAdminDashboardClock(),
             ))->show();
             self::assertInstanceOf(HtmlResponse::class, $dashboard);
             self::assertSame(200, $dashboard->status);

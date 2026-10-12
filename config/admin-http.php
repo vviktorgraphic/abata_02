@@ -32,6 +32,7 @@ use App\Infrastructure\Persistence\Booking\TransactionalBookingRepository;
 use App\Infrastructure\Persistence\Pricing\PdoPricingEngineAdapter;
 use App\Infrastructure\Persistence\Pricing\PdoPricingRuleRepository;
 use App\Application\Booking\BlockedPeriodService;
+use App\Application\Booking\BudapestAdminDashboardClock;
 use App\Application\Mail\BookingStatusNotificationDispatcher;
 use App\Application\Mail\BookingStatusMailRenderer;
 use App\Infrastructure\Persistence\Booking\PdoBookingStatusNotificationOutbox;
@@ -69,6 +70,7 @@ use App\Http\Controller\Admin\AdminUserController;
 use App\Application\LegacyImport\LegacyImportCsvParser;
 use App\Application\LegacyImport\LegacyImportService;
 use App\Infrastructure\Persistence\Booking\PdoLegacyImportProvenanceRepository;
+use App\Infrastructure\Persistence\Booking\PdoAdminDashboardRepository;
 
 $root = dirname(__DIR__);
 $authConfig = require $root . '/config/auth.php';
@@ -180,7 +182,13 @@ return [
     ),
     'login' => new LoginController($workflow, $view, $csrf),
     'two_factor' => new TwoFactorController($workflow, $view, $csrf),
-    'dashboard' => new DashboardController($workflow, $view, $csrf, $queries),
+    'dashboard' => new DashboardController(
+        $workflow,
+        $view,
+        $csrf,
+        new PdoAdminDashboardRepository($pdo),
+        new BudapestAdminDashboardClock(),
+    ),
     'bookings' => new BookingManagementController(
         $workflow, $view, $csrf, $actionGuard, $queries, $transitions, $statusNotifications,
         $paymentRequests, $paymentConfiguration, $manualCommunications, $bookingModifications,

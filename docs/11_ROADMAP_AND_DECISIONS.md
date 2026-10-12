@@ -11,7 +11,7 @@
 ## Tervezett sprintek
 
 1. **Admin authentication és e-mailes 2FA.** Előfeltétel az admin session- és auditmodell. Elfogadás: rate limitelt jelszó + egyszer használatos kód, session rotation, biztonságos logout, auditált hibafolyamatok. Lásd [admin és hitelesítés](04_ADMIN_AND_AUTHENTICATION.md).
-2. **Read-only admin dashboard és foglaláslista.** Elfogadás: hitelesített, lapozható, szűrhető lista; PII kizárólag jogosult adminnak; minden lekérdezés prepared statement.
+2. **Read-only admin dashboard és foglaláslista — IMPLEMENTED.** A dashboard Budapest szerinti napi operatív összesítést, mai érkező/távozó listát és hét napos közelgő érkezést ad; a foglaláslista lapozható és szűrhető. PII kizárólag jogosult adminnak látható, minden dinamikus lekérdezési érték prepared statementet használ.
 3. **Publikus foglalásmentés — IMPLEMENTED.** Tranzakcióban újraellenőrzi a pending/confirmed/blocked rendelkezésre állást és idempotenciakulcsot használ. Átfedő pending nem hozható létre; azonos kulcs csak egy bookingot eredményez. Lásd [publikus flow](03_PUBLIC_BOOKING_FLOW.md).
 4. **Foglalási státuszkezelés.** Elfogadás: definiált állapotgép, tiltott átmenetek elutasítása, minden változás audit- és status history rekord.
 5. **Árkalkuláció és snapshot.** A foglalásmentés után következik, hogy az ár a végleges vendég- és dátumadatokhoz köthető legyen. Elfogadás: determinisztikus kalkuláció, HUF-kerekítés és megváltoztathatatlan pillanatkép. Lásd [árképzés](05_PRICING.md).
@@ -115,3 +115,7 @@ Nyitott kapuk: abszolút session maximum; production SMTP port/TLS/auth/feladó;
 ## Phase 6–7 teljesítési állapot
 
 **IMPLEMENTED Phase 6:** confirmed booking módosítás aláírt előnézettel, stale/concurrency védelemmel, inventory lockkal, aktuális újraárazással, változatlan korábbi előleggel, history/audit/outbox és vendégértesítés támogatással. **IMPLEMENTED Phase 7 readiness:** owner UAT dokumentáció és GET-only read-only smoke. **PRODUCTION DISABLED/PENDING:** lifecycle és cron; Szallas.hu új feedre váltása provider cutover. **DEFERRED / DECISION REQUIRED:** általános outbox retry/stale reclaim és online fizetés.
+
+## Phase 8 teljesítési állapot
+
+**IMPLEMENTED:** teljes 2FA-val védett, read-only admin operatív dashboard. A négy kártya definíciója: minden `pending`; mai `confirmed` érkezés; mai `confirmed` távozás; valamint `confirmed`, ahol `arrival_date <= today < departure_date`. A mai és hét napon belüli listák nem mutatnak e-mailt vagy telefonszámot, és összesen négy, N+1 nélküli prepared lekérdezésből készülnek. A „ma” mindenhol `Europe/Budapest`; booking-, pricing-, lifecycle- és production-viselkedés változatlan.

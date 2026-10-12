@@ -132,7 +132,7 @@ A `composer backup:database` webrooton/repositoryn kívüli könyvtárba készí
 - `GET /admin/bookings/monthly?month=YYYY-MM` – hitelesített, read-only havi foglaltsági lista
 - `POST /admin/2fa/verify` – második faktor ellenőrzése
 - `POST /admin/2fa/resend` – új kód kérése resend limittel
-- `GET /admin` – minimális, teljes 2FA-val védett dashboard
+- `GET /admin` – teljes 2FA-val védett, read-only napi operatív dashboard
 - `POST /admin/logout` – CSRF-védett kijelentkezés
 - `POST /admin/bookings/{reference}/payment-reminder` – pending booking kézi előleg-emlékeztetője sikeres díjbekérő után
 - `POST /admin/bookings/{reference}/arrival-information` – confirmed booking kézi érkezési tájékoztatója, négy biztonságos inline képpel
@@ -230,7 +230,7 @@ A foglalási időszak fél-nyitott: `[arrival_date, departure_date)`. Az érkez�
 
 ## Sprint 3 – admin hitelesítési alap
 
-**IMPLEMENTED komponensek:** e-mail-normalizálás és időzítéskiegyenlített jelszóellenőrzés; hatjegyű, hash-elve tárolt, 10 percig érvényes e-mailes 2FA-kód legfeljebb öt próbával és 60 másodperces újraküldési várakozással; konfigurálható, legalább 30 perces csúszó idle session (`ADMIN_SESSION_IDLE_TIMEOUT_SECONDS`, alapérték 1800); session-ID rotáció; sessionhöz kötött CSRF; konfigurálható rate limit; szűrt audit metadata; PDO persistence; cserélhető mailer és közvetlen `mail()` nélküli SMTP adapter; minimális admin login/2FA/dashboard sablonok.
+**IMPLEMENTED komponensek:** e-mail-normalizálás és időzítéskiegyenlített jelszóellenőrzés; hatjegyű, hash-elve tárolt, 10 percig érvényes e-mailes 2FA-kód legfeljebb öt próbával és 60 másodperces újraküldési várakozással; konfigurálható, legalább 30 perces csúszó idle session (`ADMIN_SESSION_IDLE_TIMEOUT_SECONDS`, alapérték 1800); session-ID rotáció; sessionhöz kötött CSRF; konfigurálható rate limit; szűrt audit metadata; PDO persistence; cserélhető mailer és közvetlen `mail()` nélküli SMTP adapter; admin login/2FA és napi operatív dashboard.
 
 **DECISION REQUIRED:** nincs feltételezett abszolút session-élettartam. A production SMTP portja, titkosítása, authentikációja, felhasználója és feladó címe nyitott. A rate-limit küszöbök konfigurálható fejlesztési alapértékek, nem végleges tulajdonosi döntések.
 
@@ -286,6 +286,10 @@ A demo seed szemléltető fejlesztési árat tartalmaz, production árként nem 
 ## Phase 6 – megerősített foglalás módosítása
 
 **IMPLEMENTED:** a booking részletoldalon a `confirmed` foglalás dátuma és létszáma kötelező szerveroldali előnézet után módosítható. A mentés inventory lockkal, optimista verzióval és idempotenciával újraellenőrzi a foglaltságot, a közös pricing engine-nel újraszámol, before/after auditot és retry-képes vendégértesítést készít. A korábbi előleg és díjbekérő változatlan; a státusz és státusztörténet nem módosul. Lásd [Phase 6 dokumentáció](docs/25_CONFIRMED_BOOKING_MODIFICATION.md).
+
+## Phase 8 – admin operatív dashboard
+
+**IMPLEMENTED:** a hitelesített, read-only `/admin` kezdőoldal Budapest szerinti napi összesítést mutat a függő igényekről, a megerősített mai érkezőkről és távozókról, valamint a jelenlegi vendégekről. A mai listák és a következő hét nap legfeljebb öt megerősített érkezése közvetlenül a foglalás részletére vezet; e-mail- és telefonszám nem jelenik meg. A projection négy batchelt prepared lekérdezést használ, nincs N+1 és nem módosít booking státuszt vagy lifecycle-viselkedést.
 
 ## Sprint 6 – pricing, policy és lemondás
 

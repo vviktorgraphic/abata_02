@@ -14,6 +14,7 @@ use App\Http\Controller\Admin\LogoutController;
 use App\Http\Controller\Admin\RedirectResponse;
 use App\Http\Controller\Admin\SecurityHeaders;
 use App\Http\Controller\Admin\TwoFactorController;
+use App\Application\Booking\AdminDashboardOverview;
 use App\Security\Csrf\CsrfTokenManager;
 use App\Security\Session\SessionStorage;
 use PHPUnit\Framework\TestCase;
@@ -138,7 +139,13 @@ final class AdminControllersTest extends TestCase
 
     public function test_dashboard_requires_an_authenticated_admin_and_escapes_name(): void
     {
-        $anonymous = (new DashboardController(new FakeAdminAuthWorkflow(), $this->view, $this->csrf))->show();
+        $anonymous = (new DashboardController(
+            new FakeAdminAuthWorkflow(),
+            $this->view,
+            $this->csrf,
+            new EmptyAdminDashboardRepository(),
+            new StaticAdminDashboardClock(),
+        ))->show();
         self::assertInstanceOf(RedirectResponse::class, $anonymous);
         self::assertSame('/admin/login', $anonymous->location);
 
@@ -152,6 +159,8 @@ final class AdminControllersTest extends TestCase
             $workflow,
             $authenticatedView,
             $this->csrf,
+            new EmptyAdminDashboardRepository(),
+            new StaticAdminDashboardClock(),
         ))->show();
         self::assertInstanceOf(HtmlResponse::class, $authenticated);
         self::assertStringNotContainsString('<img src=x', $authenticated->body);
@@ -163,7 +172,13 @@ final class AdminControllersTest extends TestCase
     {
         $workflow=new FakeAdminAuthWorkflow(admin:['id'=>7,'name'=>'Admin']);
         $view=new AdminView(dirname(__DIR__,3).'/templates',$this->csrf,static fn():bool=>$workflow->currentAdmin()!==null);
-        $dashboard=(new DashboardController($workflow,$view,$this->csrf))->show();
+        $dashboard=(new DashboardController(
+            $workflow,
+            $view,
+            $this->csrf,
+            new EmptyAdminDashboardRepository(),
+            new StaticAdminDashboardClock(),
+        ))->show();
         self::assertStringContainsString('id="admin-navigation"',$dashboard->body);
         self::assertStringContainsString('aria-label="Admin navigáció"',$dashboard->body);
         self::assertStringContainsString('data-admin-nav-toggle',$dashboard->body);
@@ -268,4 +283,20 @@ final class ArraySessionStorage implements SessionStorage
     public function set(string $key, mixed $value): void { $this->data[$key] = $value; }
     public function remove(string $key): void { unset($this->data[$key]); }
     public function destroy(): void { $this->data = []; }
+}
+
+final class EmptyAdminDashboardRepository implements \App\Application\Booking\AdminDashboardRepository
+{
+    public function fetch(\DateTimeImmutable $today): AdminDashboardOverview
+    {
+        return new AdminDashboardOverview(0, 0, 0, 0, [], [], [], false);
+    }
+}
+
+final class StaticAdminDashboardClock implements \App\Application\Booking\AdminDashboardClock
+{
+    public function today(): \DateTimeImmutable
+    {
+        return new \DateTimeImmutable('2046-06-10', new \DateTimeZone('Europe/Budapest'));
+    }
 }
