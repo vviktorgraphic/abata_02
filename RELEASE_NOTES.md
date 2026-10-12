@@ -5,6 +5,7 @@
 - A confirmed booking dátuma és létszáma aláírt előnézet után, inventory lockkal és optimista verzióvédelemmel módosítható. Az aktuális pricing újraszámolódik, a korábban megfizetett előleg változatlan, a history/audit/outbox atomi.
 - Az admin előnézet stabil `#booking-modification` horgonyra tér vissza siker és hiba esetén; a gyermeklétszám és életkor természetes magyar összegzésben jelenik meg.
 - Elkészült a külön owner acceptance/go-live readiness ellenőrzőlista és a credential nélküli, kizárólag GET-et használó RC2 read-only PowerShell smoke.
+- A Phase 7.1 hotfix helyreállítja a standard lokális Compose environment-szerződést explicit app-mappinggel; a DB root jelszó nem kerül az alkalmazásba, a payment mintaadatok pedig egyértelműen hamis fejlesztői értékek.
 - A lifecycle kód implementált, de productionben továbbra is kikapcsolt; iCal/lifecycle cron és Szallas.hu feedváltás külön cutover művelet.
 - Az ismert mail RBL/reputációs probléma külső hosting/provider kapu; az alkalmazás mail routingja emiatt nem változott.
 

@@ -26,16 +26,16 @@ Production cPanel/Apache telepítéshez, HTTPS- és SMTP-smoke-hoz, valamint biz
 
 ```powershell
 Copy-Item .env.example .env
-docker compose build
-docker compose run --rm app composer install
+docker compose up -d --build
+docker compose exec app composer install
 ```
 
-A `.env` fejlesztői értékeit indulás előtt módosítsd. A valódi `.env` Git által kizárt fájl.
+A másolt minta a standard Compose stack számára teljes, fejlesztői konfigurációt ad; az alkalmazásváltozók explicit módon kerülnek az `app` konténerbe. A díjbekérő mezők szándékosan hamis, `Development Test` / `DEVELOPMENT-ONLY-NOT-A-REAL-ACCOUNT` jelölésű tesztadatok, valós átutaláshoz nem használhatók. Szükség szerint csak fejlesztői értékekre módosítsd őket. A valódi `.env` Git által kizárt fájl.
 
 ## Docker indítás
 
 ```powershell
-docker compose up -d
+docker compose up -d --build
 ```
 
 Az alkalmazás: `http://localhost:8080`; Mailpit: `http://localhost:8025`. Az opcionális phpMyAdmin a tools profillal indítható:

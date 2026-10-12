@@ -8,7 +8,7 @@
 
 Ez a dokumentum az RC2 kontrollált tulajdonosi elfogadását készíti elő. Nem engedélyez deployt, production konfiguráció-, árazás-, cron- vagy feedváltást, és nem igazol olyan környezeti állapotot, amelyet a repositoryból nem lehet bizonyítani. A handoff szerint a fenti baseline productionben valós foglalásokat fogad; ezért minden meglévő booking védett adat, teszteléshez kizárólag külön TEST rekord használható.
 
-Phase 7 kizárólag dokumentációt, read-only operátori eszközt és annak szerződéses tesztjét adja hozzá. Runtime PHP, booking üzleti szabály, adatbázisséma és migráció nem változik.
+Phase 7 kizárólag dokumentációt, read-only operátori eszközt és annak szerződéses tesztjét adta hozzá. A Phase 7.1 hotfix az auditban feltárt lokális Compose environment továbbítási rést explicit, legkisebb jogosultságú mappinggel és repository-szerződéses teszttel zárja le. Runtime PHP, booking üzleti szabály, adatbázisséma és migráció nem változik.
 
 ## RC2 állapota — belső auditmátrix
 
@@ -31,7 +31,7 @@ Phase 7 kizárólag dokumentációt, read-only operátori eszközt és annak sze
 | Backup/rollback | IMPLEMENTED | Tooling és runbook kész; friss operátori backup/restore bizonyíték szükséges. |
 | Admin idle timeout | OWNER / PRODUCTION VERIFICATION REQUIRED | A handoff 900 másodpercet mond, a kód minimuma és alapértéke 1800 másodperc. |
 | Korai RC1/RC2 release-dokumentáció | STALE DOCUMENTATION — RECONCILED | Sprint 10, havi occupancy és Phase 6 állapota az aktuális kódhoz igazítva. |
-| Alapértelmezett lokális Compose web bootstrap | STALE DOCUMENTATION / CONFIGURATION DEFECT | A Compose `app` nem továbbít minden, `.env.example` által dokumentált kötelező webkonfigurációt; külön javítás szükséges. |
+| Alapértelmezett lokális Compose web bootstrap | IMPLEMENTED / RESOLVED IN PHASE 7.1 | A Compose az auditált alkalmazásváltozókat explicit továbbítja, a DB root credentialt nem; a `.env.example` hamis fejlesztői payment adatokkal és regressziós teszttel használható. |
 | Main merge | DEFERRED / OUT OF SCOPE | Ebben a fázisban nem történik meg; külön release-döntés. |
 
 ## Ismert eltérések és kötelező ellenőrzések
@@ -52,9 +52,9 @@ A parancs nem ír ki más environment változót vagy secretet. Az eredményt a 
 
 A döntési dokumentumok belső technikai route-okat is rögzítenek, míg a production környezetminta külső, publikált jogi URL-eket mutat. A kód mindkettőt konfigurációként kezeli. A tényleges production `BOOKING_POLICY_URL`, `BOOKING_POLICY_VERSION`, `PRIVACY_POLICY_URL` és `PRIVACY_POLICY_VERSION` értékét, valamint a publikált tartalom egyezését secret vagy teljes `.env` kiírása nélkül kell ellenőrizni; repositorypéldából nem következtethető effektív érték.
 
-### Lokális Compose bootstrap — feltárt konfigurációs rés
+### Lokális Compose bootstrap — Phase 7.1-ben lezárt konfigurációs rés
 
-A standard `docker compose up -d` után az `app` konténer nem kapja meg az összes, `.env.example` fájlban dokumentált kötelező webes environment változót. A jelenlegi auditban az első fail-fast hiba a hiányzó `HOUSE_RULES_URL` volt; a Compose mappingből a booking notification és payment-request mezők is hiányoznak. A GET-only smoke emiatt egy izolált, átmeneti fejlesztői konténerben, explicit tesztértékekkel futott sikeresen. Phase 7 ezt nem javítja hallgatólagosan; külön bootstrap hotfix és regressziós ellenőrzés szükséges.
+A Phase 7 auditban az első fail-fast hiba a hiányzó `HOUSE_RULES_URL` volt; a Compose mappingből a guest Reply-To, booking notification, payment-request és lifecycle mezők is hiányoztak. A Phase 7.1 hotfix ezeket explicit továbbítja az `app` szolgáltatásnak, miközben a `DB_ROOT_PASSWORD` továbbra is kizárólag a `db` szolgáltatásban érhető el. A `.env.example` lifecycle állapota változatlanul kikapcsolt, payment adatai pedig egyértelműen hamis fejlesztői placeholderek. A standard `Copy-Item .env.example .env`, majd `docker compose up -d --build` indítás így kézi environment override nélkül használható.
 
 ## A. Automatizált és lokális regressziós ellenőrzések
 
@@ -209,7 +209,7 @@ Az ismert RBL elutasítás hosting/provider reputációs kérdés, amíg kódbiz
 ### REQUIRED BEFORE MORE FEATURE WORK
 
 - Konkrét acceptance hibát vagy új UX-kérést külön, szűk következő fázisként kell jóváhagyni.
-- A lokális Compose environment továbbítási rését külön hotfixben kell javítani, hogy a dokumentált alapindítás ismét önmagában működjön.
+- A lezárt Phase 7.1 Compose hotfix regressziós szerződését fenn kell tartani; ez nem old fel production vagy owner kaput.
 - Automatikus outbox retry előtt maximum attempts, backoff és stale-processing reclaim policy szükséges.
 
 ### REQUIRED BEFORE GO-LIVE/CUTOVER

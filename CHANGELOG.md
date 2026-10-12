@@ -6,6 +6,7 @@ A projekt változásai ebben a fájlban követik a release-eket. A formátum a K
 
 ### RC2 hardening
 
+- Restored deterministic local Compose startup by explicitly forwarding the audited application environment, retaining `DB_ROOT_PASSWORD` only in the database service, and adding safe fake development payment placeholders plus regression coverage.
 - Added an owner acceptance/go-live readiness matrix and a safe GET-only PowerShell smoke for `/health`, `/` and `/admin/login`.
 - Reconciled stale RC1/early-RC2 documentation with the integrated Sprint 10, monthly occupancy and Phase 6 booking-modification state without asserting unverified production configuration.
 - Added configurable SMTP timeout, PDO MySQL dependency declaration, strict session mode enforcement and masked iCal edit URLs.
