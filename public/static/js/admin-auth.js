@@ -69,4 +69,31 @@ document.addEventListener('DOMContentLoaded', () => {
             renderAges();
         }
     }
+
+    const createForm = document.querySelector('[data-admin-booking-create-form]');
+    if (createForm instanceof HTMLFormElement) {
+        const childCount = createForm.querySelector('[data-admin-booking-child-count]');
+        const ageContainer = createForm.querySelector('[data-admin-booking-child-ages]');
+        if (childCount instanceof HTMLSelectElement && ageContainer instanceof HTMLElement) {
+            let initialAges = [];
+            try { initialAges = JSON.parse(ageContainer.dataset.initialAges || '[]'); } catch { initialAges = []; }
+            const renderAges = () => {
+                const current = Array.from(ageContainer.querySelectorAll('input')).map((input) => input.value);
+                ageContainer.replaceChildren();
+                for (let index = 0; index < Number(childCount.value); index += 1) {
+                    const wrapper = document.createElement('div');
+                    const label = document.createElement('label');
+                    const input = document.createElement('input');
+                    input.type = 'number'; input.min = '0'; input.max = '17'; input.step = '1'; input.required = true;
+                    input.name = 'child_ages[]'; input.id = `admin-booking-child-age-${index + 1}`;
+                    input.value = current[index] ?? initialAges[index] ?? '';
+                    label.htmlFor = input.id; label.textContent = `${index + 1}. gyermek életkora`;
+                    wrapper.append(label, input); ageContainer.append(wrapper);
+                }
+                initialAges = [];
+            };
+            childCount.addEventListener('change', renderAges);
+            renderAges();
+        }
+    }
 });

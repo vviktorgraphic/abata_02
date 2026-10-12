@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Infrastructure\Persistence\Booking;
 
 use App\Application\Booking\BookingConflict;
+use App\Application\Booking\BookingCreationOptions;
 use App\Application\Booking\BookingPersistenceCommand;
 use App\Application\Booking\BookingPersistenceResult;
 use App\Application\Booking\BookingPricingProvider;
+use App\Application\Booking\BookingPreviewStale;
 use App\Application\Booking\BookingNotFound;
 use App\Application\Booking\BookingTransitionResult;
 use App\Application\Booking\IdempotencyConflict;
@@ -304,11 +306,25 @@ final class TransactionalBookingRepository
     public function create(
         BookingPersistenceCommand $command,
         BookingPricingProvider $pricingProvider,
+        ?BookingCreationOptions $options = null,
     ): BookingPersistenceResult {
         if ($this->pdo->inTransaction()) {
             throw new \LogicException('Booking persistence owns its transaction boundary.');
         }
 
+        $options ??= BookingCreationOptions::publicRequest();
+        if ($options->recordLegalAcceptance && array_filter([
+            $command->bookingPolicyAcceptedAt,
+            $command->bookingPolicyVersion,
+            $command->bookingPolicyUrl,
+            $command->privacyAcceptedAt,
+            $command->privacyPolicyVersion,
+            $command->privacyPolicyUrl,
+            $command->houseRulesAcceptedAt,
+            $command->houseRulesUrl,
+        ], static fn (?string $value): bool => $value === null) !== []) {
+            throw new \LogicException('Public booking creation requires complete legal acceptance snapshots.');
+        }
         $this->pdo->beginTransaction();
 
         try {
@@ -336,6 +352,12 @@ final class TransactionalBookingRepository
             // Pricing deliberately runs inside this transaction, after the final
             // availability check, so the persisted amount and snapshot are one unit.
             $pricing = $pricingProvider->calculate($this->pdo, $command);
+            if ($options->expectedTotal !== null && (
+                !hash_equals($options->expectedTotal, $pricing->totalAmount)
+                || !hash_equals((string) $options->expectedCurrency, $pricing->currency)
+            )) {
+                throw new BookingPreviewStale('Az ár időközben megváltozott. Kérj új előnézetet.');
+            }
 
             $booking = $this->pdo->prepare(
                 'INSERT INTO bookings
@@ -375,48 +397,65 @@ final class TransactionalBookingRepository
             $bookingId = (int) $this->pdo->lastInsertId();
             ($this->transactionProbe ?? static fn (string $stage): null => null)('booking_inserted');
 
-            $policyAudit = $this->pdo->prepare(
-                'INSERT INTO audit_logs
-                    (event_type, admin_id, target_type, target_id, outcome, metadata_json)
-                 VALUES (\'booking_policy.accepted\', NULL, \'booking\', :target_id, \'success\', :metadata)'
-            );
-            $policyAudit->execute([
-                'target_id' => (string) $bookingId,
-                'metadata' => json_encode([
-                    'booking_reference' => $command->reference,
-                    'policy_version' => $command->bookingPolicyVersion,
-                    'policy_url' => $command->bookingPolicyUrl,
-                ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
-            ]);
-            ($this->transactionProbe ?? static fn (string $stage): null => null)('policy_audit_inserted');
+            if ($options->recordLegalAcceptance) {
+                $policyAudit = $this->pdo->prepare(
+                    'INSERT INTO audit_logs
+                        (event_type, admin_id, target_type, target_id, outcome, metadata_json)
+                     VALUES (\'booking_policy.accepted\', NULL, \'booking\', :target_id, \'success\', :metadata)'
+                );
+                $policyAudit->execute([
+                    'target_id' => (string) $bookingId,
+                    'metadata' => json_encode([
+                        'booking_reference' => $command->reference,
+                        'policy_version' => $command->bookingPolicyVersion,
+                        'policy_url' => $command->bookingPolicyUrl,
+                    ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
+                ]);
+                ($this->transactionProbe ?? static fn (string $stage): null => null)('policy_audit_inserted');
 
-            $privacyAudit = $this->pdo->prepare(
-                'INSERT INTO audit_logs
-                    (event_type, admin_id, target_type, target_id, outcome, metadata_json)
-                 VALUES (\'privacy_policy.accepted\', NULL, \'booking\', :target_id, \'success\', :metadata)'
-            );
-            $privacyAudit->execute([
-                'target_id' => (string) $bookingId,
-                'metadata' => json_encode([
-                    'booking_reference' => $command->reference,
-                    'privacy_policy_version' => $command->privacyPolicyVersion,
-                    'privacy_policy_url' => $command->privacyPolicyUrl,
-                ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
-            ]);
-            ($this->transactionProbe ?? static fn (string $stage): null => null)('privacy_audit_inserted');
+                $privacyAudit = $this->pdo->prepare(
+                    'INSERT INTO audit_logs
+                        (event_type, admin_id, target_type, target_id, outcome, metadata_json)
+                     VALUES (\'privacy_policy.accepted\', NULL, \'booking\', :target_id, \'success\', :metadata)'
+                );
+                $privacyAudit->execute([
+                    'target_id' => (string) $bookingId,
+                    'metadata' => json_encode([
+                        'booking_reference' => $command->reference,
+                        'privacy_policy_version' => $command->privacyPolicyVersion,
+                        'privacy_policy_url' => $command->privacyPolicyUrl,
+                    ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
+                ]);
+                ($this->transactionProbe ?? static fn (string $stage): null => null)('privacy_audit_inserted');
 
-            $houseRulesAudit = $this->pdo->prepare(
-                'INSERT INTO audit_logs
-                    (event_type, admin_id, target_type, target_id, outcome, metadata_json)
-                 VALUES (\'house_rules.accepted\', NULL, \'booking\', :target_id, \'success\', :metadata)'
-            );
-            $houseRulesAudit->execute([
-                'target_id' => (string) $bookingId,
-                'metadata' => json_encode([
-                    'booking_reference' => $command->reference,
-                    'house_rules_url' => $command->houseRulesUrl,
-                ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
-            ]);
+                $houseRulesAudit = $this->pdo->prepare(
+                    'INSERT INTO audit_logs
+                        (event_type, admin_id, target_type, target_id, outcome, metadata_json)
+                     VALUES (\'house_rules.accepted\', NULL, \'booking\', :target_id, \'success\', :metadata)'
+                );
+                $houseRulesAudit->execute([
+                    'target_id' => (string) $bookingId,
+                    'metadata' => json_encode([
+                        'booking_reference' => $command->reference,
+                        'house_rules_url' => $command->houseRulesUrl,
+                    ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
+                ]);
+            } else {
+                $adminAudit = $this->pdo->prepare(
+                    'INSERT INTO audit_logs
+                        (event_type, admin_id, target_type, target_id, outcome, metadata_json)
+                     VALUES (\'booking.admin_created\', :admin_id, \'booking\', :target_id, \'success\', :metadata)'
+                );
+                $adminAudit->execute([
+                    'admin_id' => $options->adminId,
+                    'target_id' => (string) $bookingId,
+                    'metadata' => json_encode([
+                        'booking_reference' => $command->reference,
+                        'status' => 'pending',
+                        'source' => 'admin',
+                    ], JSON_THROW_ON_ERROR),
+                ]);
+            }
 
             $child = $this->pdo->prepare(
                 'INSERT INTO booking_child_ages (booking_id, position, age)
@@ -433,9 +472,13 @@ final class TransactionalBookingRepository
             $history = $this->pdo->prepare(
                 'INSERT INTO booking_status_history
                     (booking_id, old_status, new_status, changed_by_admin_id, note)
-                 VALUES (:booking_id, NULL, \'pending\', NULL, :note)'
+                 VALUES (:booking_id, NULL, \'pending\', :admin_id, :note)'
             );
-            $history->execute(['booking_id' => $bookingId, 'note' => 'Public booking request created']);
+            $history->execute([
+                'booking_id' => $bookingId,
+                'admin_id' => $options->adminId,
+                'note' => $options->historyNote,
+            ]);
             ($this->transactionProbe ?? static fn (string $stage): null => null)('history_inserted');
 
             $snapshotJson = json_encode($pricing->snapshot, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
@@ -445,37 +488,39 @@ final class TransactionalBookingRepository
             );
             $snapshot->execute(['booking_id' => $bookingId, 'snapshot' => $snapshotJson]);
 
-            $outboxPayload = json_encode([
-                'booking_reference' => $command->reference,
-                'arrival_date' => $command->arrivalDate,
-                'departure_date' => $command->departureDate,
-                'adults' => $command->adults,
-                'child_ages' => $command->childAges,
-                'contact_name' => $command->contactName,
-                'guest_email' => $command->email,
-                'phone' => $command->phone,
-                'notes' => $command->notes,
-                'status' => 'pending',
-                'admin_url' => $this->bookingAdminBaseUrl !== null ? $this->bookingAdminBaseUrl . '/' . rawurlencode($command->reference) : '',
-                'total' => $pricing->totalAmount,
-                'currency' => $pricing->currency,
-            ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
-            $outbox = $this->pdo->prepare(
-                'INSERT INTO email_outbox
-                    (booking_id, message_type, recipient, subject, payload, status)
-                 VALUES
-                    (:booking_id, \'booking_request_received\', :recipient, :subject, :payload, \'pending\')'
-            );
-            $outbox->execute([
-                'booking_id' => $bookingId,
-                'recipient' => $command->email,
-                'subject' => 'A Bata – Foglalását megkaptuk',
-                'payload' => $outboxPayload,
-            ]);
-            if ($this->bookingNotificationRecipients !== null) {
-                $owner = $this->pdo->prepare('INSERT INTO email_outbox (booking_id, message_type, recipient, subject, payload, status) VALUES (:booking_id, \'booking_request_admin_notification\', :recipient, :subject, :payload, \'pending\')');
-                foreach ($this->bookingNotificationRecipients->recipients() as $recipient) {
-                    $owner->execute(['booking_id' => $bookingId, 'recipient' => $recipient, 'subject' => 'Új foglalási igény érkezett', 'payload' => $outboxPayload]);
+            if ($options->queueCreationEmails) {
+                $outboxPayload = json_encode([
+                    'booking_reference' => $command->reference,
+                    'arrival_date' => $command->arrivalDate,
+                    'departure_date' => $command->departureDate,
+                    'adults' => $command->adults,
+                    'child_ages' => $command->childAges,
+                    'contact_name' => $command->contactName,
+                    'guest_email' => $command->email,
+                    'phone' => $command->phone,
+                    'notes' => $command->notes,
+                    'status' => 'pending',
+                    'admin_url' => $this->bookingAdminBaseUrl !== null ? $this->bookingAdminBaseUrl . '/' . rawurlencode($command->reference) : '',
+                    'total' => $pricing->totalAmount,
+                    'currency' => $pricing->currency,
+                ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+                $outbox = $this->pdo->prepare(
+                    'INSERT INTO email_outbox
+                        (booking_id, message_type, recipient, subject, payload, status)
+                     VALUES
+                        (:booking_id, \'booking_request_received\', :recipient, :subject, :payload, \'pending\')'
+                );
+                $outbox->execute([
+                    'booking_id' => $bookingId,
+                    'recipient' => $command->email,
+                    'subject' => 'A Bata – Foglalását megkaptuk',
+                    'payload' => $outboxPayload,
+                ]);
+                if ($this->bookingNotificationRecipients !== null) {
+                    $owner = $this->pdo->prepare('INSERT INTO email_outbox (booking_id, message_type, recipient, subject, payload, status) VALUES (:booking_id, \'booking_request_admin_notification\', :recipient, :subject, :payload, \'pending\')');
+                    foreach ($this->bookingNotificationRecipients->recipients() as $recipient) {
+                        $owner->execute(['booking_id' => $bookingId, 'recipient' => $recipient, 'subject' => 'Új foglalási igény érkezett', 'payload' => $outboxPayload]);
+                    }
                 }
             }
 

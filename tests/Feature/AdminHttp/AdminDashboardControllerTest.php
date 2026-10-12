@@ -67,6 +67,7 @@ final class AdminDashboardControllerTest extends TestCase
         self::assertStringNotContainsString('+3612345678', $response->body);
         self::assertStringContainsString('arrival_from=2046-06-11', $response->body);
         self::assertStringContainsString('arrival_until=2046-06-17', $response->body);
+        self::assertStringContainsString('href="/admin/bookings/create">Új foglalás</a>', $response->body);
     }
 
     public function testDashboardRendersNaturalEmptyStatesAndHidesOverflowLinkWhenNotNeeded(): void

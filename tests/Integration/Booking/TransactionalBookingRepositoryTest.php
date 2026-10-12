@@ -5,14 +5,27 @@ declare(strict_types=1);
 namespace Tests\Integration\Booking;
 
 use App\Application\Booking\BookingConflict;
+use App\Application\Booking\BookingCreationOptions;
 use App\Application\Booking\BookingPersistenceCommand;
 use App\Application\Booking\BookingPricing;
 use App\Application\Booking\BookingPricingProvider;
+use App\Application\Booking\BookingPreviewStale;
 use App\Application\Booking\IdempotencyConflict;
+use App\Application\Booking\AdminBookingListQuery;
+use App\Application\Booking\AdminMonthlyOccupancyQuery;
 use App\Application\Mail\BookingNotificationRecipientProvider;
 use App\Application\Mail\BookingNotificationRecipientResolver;
+use App\Domain\Booking\AvailabilityService;
+use App\Domain\Booking\BookingPeriod;
 use App\Infrastructure\Database\ConnectionFactory;
+use App\Infrastructure\Persistence\Booking\PdoAdminBookingQueryRepository;
+use App\Infrastructure\Persistence\Booking\PdoAdminDashboardRepository;
+use App\Infrastructure\Persistence\Booking\PdoAdminMonthlyOccupancyRepository;
 use App\Infrastructure\Persistence\Booking\TransactionalBookingRepository;
+use App\Infrastructure\Persistence\Calendar\PdoCalendarExportFeedRepository;
+use App\Infrastructure\Persistence\PdoBookingReadRepository;
+use DateTimeImmutable;
+use DateTimeZone;
 use PDO;
 use PHPUnit\Framework\TestCase;
 
@@ -23,6 +36,8 @@ final class TransactionalBookingRepositoryTest extends TestCase
     private array $bookingIds = [];
     /** @var list<int> */
     private array $blockedIds = [];
+    /** @var list<int> */
+    private array $adminIds = [];
 
     protected function setUp(): void
     {
@@ -44,6 +59,198 @@ final class TransactionalBookingRepositoryTest extends TestCase
             $statement = $this->pdo->prepare('DELETE FROM blocked_periods WHERE id = :id');
             $statement->execute(['id' => $id]);
         }
+        foreach ($this->adminIds as $id) {
+            $this->pdo->prepare('DELETE FROM admins WHERE id = :id')->execute(['id' => $id]);
+        }
+    }
+
+    public function testAdminManualCreationPersistsPendingWithoutLegalOrEmailSideEffectsAndFeedsReadModels(): void
+    {
+        $adminId = $this->insertAdmin();
+        $repository = new TransactionalBookingRepository($this->pdo);
+        $reference = 'ADMIN-MANUAL-' . strtoupper(bin2hex(random_bytes(5)));
+        $command = $this->adminCommand($reference, '2097-02-10', '2097-02-13');
+        $options = BookingCreationOptions::adminManual($adminId, '30000.00', 'HUF');
+        $baselinePending = (new PdoAdminDashboardRepository($this->pdo))->fetch(
+            new DateTimeImmutable('2097-02-01', new DateTimeZone('Europe/Budapest')),
+        )->pendingCount;
+
+        $created = $repository->create($command, $this->pricing(), $options);
+        $this->bookingIds[] = $created->bookingId;
+        $replayed = $repository->create($command, $this->pricing(), $options);
+
+        self::assertSame('pending', $created->status);
+        self::assertFalse($created->replayed);
+        self::assertTrue($replayed->replayed);
+        self::assertSame($created->bookingId, $replayed->bookingId);
+
+        $booking = $this->pdo->prepare(
+            'SELECT status, privacy_accepted_at, privacy_policy_version, privacy_policy_url,
+                    booking_policy_accepted_at, booking_policy_version, booking_policy_url,
+                    house_rules_accepted_at, house_rules_url
+             FROM bookings WHERE id = :id'
+        );
+        $booking->execute(['id' => $created->bookingId]);
+        $row = $booking->fetch(PDO::FETCH_ASSOC);
+        self::assertSame('pending', $row['status']);
+        foreach (array_diff(array_keys($row), ['status']) as $field) {
+            self::assertNull($row[$field], $field . ' must remain null for an admin-created booking.');
+        }
+        self::assertSame(2, $this->countBookingRows('booking_child_ages', $created->bookingId));
+        self::assertSame(1, $this->countBookingRows('booking_pricing_snapshots', $created->bookingId));
+        self::assertSame(1, $this->countBookingRows('booking_idempotency', $created->bookingId));
+        self::assertSame(0, $this->countBookingRows('email_outbox', $created->bookingId));
+
+        $history = $this->pdo->prepare('SELECT old_status, new_status, changed_by_admin_id, note FROM booking_status_history WHERE booking_id = :id');
+        $history->execute(['id' => $created->bookingId]);
+        self::assertSame([
+            'old_status' => null,
+            'new_status' => 'pending',
+            'changed_by_admin_id' => $adminId,
+            'note' => 'Admin által rögzített foglalás',
+        ], $history->fetch(PDO::FETCH_ASSOC));
+
+        $audit = $this->pdo->prepare('SELECT event_type, admin_id, outcome, metadata_json FROM audit_logs WHERE target_type = \'booking\' AND target_id = :id');
+        $audit->execute(['id' => (string) $created->bookingId]);
+        $audits = $audit->fetchAll(PDO::FETCH_ASSOC);
+        self::assertCount(1, $audits);
+        self::assertSame('booking.admin_created', $audits[0]['event_type']);
+        self::assertSame($adminId, $audits[0]['admin_id']);
+        self::assertSame('success', $audits[0]['outcome']);
+        $metadata = json_decode($audits[0]['metadata_json'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertEqualsCanonicalizing(['booking_reference', 'status', 'source'], array_keys($metadata));
+        self::assertSame($reference, $metadata['booking_reference']);
+        self::assertSame('pending', $metadata['status']);
+        self::assertSame('admin', $metadata['source']);
+
+        $queryRepository = new PdoAdminBookingQueryRepository($this->pdo);
+        $list = $queryRepository->fetchBookingList(new AdminBookingListQuery(['search' => $reference]));
+        self::assertSame([$reference], array_column($list, 'reference'));
+        self::assertSame($reference, $queryRepository->fetchBookingDetail(new \App\Application\Booking\AdminBookingDetailQuery($reference))['reference']);
+
+        $dashboard = (new PdoAdminDashboardRepository($this->pdo))->fetch(
+            new DateTimeImmutable('2097-02-01', new DateTimeZone('Europe/Budapest')),
+        );
+        self::assertSame($baselinePending + 1, $dashboard->pendingCount);
+
+        $monthly = (new PdoAdminMonthlyOccupancyRepository($this->pdo))->fetch(new AdminMonthlyOccupancyQuery(
+            '2097-02',
+            new DateTimeImmutable('2097-02-01', new DateTimeZone('Europe/Budapest')),
+        ));
+        $monthlyReferences = [];
+        foreach ($monthly['days'] as $day) {
+            foreach ($day['bookings'] as $monthlyBooking) $monthlyReferences[] = $monthlyBooking['reference'];
+        }
+        self::assertContains($reference, $monthlyReferences);
+
+        $zone = new DateTimeZone('Europe/Budapest');
+        $requested = new BookingPeriod(new DateTimeImmutable('2097-02-11', $zone), new DateTimeImmutable('2097-02-12', $zone));
+        $occupied = (new PdoBookingReadRepository($this->pdo))->findBlockingBetween($requested->arrival, $requested->departure);
+        self::assertFalse((new AvailabilityService(new DateTimeImmutable('2097-02-01', $zone)))->isAvailable($requested, $occupied));
+
+        $exportedStarts = array_map(
+            static fn ($event): string => $event->startDate->format('Y-m-d'),
+            (new PdoCalendarExportFeedRepository($this->pdo))->exportableEvents(),
+        );
+        self::assertContains('2097-02-10', $exportedStarts);
+
+        $turnover = $repository->create(
+            $this->adminCommand('ADMIN-TURNOVER-' . strtoupper(bin2hex(random_bytes(5))), '2097-02-13', '2097-02-15'),
+            $this->pricing(),
+            $options,
+        );
+        $this->bookingIds[] = $turnover->bookingId;
+        self::assertSame('pending', $turnover->status);
+    }
+
+    public function testAdminManualCreationRejectsBookingAndBlockedPeriodConflictsAndStalePriceAtomically(): void
+    {
+        $adminId = $this->insertAdmin();
+        $options = BookingCreationOptions::adminManual($adminId, '30000.00', 'HUF');
+        $repository = new TransactionalBookingRepository($this->pdo);
+        $winner = $repository->create(
+            $this->adminCommand('ADMIN-WINNER-' . strtoupper(bin2hex(random_bytes(5))), '2097-03-10', '2097-03-13'),
+            $this->pricing(),
+            $options,
+        );
+        $this->bookingIds[] = $winner->bookingId;
+
+        try {
+            $repository->create(
+                $this->adminCommand('ADMIN-LOSER-' . strtoupper(bin2hex(random_bytes(5))), '2097-03-11', '2097-03-12'),
+                $this->pricing(),
+                $options,
+            );
+            self::fail('Overlapping admin booking was accepted.');
+        } catch (BookingConflict) {
+            self::assertTrue(true);
+        }
+
+        $confirmedId = $this->insertConfirmed('2097-03-20', '2097-03-23');
+        $this->bookingIds[] = $confirmedId;
+        try {
+            $repository->create(
+                $this->adminCommand('ADMIN-CONFIRMED-CONFLICT-' . strtoupper(bin2hex(random_bytes(4))), '2097-03-21', '2097-03-22'),
+                $this->pricing(),
+                $options,
+            );
+            self::fail('Confirmed booking overlap was accepted.');
+        } catch (BookingConflict) {
+            self::assertTrue(true);
+        }
+
+        $blocked = $this->pdo->prepare('INSERT INTO blocked_periods (start_date, end_date, reason) VALUES (:start, :end, :reason)');
+        $blocked->execute(['start' => '2097-04-10', 'end' => '2097-04-13', 'reason' => 'Admin conflict test']);
+        $this->blockedIds[] = (int) $this->pdo->lastInsertId();
+        try {
+            $repository->create(
+                $this->adminCommand('ADMIN-BLOCKED-' . strtoupper(bin2hex(random_bytes(5))), '2097-04-11', '2097-04-12'),
+                $this->pricing(),
+                $options,
+            );
+            self::fail('Blocked period overlap was accepted.');
+        } catch (BookingConflict) {
+            self::assertTrue(true);
+        }
+
+        $staleReference = 'ADMIN-STALE-' . strtoupper(bin2hex(random_bytes(5)));
+        $staleCommand = $this->adminCommand($staleReference, '2097-05-10', '2097-05-12');
+        try {
+            $repository->create(
+                $staleCommand,
+                $this->pricing(),
+                BookingCreationOptions::adminManual($adminId, '30001.00', 'HUF'),
+            );
+            self::fail('Stale preview price was accepted.');
+        } catch (BookingPreviewStale) {
+            self::assertTrue(true);
+        }
+        $bookingCount = $this->pdo->prepare('SELECT COUNT(*) FROM bookings WHERE reference = :reference');
+        $bookingCount->execute(['reference' => $staleReference]);
+        self::assertSame(0, (int) $bookingCount->fetchColumn());
+        $claimCount = $this->pdo->prepare('SELECT COUNT(*) FROM booking_idempotency WHERE key_hash = UNHEX(:hash)');
+        $claimCount->execute(['hash' => hash('sha256', $staleCommand->idempotencyKey)]);
+        self::assertSame(0, (int) $claimCount->fetchColumn());
+    }
+
+    public function testAdminManualCreationRejectsSameIdempotencyKeyWithChangedPayload(): void
+    {
+        $adminId = $this->insertAdmin();
+        $repository = new TransactionalBookingRepository($this->pdo);
+        $key = 'admin-shared-' . bin2hex(random_bytes(10));
+        $first = $repository->create(
+            $this->adminCommand('ADMIN-IDEMPOTENT-' . strtoupper(bin2hex(random_bytes(4))), '2097-06-10', '2097-06-12', $key),
+            $this->pricing(),
+            BookingCreationOptions::adminManual($adminId, '30000.00', 'HUF'),
+        );
+        $this->bookingIds[] = $first->bookingId;
+
+        $this->expectException(IdempotencyConflict::class);
+        $repository->create(
+            $this->adminCommand('ADMIN-IDEMPOTENT-CHANGED-' . strtoupper(bin2hex(random_bytes(4))), '2097-06-12', '2097-06-14', $key),
+            $this->pricing(),
+            BookingCreationOptions::adminManual($adminId, '30000.00', 'HUF'),
+        );
     }
 
     public function testCompleteTransactionAndIdempotentReplay(): void
@@ -363,6 +570,49 @@ final class TransactionalBookingRepositoryTest extends TestCase
             '2040-01-01 12:00:00',
             'https://abata.hu/abata_hazirend.pdf',
         );
+    }
+
+    private function adminCommand(string $reference, string $arrival, string $departure, ?string $key = null): BookingPersistenceCommand
+    {
+        $key ??= 'admin-key-' . bin2hex(random_bytes(10));
+
+        return new BookingPersistenceCommand(
+            $key,
+            hash('sha256', implode('|', [$reference, $arrival, $departure, $key])),
+            $reference,
+            $arrival,
+            $departure,
+            'Admin Integration Guest',
+            'admin-integration@example.invalid',
+            '+3612345678',
+            2,
+            [6, 9],
+            'Admin integration note',
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+        );
+    }
+
+    private function insertAdmin(): int
+    {
+        $statement = $this->pdo->prepare(
+            'INSERT INTO admins (email, password_hash, name) VALUES (:email, :password, :name)'
+        );
+        $statement->execute([
+            'email' => 'phase9-' . bin2hex(random_bytes(6)) . '@example.invalid',
+            'password' => password_hash('not-a-real-password', PASSWORD_DEFAULT),
+            'name' => 'Phase 9 Integration Admin',
+        ]);
+        $id = (int) $this->pdo->lastInsertId();
+        $this->adminIds[] = $id;
+
+        return $id;
     }
 
     private function pricing(): BookingPricingProvider

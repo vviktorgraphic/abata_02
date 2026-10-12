@@ -14,6 +14,8 @@ A kézi Szallas.hu iCal import az explicit `VALUE=DATE` mellett a szolgáltató 
 
 **Phase 6 IMPLEMENTED:** confirmed booking dátum- és létszámmódosítás aláírt előnézettel, stale/concurrency védelemmel, aktuális újraárazással, változatlan korábbi előleggel, módosítástörténettel és vendégértesítéssel. A részletek: [confirmed booking módosítás](docs/25_CONFIRMED_BOOKING_MODIFICATION.md).
 
+**Phase 9 IMPLEMENTED:** a teljes 2FA-val védett admin felület aláírt ár- és foglaltsági előnézet után normál `pending` foglalást rögzíthet. A közös tranzakció inventory lockot, idempotenciát és immutable pricing snapshotot használ; az admin csatorna nem fabrikál publikus jogi elfogadást és nem küld automatikus létrehozáskori e-mailt. Részletek: [admin kézi foglalásrögzítés](docs/28_ADMIN_MANUAL_BOOKING_CREATION.md).
+
 ## Rendszerspecifikáció
 
 Az aktuális implementáció és a tervezett 1.0 célrendszer elsődleges, verziókezelt specifikációja a [docs/README.md](docs/README.md) indexből érhető el. A dokumentáció az **IMPLEMENTED** és **PLANNED** állapotot elkülönítve kezeli; fejlesztés előtt az érintett fejezeteket a kóddal, migrációkkal és tesztekkel együtt kell ellenőrizni.
@@ -130,6 +132,9 @@ A `composer backup:database` webrooton/repositoryn kívüli könyvtárba készí
 - `POST /admin/login` – jelszavas első faktor, CSRF- és rate-limit védelemmel
 - `GET /admin/2fa` – e-mailes kód megadása pending sessionben
 - `GET /admin/bookings/monthly?month=YYYY-MM` – hitelesített, read-only havi foglaltsági lista
+- `GET /admin/bookings/create` – hitelesített admin kézi foglalási űrlap
+- `POST /admin/bookings/create/preview` – CSRF-védett, mentés nélküli availability- és ár-előnézet
+- `POST /admin/bookings/create` – aláírt előnézethez kötött, pending-only tranzakciós mentés
 - `POST /admin/2fa/verify` – második faktor ellenőrzése
 - `POST /admin/2fa/resend` – új kód kérése resend limittel
 - `GET /admin` – teljes 2FA-val védett, read-only napi operatív dashboard
@@ -290,6 +295,10 @@ A demo seed szemléltető fejlesztési árat tartalmaz, production árként nem 
 ## Phase 8 – admin operatív dashboard
 
 **IMPLEMENTED:** a hitelesített, read-only `/admin` kezdőoldal Budapest szerinti napi összesítést mutat a függő igényekről, a megerősített mai érkezőkről és távozókról, valamint a jelenlegi vendégekről. A mai listák és a következő hét nap legfeljebb öt megerősített érkezése közvetlenül a foglalás részletére vezet; e-mail- és telefonszám nem jelenik meg. A projection négy batchelt prepared lekérdezést használ, nincs N+1 és nem módosít booking státuszt vagy lifecycle-viselkedést.
+
+## Phase 9 – admin kézi foglalásrögzítés
+
+**IMPLEMENTED:** a booking listáról és dashboardról elérhető `/admin/bookings/create` űrlap a Budapest szerinti mai vagy későbbi érkezést fogadja, a publikus minimum előfoglalási szabály nélkül, de minden közös stay/horizon/capacity/pricing szabállyal. A preview nem ír adatot; az aláírt save újraáraz és inventory lock alatt újraellenőrzi az átfedést. Siker esetén `pending` booking készül, létrehozó-admin history/audittal, jogi acceptance snapshot és automatikus create e-mail nélkül.
 
 ## Sprint 6 – pricing, policy és lemondás
 

@@ -42,6 +42,7 @@ final readonly class BookingManagementController
         private ?ConfirmedBookingModificationValidator $modificationValidator = null,
         private ?BookingModificationPreviewSigner $modificationSigner = null,
         private ?BookingModificationNotificationDispatcher $modificationNotifications = null,
+        private ?AdminBookingFlashStore $flash = null,
     ) {}
 
     /** @param array<string, mixed> $query */
@@ -192,6 +193,7 @@ final readonly class BookingManagementController
             'paymentReference' => $booking['payment_request']['payment_reference'] ?? \App\Application\Mail\PaymentReference::forBookingId((int)$booking['id']),
             'modificationForm' => $modificationForm, 'modificationPreview' => $modificationPreview,
             'modificationErrors' => $modificationErrors, 'modificationPreviewSignature' => $modificationPreviewSignature,
+            'successMessage' => $this->flash?->consume((string) $booking['reference']),
         ]), $status);
     }
 

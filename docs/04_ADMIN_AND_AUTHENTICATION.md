@@ -4,7 +4,7 @@
 
 > **RC2 státusz:** az e-mailes 2FA és session strict mode enforcement IMPLEMENTED; valós SMTP/cPanel smoke production gate.
 
-**Állapot:** auth, booking management, pricing és iCal adminfelület IMPLEMENTED; kézi booking, settings és kereshető audit UI PLANNED
+**Állapot:** auth, booking management, kézi booking, pricing és iCal adminfelület IMPLEMENTED; settings és kereshető audit UI PLANNED
 **Utolsó ellenőrzés:** 2026-07-18, `release/rc1` munkafa (commit előtt)
 
 ## Jelenlegi állapot
@@ -17,7 +17,7 @@
 
 **IMPLEMENTED:** pending és authenticated sessionállapot, rotáció a biztonsági határokon, konfigurálható, legalább 30 perces csúszó idle timeout, konfigurálható abszolút session-élettartam, logout és szerveroldali visszavonás; sessionhöz kötött CSRF minden admin POST controllerben; konfigurálható login/2FA rate limit és szigorúan szűrt audit események.
 
-**IMPLEMENTED UI:** login-, 2FA-, dashboard-, logout-, booking lista/részlet/státusz-, blocked-period-, pricing- és iCal-controller, szerveroldali sablonok, A Bata design (`#19194B`, `#F0A236`, `#FFFFFF`). Kézi booking, általános settings és kereshető auditnapló UI nincs.
+**IMPLEMENTED UI:** login-, 2FA-, dashboard-, logout-, booking lista/részlet/státusz-, kézi booking-, blocked-period-, pricing- és iCal-controller, szerveroldali sablonok, A Bata design (`#19194B`, `#F0A236`, `#FFFFFF`). Általános settings és kereshető auditnapló UI nincs.
 
 **IMPLEMENTED HTTP-integráció:** a front controller beköti a login, 2FA verify/resend, dashboard és logout route-okat. A release-kapuhoz Docker/Mailpit smoke továbbra is szükséges.
 
@@ -27,7 +27,7 @@
 
 **IMPLEMENTED:** az `admins` tábla tárolja az `email`, `password_hash`, `name`, `is_active`, `receives_booking_notifications` és időbélyeg mezőket. A Felhasználók oldalon egyetlen, táblán kívüli bulk űrlap és CSRF-/rate-limit-védett POST menti az összes checkbox állapotát; a preference-frissítések és a tényleges változások auditbejegyzései egyetlen adatbázis-tranzakcióban commitolódnak, audit-hibánál együtt rollbackelnek. A kijelölés nélküli mentés minden preferenciát kikapcsol és ezzel a dokumentált fallback címzettet aktiválja. Csak aktív és kijelölt admin címzett, az inaktív fiók tárolt beállítása későbbi reaktiválásig megmarad. A beállítás nem módosítja a 2FA címzettjét. A séma részletei az [adatbázis- és domainmodellben](02_DATABASE_AND_DOMAIN_MODEL.md) találhatók.
 
-**IMPLEMENTED:** jelszóellenőrzés, 2FA-kód, admin session, logout, CSRF-védelem, rate limit/lockout persistence, audit log port/adapter és a fent felsorolt üzleti adminmodulok. **PLANNED:** kézi booking, settings, kereshető audit UI és esetleges részletesebb jogosultsági modell.
+**IMPLEMENTED:** jelszóellenőrzés, 2FA-kód, admin session, logout, CSRF-védelem, rate limit/lockout persistence, audit log port/adapter és a fent felsorolt üzleti adminmodulok. **PLANNED:** settings, kereshető audit UI és esetleges részletesebb jogosultsági modell.
 
 ## Szerepkör és jogosultsági modell
 
@@ -44,7 +44,7 @@
 | Foglaláslista | IMPLEMENTED | Lapozás, keresés és szűrés | Minden paraméter validált; PII csak hitelesített adminnak jelenik meg. |
 | Foglalás részlete | IMPLEMENTED | Vendég-, státusz-, ár-, policy-, audit- és e-mail adatok | Nem létező rekord biztonságos választ ad. |
 | Státuszkezelés | IMPLEMENTED | Csak engedélyezett átmenetek | Tiltott átmenet nem módosít adatot; siker esetén status history és audit rekord készül. |
-| Kézi foglalás | PLANNED | Admin által bevitt foglalás | Mentés tranzakcióban újraellenőrzi az átfedést; kettős foglalás nem jöhet létre. |
+| Kézi foglalás | IMPLEMENTED Phase 9 | Aláírt előnézet után admin által bevitt `pending` foglalás | A közös tranzakció újraellenőrzi az átfedést és árat; nincs fabrikált jogi elfogadás vagy automatikus create e-mail. |
 | Blokkolt időszak | IMPLEMENTED | Létrehozás és soft-delete feloldás | Fél-nyitott dátumintervallum és indok kötelező; változás auditált. |
 | Pricing | IMPLEMENTED | Szabály CRUD/aktiválás és preview | Jogosultság, validáció és audit; korábbi ár-pillanatkép nem változik. |
 | E-mail állapot | IMPLEMENTED részhalmaz | Booking részleten státusz és failed státuszlevél újraküldés | Levéltörzs és titok nem kerül általános logba; újraküldés auditált. |
@@ -161,6 +161,12 @@ Az admin/auth sprint csak akkor fogadható el, ha:
 ## Booking management – IMPLEMENTED Sprint 5
 
 A 2FA-val hitelesített admin lista-, részlet- és blocked-period oldalt kap. Minden válasz no-store; a POST-ok form Content-Type-, 8 KiB body-, CSRF-, admin/action rate-limit-, mező-whitelist- és 500 karakteres note ellenőrzést használnak, PRG redirecttel.
+
+## Admin kézi foglalásrögzítés – IMPLEMENTED Phase 9
+
+A booking lista és dashboard `Új foglalás` művelete teljes sessionnel a `/admin/bookings/create` oldalra vezet. A szerveroldali form/preview/save folyamat a közös vendég-, tartózkodás-, kapacitás-, pricing-, idempotencia- és inventory-szabályokat használja; az admin a Budapest szerinti mai érkezést is rögzítheti, mert a publikus minimum előfoglalási korlát itt nem fut. A preview HMAC-aláírása az összes adatot, idempotenciakulcsot, végösszeget és pénznemet köti össze, a végleges tranzakció pedig újraellenőrzi a foglaltságot és az árat.
+
+A rekord mindig `pending`. A jogi elfogadási mezők `NULL` értékűek, acceptance audit és létrehozáskori e-mail outbox nincs. A kezdeti history a létrehozó adminhoz kötött; az egyetlen `booking.admin_created` audit csak biztonságos, PII-mentes provenance-t tartalmaz. A teljes szerződés: [Admin kézi foglalásrögzítés](28_ADMIN_MANUAL_BOOKING_CREATION.md).
 
 ## Havi foglaltsági lista – IMPLEMENTED Phase 2
 

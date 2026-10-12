@@ -22,15 +22,30 @@ final readonly class BookingCreateRequestValidator
         private int $maximumChildren = self::MAX_CHARGEABLE_GUESTS,
         private int $maximumNotesLength = 2000,
         private GuestCapacityPolicy $capacityPolicy = new GuestCapacityPolicy(),
+        private bool $requireLegalAcceptances = true,
     ) {
-        if ($minimumAdvanceDays < 2) {
-            throw new \InvalidArgumentException('Minimum advance days must be at least two.');
+        if ($minimumAdvanceDays < ($requireLegalAcceptances ? 2 : 0)) {
+            throw new \InvalidArgumentException($requireLegalAcceptances
+                ? 'Minimum advance days must be at least two.'
+                : 'Minimum advance days cannot be negative.');
         }
     }
 
     public static function forBudapestToday(int $minimumNights = 1, int $maximumNights = 30, int $bookingHorizonDays = 365, int $minimumAdvanceDays = 2): self
     {
         return new self(new DateTimeImmutable('today', new DateTimeZone('Europe/Budapest')), $minimumNights, $maximumNights, $bookingHorizonDays, $minimumAdvanceDays);
+    }
+
+    public static function forAdminBudapestToday(int $minimumNights = 1, int $maximumNights = 30, int $bookingHorizonDays = 365): self
+    {
+        return new self(
+            new DateTimeImmutable('today', new DateTimeZone('Europe/Budapest')),
+            $minimumNights,
+            $maximumNights,
+            $bookingHorizonDays,
+            0,
+            requireLegalAcceptances: false,
+        );
     }
 
     /** @param array<string, mixed> $payload */
@@ -91,17 +106,17 @@ final readonly class BookingCreateRequestValidator
         }
 
         $privacyAccepted = ($payload['privacy_accepted'] ?? null) === true;
-        if (!$privacyAccepted) {
+        if ($this->requireLegalAcceptances && !$privacyAccepted) {
             $errors['privacy_accepted'] = 'Az adatkezelési tájékoztató elfogadása kötelező.';
         }
 
         $bookingPolicyAccepted = ($payload['booking_policy_accepted'] ?? null) === true;
-        if (!$bookingPolicyAccepted) {
+        if ($this->requireLegalAcceptances && !$bookingPolicyAccepted) {
             $errors['booking_policy_accepted'] = 'A foglalási szabályzat elfogadása kötelező.';
         }
 
         $houseRulesAccepted = ($payload['house_rules_accepted'] ?? null) === true;
-        if (!$houseRulesAccepted) {
+        if ($this->requireLegalAcceptances && !$houseRulesAccepted) {
             $errors['house_rules_accepted'] = 'A Házirend elfogadása kötelező.';
         }
 
@@ -125,10 +140,12 @@ final readonly class BookingCreateRequestValidator
             }
             $earliestArrival = $this->today->modify(sprintf('+%d days', $this->minimumAdvanceDays));
             if ($arrival < $earliestArrival) {
-                $errors['arrival_date'] = sprintf(
-                    'A foglalási alapbeállítások minimum %d nappal előre történő foglalást tesznek lehetővé. Kérem, telefonáljon, ha „Last minute” szeretne foglalni.',
-                    $this->minimumAdvanceDays,
-                );
+                $errors['arrival_date'] = $this->minimumAdvanceDays === 0
+                    ? 'Az érkezés nem lehet korábbi a mai napnál.'
+                    : sprintf(
+                        'A foglalási alapbeállítások minimum %d nappal előre történő foglalást tesznek lehetővé. Kérem, telefonáljon, ha „Last minute” szeretne foglalni.',
+                        $this->minimumAdvanceDays,
+                    );
             }
             $horizon = $this->today->modify(sprintf('+%d days', $this->bookingHorizonDays));
             if ($arrival > $horizon) {

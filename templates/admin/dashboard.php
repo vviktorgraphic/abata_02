@@ -131,6 +131,7 @@ require __DIR__ . '/_layout_start.php';
     <nav class="dashboard-quick-navigation" aria-labelledby="dashboard-quick-navigation-title">
         <h2 id="dashboard-quick-navigation-title">Gyorsműveletek</h2>
         <div class="dashboard-quick-links">
+            <a href="/admin/bookings/create">Új foglalás</a>
             <a href="/admin/bookings">Foglalások</a>
             <a href="/admin/bookings/monthly">Havi foglaltság</a>
             <a href="/admin/blocked-periods">Blokkolt időszakok</a>

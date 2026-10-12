@@ -144,3 +144,16 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 @media (max-width:64rem) { .dashboard-summary-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:48rem) { .dashboard-today-grid { grid-template-columns:1fr; } .dashboard-upcoming-list > li { grid-template-columns:1fr; } .dashboard-quick-links { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:32rem) { .dashboard-summary-grid,.dashboard-quick-links { grid-template-columns:1fr; } .dashboard-summary-card { min-height:0; } .dashboard-booking-facts { flex-direction:column; } }
+.bookings-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:.75rem; margin:1rem 0; }
+.bookings-toolbar .button-link,.bookings-toolbar .filter-reset { display:inline-flex; min-height:3rem; align-items:center; }
+.booking-create-page { display:grid; gap:1rem; }
+.booking-create-page > .intro,.booking-create-page > h1 { margin-bottom:0; }
+.booking-create-form { display:grid; gap:1rem; }
+.booking-create-form fieldset { min-width:0; margin:0; padding:clamp(1rem,2vw,1.25rem); border:1px solid var(--neutral-300); border-radius:.35rem; }
+.booking-create-form legend { padding:0 .35rem; font-size:1.1rem; font-weight:800; }
+.booking-create-form button,.booking-create-preview button { width:auto; min-width:12rem; }
+.field-error { margin:.35rem 0 0; color:#8b1d32; font-weight:700; }
+.admin-booking-child-ages:empty { display:none; }
+.booking-create-preview { border:2px solid var(--color-accent); background:#fffaf1; }
+.booking-create-preview h2 { margin-top:0; }
+@media (max-width:36rem) { .bookings-toolbar { align-items:stretch; flex-direction:column; } .bookings-toolbar .button-link,.bookings-toolbar .filter-reset,.booking-create-form button,.booking-create-preview button { justify-content:center; width:100%; text-align:center; } }

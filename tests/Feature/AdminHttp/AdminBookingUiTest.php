@@ -37,6 +37,7 @@ final class AdminBookingUiTest extends TestCase
         self::assertStringContainsString('<legend>Érkezési időszak</legend>', $html);
         self::assertStringContainsString('<legend>Létrehozási időszak</legend>', $html);
         self::assertStringContainsString('Szűrés alkalmazása', $html);
+        self::assertStringContainsString('href="/admin/bookings/create">Új foglalás</a>', $html);
         self::assertStringContainsString('href="/admin/bookings">Szűrők törlése</a>', $html);
         self::assertStringContainsString('role="region"', $html);
         self::assertStringNotContainsString('<script>', $html);
@@ -114,6 +115,28 @@ final class AdminBookingUiTest extends TestCase
         self::assertStringContainsString('maxlength="500"', $html);
         self::assertStringContainsString('Technikai érvénytelenítés', $html);
         self::assertStringContainsString('Téves, teszt vagy duplikált foglalás lezárására. A vendég nem kap lemondási e-mailt.', $html);
+    }
+
+    public function testDetailEscapesCreationSuccessFlash(): void
+    {
+        $html = $this->view->render('booking-detail', [
+            'successMessage' => 'Rögzítve <script>alert(1)</script>',
+            'csrfToken' => 'safe-token',
+            'cancellationPreview' => null,
+            'booking' => [
+                'reference' => 'AB-FLASH', 'status' => 'completed', 'contact_name' => 'Vendég',
+                'email' => 'v@example.invalid', 'phone' => '+36', 'arrival_date' => '2026-08-01',
+                'departure_date' => '2026-08-03', 'nights' => 2, 'adults' => 2, 'children' => 0,
+                'children_ages' => [], 'notes' => null, 'privacy_accepted_at' => null,
+                'total_amount' => '40000', 'currency' => 'HUF', 'booking_policy_accepted_at' => null,
+                'pricing_snapshot' => [], 'status_history' => [], 'email_outbox' => [],
+                'created_at' => '2026-07-16', 'updated_at' => '2026-07-16',
+            ],
+        ]);
+
+        self::assertStringContainsString('role="status"', $html);
+        self::assertStringContainsString('Rögzítve &lt;script&gt;alert(1)&lt;/script&gt;', $html);
+        self::assertStringNotContainsString('<script>alert(1)</script>', $html);
     }
 
     public static function snapshots(): iterable

@@ -7,6 +7,7 @@
 
 **IMPLEMENTED:** technikai alap, MySQL séma, migrációfuttató, publikus két hónapos naptár, read-only availability API, mentés nélküli booking-validáció és demo seeder.
 **IMPLEMENTED:** admin authentication/2FA, admin booking management, tranzakciós booking persistence, legacy és személyalapú közös pricing engine, immutable snapshotok, booking/státusz outbox, kézi és automatikus lock/retry/grace iCal import és tokenes export, továbbá production runbookok. **PLANNED / RELEASE GATE:** jóváhagyott jogi/production pricing tartalom, környezetben végrehajtott production/staging smoke és automatikus e-mail retry.
+**IMPLEMENTED Phase 9:** teljes admin sessionnel védett, pending-only kézi foglalásrögzítés aláírt read-only előnézettel és a publikus create-tel közös inventory/idempotencia/pricing tranzakcióval. Az admin csatorna nem fabrikál publikus jogi elfogadást és nem küld automatikus create e-mailt.
 
 ## Tervezett sprintek
 
@@ -119,3 +120,9 @@ Nyitott kapuk: abszolút session maximum; production SMTP port/TLS/auth/feladó;
 ## Phase 8 teljesítési állapot
 
 **IMPLEMENTED:** teljes 2FA-val védett, read-only admin operatív dashboard. A négy kártya definíciója: minden `pending`; mai `confirmed` érkezés; mai `confirmed` távozás; valamint `confirmed`, ahol `arrival_date <= today < departure_date`. A mai és hét napon belüli listák nem mutatnak e-mailt vagy telefonszámot, és összesen négy, N+1 nélküli prepared lekérdezésből készülnek. A „ma” mindenhol `Europe/Budapest`; booking-, pricing-, lifecycle- és production-viselkedés változatlan.
+
+## Phase 9 teljesítési állapot
+
+**IMPLEMENTED:** admin kézi foglalás létrehozása `GET /admin/bookings/create`, `POST /admin/bookings/create/preview` és `POST /admin/bookings/create` útvonalakon. Az előnézet read-only availabilityt és a közös pricing engine-t használ; az aláírt mentés inventory lock alatt újraellenőrzi a foglaltságot és az árat. A booking normál `pending`, immutable pricing snapshotot és idempotenciarekordot kap, ezért külön read-model logika nélkül blokkol availabilityben, megjelenik a listában/dashboardon/havi nézetben, és iCalba kerül.
+
+**IMPLEMENTED csatornaspecifikus határ:** a publikus minimum előfoglalási nap nem vonatkozik az adminra, de a múltbeli érkezés, stay/horizon/capacity/child-age szabály változatlan. Minden jogi acceptance mező `NULL`; acceptance audit és automatikus create outbox nincs. A létrehozó admin kezdeti status historyban és PII-mentes `booking.admin_created` auditban rögzül. Nincs új migráció, kézi ár vagy production művelet. Részletek: [Admin kézi foglalásrögzítés](28_ADMIN_MANUAL_BOOKING_CREATION.md).

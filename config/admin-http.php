@@ -71,10 +71,13 @@ use App\Application\LegacyImport\LegacyImportCsvParser;
 use App\Application\LegacyImport\LegacyImportService;
 use App\Infrastructure\Persistence\Booking\PdoLegacyImportProvenanceRepository;
 use App\Infrastructure\Persistence\Booking\PdoAdminDashboardRepository;
+use App\Http\Controller\Admin\AdminBookingFlashStore;
+use App\Http\Controller\Admin\AdminManualBookingController;
 
 $root = dirname(__DIR__);
 $authConfig = require $root . '/config/auth.php';
 $mailConfig = require $root . '/config/mail.php';
+$bookingConfig = require $root . '/config/booking.php';
 if ($authConfig['rate_limit_pepper'] === '') {
     throw new RuntimeException('AUTH_RATE_LIMIT_PEPPER is required.');
 }
@@ -174,6 +177,16 @@ $bookingModificationNotifications = new App\Application\Mail\BookingModification
 );
 $calendarLogs = new PdoCalendarSyncLogRepository($pdo);
 $calendarImporter = (require __DIR__ . '/calendar-services.php')($pdo);
+$bookingFlash = new AdminBookingFlashStore($storage);
+$adminBookingClock = new App\Application\Booking\BudapestBookingClock();
+$adminManualBookingService = new App\Application\Booking\AdminManualBookingService(
+    $transitions,
+    $pricingEngine,
+    $pricingEngine,
+    new App\Infrastructure\Persistence\PdoBookingReadRepository($pdo, $bookingConfig['blocking_statuses']),
+    new App\Infrastructure\Persistence\PdoBlockedPeriodReadRepository($pdo),
+    $adminBookingClock,
+);
 
 return [
     'person_pricing' => new App\Http\Controller\Admin\PersonPricingAdminController(
@@ -195,6 +208,22 @@ return [
         App\Application\Booking\ConfirmedBookingModificationValidator::forBudapestToday(),
         new App\Application\Booking\BookingModificationPreviewSigner($authConfig['rate_limit_pepper']),
         $bookingModificationNotifications,
+        $bookingFlash,
+    ),
+    'manual_booking' => new AdminManualBookingController(
+        $workflow,
+        $view,
+        $csrf,
+        $actionGuard,
+        App\Domain\Booking\BookingCreateRequestValidator::forAdminBudapestToday(
+            $bookingConfig['minimum_nights'],
+            $bookingConfig['maximum_nights'],
+            $bookingConfig['booking_horizon_days'],
+        ),
+        $adminManualBookingService,
+        new App\Application\Booking\AdminManualBookingPreviewSigner($authConfig['rate_limit_pepper']),
+        $adminBookingClock,
+        $bookingFlash,
     ),
     'monthly_occupancy' => new MonthlyOccupancyController($workflow, $view, new PdoAdminMonthlyOccupancyRepository($pdo)),
     'legacy_import' => new LegacyBookingImportController(

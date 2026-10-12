@@ -45,6 +45,7 @@ A jelölések jelentése:
 | [25 – Megerősített foglalás módosítása](25_CONFIRMED_BOOKING_MODIFICATION.md) | Előnézet, újraárazás, inventory lock, változatlan előleg, audit és vendégértesítés |
 | [26 – Owner acceptance és go-live readiness](26_OWNER_ACCEPTANCE_AND_GO_LIVE_READINESS.md) | Biztonságos UAT, read-only smoke, környezeti/provider kapuk és cutover-határok |
 | [27 – Pre-cutover backup és restore drill](27_PRE_CUTOVER_BACKUP_AND_RESTORE_DRILL.md) | Atomi state snapshot, read-only migrációállapot és elkülönített restore-próba |
+| [28 – Admin kézi foglalásrögzítés](28_ADMIN_MANUAL_BOOKING_CREATION.md) | Pending-only admin create, aláírt ár-előnézet, közös tranzakció és jogi provenance |
 | [Owner decisions pending](OWNER_DECISIONS_PENDING.md) | RC2 production GO előtti tényleges tulajdonosi/hosting döntések |
 | [98 – Nyitott döntések](98_OPEN_DECISIONS.md) | Prioritásos, még tulajdonosi vagy architekturális döntést igénylő kérdések |
 | [99 – Tulajdonosi döntések](99_OWNER_DECISIONS.md) | Dátummal rögzített, lezárt tulajdonosi döntések |
@@ -93,6 +94,10 @@ Admin booking lista/részlet, explicit state machine, tranzakciós history/audit
 ## Phase 2 admin havi foglaltság – IMPLEMENTED
 
 A védett `/admin/bookings/monthly` read-only oldal Budapest-hónaponként napi bontásban mutatja a pending/confirmed, valamint történeti completed foglalások érkezését, foglalt éjszakáit és távozását, továbbá az aktív kézi és külső naptári blokkolásokat. A lekérdezés két batchelt SQL műveletet használ, a fél-nyitott intervallumot megőrzi, és nem változtat booking-, inventory-, pricing-, payment-, mail- vagy iCal-viselkedést; a completed továbbra sem blokkol és nem exportálódik.
+
+## Phase 9 admin kézi foglalásrögzítés – IMPLEMENTED
+
+A teljes 2FA-val védett `/admin/bookings/create` folyamat aláírt, mentés nélküli pricing/availability előnézet után normál `pending` foglalást készít a publikus létrehozással közös inventory-, idempotencia- és pricing tranzakcióban. Az admin csatorna nem alkalmazza a publikus előfoglalási minimumot, nem fabrikál jogi elfogadást és nem készít automatikus létrehozáskori e-mailt; a létrehozó admin history- és PII-mentes audit-provenance-ben rögzül. Részletek: [28 – Admin kézi foglalásrögzítés](28_ADMIN_MANUAL_BOOKING_CREATION.md).
 
 ## Phase 7.4 operational readiness – IMPLEMENTED eszközök
 
