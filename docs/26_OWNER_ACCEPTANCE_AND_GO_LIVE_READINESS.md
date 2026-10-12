@@ -28,7 +28,8 @@ Phase 7 kizárólag dokumentációt, read-only operátori eszközt és annak sze
 | Általános automatikus outbox retry | DEFERRED / OUT OF SCOPE | Nincs worker; attempts/backoff/stale-claim policy owner döntést igényel. |
 | Online fizetés és automatikus beszedés | DEFERRED / OUT OF SCOPE | Nincs implementálva. |
 | Jogi linkek és verziók | RUNTIME PASS / OWNER CONTENT CONFIRMATION REQUIRED | A Phase 7.3-ban az öt runtime érték megfelelt; a publikált dokumentumok tartalmi/jogi jóváhagyása továbbra is owner action. |
-| Backup/rollback | PARTIAL EVIDENCE / BLOCKED | A 2026-10-12-i DB backup checksumja PASS; a kapcsolódó state-snapshot könyvtár üres, restore drill bizonyíték nincs. |
+| Backup/rollback | TOOLING HARDENED / PRODUCTION EVIDENCE BLOCKED | A 2026-10-12-i DB backup checksumja PASS; atomi snapshot tooling és helyi szintetikus restore-mechanizmus próba elkészült, de teljes production snapshot és production-backup restore drill nincs. |
+| Migration state | READ-ONLY TOOL IMPLEMENTED / PRODUCTION CHECK PENDING | A `bin/migration-status.php` mutáció nélkül jelzi a pending/unknown verziókat; productionön még nem futott. |
 | Admin idle timeout | PASS / STALE HANDOFF RESOLVED | Phase 7.3 production bootstrap: idle 1800, absolute 28800 másodperc; a handoff 900 másodperces állítása elavult. |
 | Korai RC1/RC2 release-dokumentáció | STALE DOCUMENTATION — RECONCILED | Sprint 10, havi occupancy és Phase 6 állapota az aktuális kódhoz igazítva. |
 | Alapértelmezett lokális Compose web bootstrap | IMPLEMENTED / RESOLVED IN PHASE 7.1 | A Compose az auditált alkalmazásváltozókat explicit továbbítja, a DB root credentialt nem; a `.env.example` hamis fejlesztői payment adatokkal és regressziós teszttel használható. |
@@ -199,7 +200,8 @@ Az ismert RBL elutasítás hosting/provider reputációs kérdés, amíg kódbiz
 | Cron | PASS / OFF | Lifecycle- és iCal-cron közvetlen crontab audit szerint nincs jelen. |
 | SMTP application path | PASS / PROVIDER BLOCKER | Hitelesített TLS konfiguráció megvan; RBL és kontrollált kézbesítési smoke nyitott. |
 | Legal links/versioning | PASS | Az öt allow-listelt runtime érték megfelel a production szerződésnek. |
-| Backup/rollback | BLOCKED | DB checksum PASS, de a legfrissebb state-snapshot üres és restore drill nincs igazolva. |
+| Backup/rollback | TOOLING PASS / EVIDENCE BLOCKED | Az atomi snapshot eszköz és a helyi szintetikus restore mechanizmuspróba PASS; teljes production snapshot és production-backup restore drill nincs. |
+| Migration state | TOOLING PASS / PRODUCTION PENDING | Read-only ellenőrző parancs elkészült; production eredmény külön pre-deploy futtatást igényel. |
 | Session timeout | PASS | Effektív production idle/absolute érték: 1800/28800 másodperc. |
 | Generic outbox retry | DEFERRED / BLOCKED | Owner retry/stale-claim policy szükséges. |
 | Main merge | NOT PERFORMED | Külön release döntés. |
@@ -273,3 +275,11 @@ A backup audit közvetlen bizonyítéka:
 - restore drill dokumentum vagy log nem található: RESTORE DRILL NOT VERIFIED.
 
 Owner UAT továbbra sincs aláírva. A Szallas.hu legacy feed használata dokumentált feltételezés; a feedváltás és tokenrotáció CUTOVER ONLY / OWNER-PROVIDER CONFIRMATION REQUIRED. Friss, teljes és ellenőrzött pre-cutover state snapshot, valamint restore drill bizonyíték nélkül go-live nem minősíthető késznek.
+
+## Phase 7.4 operational readiness hardening — 2026-10-12
+
+A korábbi snapshot script forenzikus ellenőrzése bizonyította a hibamódot: a végleges könyvtár a hibázható műveletek előtt létrejött, cleanup nélkül, ezért megszakítás vagy hiba üres, késznek látszó snapshotot hagyhatott. A pontos kiváltó esemény napló hiányában nem bizonyítható.
+
+Az új `tools/New-StateSnapshot.ps1` és Linux core staging könyvtárba gyűjt, exact artifact- és SHA-256 manifest-ellenőrzést végez, majd csak siker esetén nevez át atomikusan. A `bin/migration-status.php` kizárólag SELECT lekérdezésekkel, géppel olvasható JSON-ban jelzi a pending és ismeretlen migrációkat. A helyi, eldobható, szintetikus restore mechanizmuspróba PASS, beleértve a checksum- és confirmation-negatív eseteket; a tesztadatbázis és ideiglenes fájlok törölve lettek.
+
+Production nem változott. Új production snapshot, production-backup restore, deploy, cron/feed váltás vagy main merge nem történt. A teljes eljárás: [27 – Pre-cutover backup és restore drill](27_PRE_CUTOVER_BACKUP_AND_RESTORE_DRILL.md).

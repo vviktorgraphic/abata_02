@@ -25,6 +25,9 @@ final class DatabaseBackupScriptsTest extends TestCase
         self::assertStringContainsString("'--no-tablespaces'", $script);
         self::assertStringNotContainsString("'--routines'", $script);
         self::assertStringNotContainsString("'--events'", $script);
+        self::assertStringContainsString("getenv('MYSQL_CLIENT_VERIFY_SERVER_CERT')", $script);
+        self::assertStringContainsString("\$command[] = '--skip-ssl-verify-server-cert'", $script);
+        self::assertStringContainsString('? true', $script);
     }
 
     public function testRestoreRequiresExactConfirmationAndVerifiedChecksum(): void
@@ -36,7 +39,10 @@ final class DatabaseBackupScriptsTest extends TestCase
         self::assertStringContainsString("\$backupFile . '.sha256'", $script);
         self::assertStringContainsString("'--defaults-extra-file=' . \$optionFile", $script);
         self::assertStringNotContainsString("'--password='", $script);
-        self::assertStringContainsString("'--defaults-extra-file=' . \$optionFile, \$database", $script);
+        self::assertStringContainsString("\$command = [\$binary, '--defaults-extra-file=' . \$optionFile]", $script);
+        self::assertStringContainsString("getenv('MYSQL_CLIENT_VERIFY_SERVER_CERT')", $script);
+        self::assertStringContainsString("\$command[] = '--skip-ssl-verify-server-cert'", $script);
+        self::assertStringContainsString('? true', $script);
     }
 
     private function script(string $name): string

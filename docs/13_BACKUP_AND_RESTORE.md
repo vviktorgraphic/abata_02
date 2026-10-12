@@ -27,6 +27,8 @@ Az SQL dump személyes adatot tartalmazhat. A backup könyvtár ne legyen weben 
 
 A binárisok nem szabványos helye a `MYSQLDUMP_BINARY`, illetve `MYSQL_BINARY` változóval adható meg. A változó értékét csak megbízható deployment konfiguráció kezelheti.
 
+A `MYSQL_CLIENT_VERIFY_SERVER_CERT` alapértelmezetten nincs felülírva, ezért a kliens biztonságos alapbeállítása érvényesül. Kizárólag elkülönített helyi Compose környezet önaláírt tanúsítványánál állítható explicit `false` értékre; productionben csak ellenőrzött CA/hostname megoldás mellett szabad ettől eltérni. Az override továbbra is environmentből érkezik, és nem kerül parancssori credentialbe.
+
 A `bin/backup-database.php` capability-detectionnel ellenőrzi a konfigurált `mysqldump` help kimenetét. A `--set-gtid-purged=OFF` csak akkor kerül a parancsba, ha a bináris pozitívan jelzi ezt a kapcsolót; MariaDB 10.6 esetén automatikusan kimarad. Kézi szerveroldali scriptmódosítás nem szükséges. A futás után mindig ellenőrizd a létrejött `.sha256` fájlt (`sha256sum -c <dump>.sha256`).
 
 ## Backup futtatása

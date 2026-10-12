@@ -2,6 +2,7 @@
 
 ## Phase 6 booking modification és Phase 7 readiness
 
+- A Phase 7.4 atomi state snapshot eszközt és mutációmentes migrációállapot-parancsot ad. A szintetikus helyi restore mechanizmuspróba PASS; production snapshot és production-backup restore drill továbbra sincs végrehajtva.
 - A confirmed booking dátuma és létszáma aláírt előnézet után, inventory lockkal és optimista verzióvédelemmel módosítható. Az aktuális pricing újraszámolódik, a korábban megfizetett előleg változatlan, a history/audit/outbox atomi.
 - Az admin előnézet stabil `#booking-modification` horgonyra tér vissza siker és hiba esetén; a gyermeklétszám és életkor természetes magyar összegzésben jelenik meg.
 - Elkészült a külön owner acceptance/go-live readiness ellenőrzőlista és a credential nélküli, kizárólag GET-et használó RC2 read-only PowerShell smoke.

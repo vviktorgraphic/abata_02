@@ -44,6 +44,7 @@ A jelölések jelentése:
 | [24 – Vendégkommunikáció és életciklus](24_GUEST_COMMUNICATIONS_LIFECYCLE.md) | IFA nélküli előleg, kézi levelek, inline képek, review worker, completed és logout |
 | [25 – Megerősített foglalás módosítása](25_CONFIRMED_BOOKING_MODIFICATION.md) | Előnézet, újraárazás, inventory lock, változatlan előleg, audit és vendégértesítés |
 | [26 – Owner acceptance és go-live readiness](26_OWNER_ACCEPTANCE_AND_GO_LIVE_READINESS.md) | Biztonságos UAT, read-only smoke, környezeti/provider kapuk és cutover-határok |
+| [27 – Pre-cutover backup és restore drill](27_PRE_CUTOVER_BACKUP_AND_RESTORE_DRILL.md) | Atomi state snapshot, read-only migrációállapot és elkülönített restore-próba |
 | [Owner decisions pending](OWNER_DECISIONS_PENDING.md) | RC2 production GO előtti tényleges tulajdonosi/hosting döntések |
 | [98 – Nyitott döntések](98_OPEN_DECISIONS.md) | Prioritásos, még tulajdonosi vagy architekturális döntést igénylő kérdések |
 | [99 – Tulajdonosi döntések](99_OWNER_DECISIONS.md) | Dátummal rögzített, lezárt tulajdonosi döntések |
@@ -92,6 +93,10 @@ Admin booking lista/részlet, explicit state machine, tranzakciós history/audit
 ## Phase 2 admin havi foglaltság – IMPLEMENTED
 
 A védett `/admin/bookings/monthly` read-only oldal Budapest-hónaponként napi bontásban mutatja a pending/confirmed, valamint történeti completed foglalások érkezését, foglalt éjszakáit és távozását, továbbá az aktív kézi és külső naptári blokkolásokat. A lekérdezés két batchelt SQL műveletet használ, a fél-nyitott intervallumot megőrzi, és nem változtat booking-, inventory-, pricing-, payment-, mail- vagy iCal-viselkedést; a completed továbbra sem blokkol és nem exportálódik.
+
+## Phase 7.4 operational readiness – IMPLEMENTED eszközök
+
+Az atomi state snapshot tooling stagingben gyűjti és teljes manifest-ellenőrzés után nevezi át a pontos artifact-készletet; hiba nem hagy végleges snapshot könyvtárat. A `bin/migration-status.php` kizárólag olvasással jelzi a függő és ismeretlen migrációkat. A szintetikus helyi restore mechanizmuspróba PASS, de production snapshot és production-backup restore drill továbbra sincs végrehajtva.
 
 ## Sprint 7 – IMPLEMENTED alaphatókör
 

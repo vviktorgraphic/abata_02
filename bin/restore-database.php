@@ -55,6 +55,13 @@ try {
     $username = $required('DB_USERNAME');
     $password = $required('DB_PASSWORD');
     $binary = getenv('MYSQL_BINARY') ?: 'mysql';
+    $verifyServerCertificate = getenv('MYSQL_CLIENT_VERIFY_SERVER_CERT');
+    $verifyServerCertificate = $verifyServerCertificate === false || trim($verifyServerCertificate) === ''
+        ? true
+        : filter_var($verifyServerCertificate, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE);
+    if ($verifyServerCertificate === null) {
+        throw new RuntimeException('MYSQL_CLIENT_VERIFY_SERVER_CERT must be a boolean when configured.');
+    }
     $optionFile = tempnam(sys_get_temp_dir(), 'mysql-restore-');
     if ($optionFile === false) {
         throw new RuntimeException('Could not create the temporary MySQL option file.');
@@ -75,7 +82,12 @@ try {
     }
 
     $input = fopen($backupFile, 'rb');
-    $process = proc_open([$binary, '--defaults-extra-file=' . $optionFile, $database], [0 => $input, 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+    $command = [$binary, '--defaults-extra-file=' . $optionFile];
+    if (!$verifyServerCertificate) {
+        $command[] = '--skip-ssl-verify-server-cert';
+    }
+    $command[] = $database;
+    $process = proc_open($command, [0 => $input, 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
     if (!is_resource($process)) {
         fclose($input);
         throw new RuntimeException('Could not start mysql restore.');

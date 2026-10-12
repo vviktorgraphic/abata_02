@@ -37,6 +37,13 @@ try {
     $username = $required('DB_USERNAME');
     $password = $required('DB_PASSWORD');
     $binary = getenv('MYSQLDUMP_BINARY') ?: 'mysqldump';
+    $verifyServerCertificate = getenv('MYSQL_CLIENT_VERIFY_SERVER_CERT');
+    $verifyServerCertificate = $verifyServerCertificate === false || trim($verifyServerCertificate) === ''
+        ? true
+        : filter_var($verifyServerCertificate, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE);
+    if ($verifyServerCertificate === null) {
+        throw new RuntimeException('MYSQL_CLIENT_VERIFY_SERVER_CERT must be a boolean when configured.');
+    }
     $supportsSetGtidPurged = App\Infrastructure\Database\MysqldumpCapabilities::supportsSetGtidPurged($binary, $root);
 
     if (!preg_match('/^[1-9][0-9]{0,4}$/', $port) || (int) $port > 65535) {
@@ -111,6 +118,9 @@ try {
     ];
     if ($supportsSetGtidPurged) {
         $command[] = '--set-gtid-purged=OFF';
+    }
+    if (!$verifyServerCertificate) {
+        $command[] = '--skip-ssl-verify-server-cert';
     }
     $command[] = '--default-character-set=utf8mb4';
     $command[] = $database;
