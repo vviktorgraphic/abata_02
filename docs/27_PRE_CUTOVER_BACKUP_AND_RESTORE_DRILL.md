@@ -4,7 +4,7 @@
 
 **Időzóna:** Europe/Budapest
 
-**Utolsó felülvizsgálat:** 2026-10-12, Phase 7.4
+**Utolsó felülvizsgálat:** 2026-10-12, Phase 7.5
 
 Ez a runbook három külön bizonyítékot kezel. Egy sikeres adatbázis-checksum csak a dump sértetlenségét igazolja. Egy teljes state snapshot a dump mellett a release-t, a production environment fájlt és a futásállapotot is összefogja. A restore drill pedig azt igazolja, hogy egy checksum-valid dump külön céladatbázisba ténylegesen visszatölthető. Ezek egyike sem helyettesíti a másikat.
 
@@ -123,6 +123,12 @@ A parancs kizárólag `information_schema.tables` és `migrations` SELECT lekér
 - konfigurációs vagy kapcsolati hiba: generikus, credentialmentes `status=error`.
 
 Egyedi könyvtár `MIGRATION_DIRECTORY` environment változóval ellenőrizhető. A pre-deploy gate csak `status=ok` és `0` exit esetén PASS.
+
+### Phase 7.5 production read-only bizonyíték
+
+A dokumentált `21d15ea` release könyvtárban, annak normál environment bootstrapjével végzett server-side összevetés 28 repository migration fájlt és 28 alkalmazott verziót talált. A pending és `unknown_applied` lista üres, ezért a meglévő production migrációkészlet állapota PASS. A `77db2c1..93bd17a` Phase 7.4 diff nem módosít és nem ad hozzá migrációs fájlt.
+
+Az ellenőrzés nem töltött fel eszközt, nem deployolt, nem hívta a `Migrator` osztályt vagy a `bin/migrate.php` parancsot, és nem hajtott végre DDL/DML műveletet. Az audit utáni három anonim production GET smoke PASS. Az aktív WePanel Document Root ettől még nem bizonyított; owner-megerősítés szükséges.
 
 ## 4. Biztonságos restore-rehearsal
 

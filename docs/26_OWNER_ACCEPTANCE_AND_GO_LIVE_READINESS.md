@@ -29,7 +29,7 @@ Phase 7 kizárólag dokumentációt, read-only operátori eszközt és annak sze
 | Online fizetés és automatikus beszedés | DEFERRED / OUT OF SCOPE | Nincs implementálva. |
 | Jogi linkek és verziók | RUNTIME PASS / OWNER CONTENT CONFIRMATION REQUIRED | A Phase 7.3-ban az öt runtime érték megfelelt; a publikált dokumentumok tartalmi/jogi jóváhagyása továbbra is owner action. |
 | Backup/rollback | TOOLING HARDENED / PRODUCTION EVIDENCE BLOCKED | A 2026-10-12-i DB backup checksumja PASS; atomi snapshot tooling és helyi szintetikus restore-mechanizmus próba elkészült, de teljes production snapshot és production-backup restore drill nincs. |
-| Migration state | READ-ONLY TOOL IMPLEMENTED / PRODUCTION CHECK PENDING | A `bin/migration-status.php` mutáció nélkül jelzi a pending/unknown verziókat; productionön még nem futott. |
+| Migration state | PASS / READ-ONLY VERIFIED | A Phase 7.5 server-side audit a dokumentált `21d15ea` release 28 migrációs fájlját 28 alkalmazott verzióval egyezőnek találta; pending és unknown lista üres. |
 | Admin idle timeout | PASS / STALE HANDOFF RESOLVED | Phase 7.3 production bootstrap: idle 1800, absolute 28800 másodperc; a handoff 900 másodperces állítása elavult. |
 | Korai RC1/RC2 release-dokumentáció | STALE DOCUMENTATION — RECONCILED | Sprint 10, havi occupancy és Phase 6 állapota az aktuális kódhoz igazítva. |
 | Alapértelmezett lokális Compose web bootstrap | IMPLEMENTED / RESOLVED IN PHASE 7.1 | A Compose az auditált alkalmazásváltozókat explicit továbbítja, a DB root credentialt nem; a `.env.example` hamis fejlesztői payment adatokkal és regressziós teszttel használható. |
@@ -201,7 +201,7 @@ Az ismert RBL elutasítás hosting/provider reputációs kérdés, amíg kódbiz
 | SMTP application path | PASS / PROVIDER BLOCKER | Hitelesített TLS konfiguráció megvan; RBL és kontrollált kézbesítési smoke nyitott. |
 | Legal links/versioning | PASS | Az öt allow-listelt runtime érték megfelel a production szerződésnek. |
 | Backup/rollback | TOOLING PASS / EVIDENCE BLOCKED | Az atomi snapshot eszköz és a helyi szintetikus restore mechanizmuspróba PASS; teljes production snapshot és production-backup restore drill nincs. |
-| Migration state | TOOLING PASS / PRODUCTION PENDING | Read-only ellenőrző parancs elkészült; production eredmény külön pre-deploy futtatást igényel. |
+| Migration state | PASS | Read-only production összevetés: expected 28, applied 28, pending/unknown üres; a Phase 7.4 nem ad hozzá migrációt. |
 | Session timeout | PASS | Effektív production idle/absolute érték: 1800/28800 másodperc. |
 | Generic outbox retry | DEFERRED / BLOCKED | Owner retry/stale-claim policy szükséges. |
 | Main merge | NOT PERFORMED | Külön release döntés. |
@@ -283,3 +283,21 @@ A korábbi snapshot script forenzikus ellenőrzése bizonyította a hibamódot: 
 Az új `tools/New-StateSnapshot.ps1` és Linux core staging könyvtárba gyűjt, exact artifact- és SHA-256 manifest-ellenőrzést végez, majd csak siker esetén nevez át atomikusan. A `bin/migration-status.php` kizárólag SELECT lekérdezésekkel, géppel olvasható JSON-ban jelzi a pending és ismeretlen migrációkat. A helyi, eldobható, szintetikus restore mechanizmuspróba PASS, beleértve a checksum- és confirmation-negatív eseteket; a tesztadatbázis és ideiglenes fájlok törölve lettek.
 
 Production nem változott. Új production snapshot, production-backup restore, deploy, cron/feed váltás vagy main merge nem történt. A teljes eljárás: [27 – Pre-cutover backup és restore drill](27_PRE_CUTOVER_BACKUP_AND_RESTORE_DRILL.md).
+
+## Phase 7.5 publish és read-only migration audit — 2026-10-12
+
+A review-zott `b20b363` és `93bd17a` operational-hardening commit felkerült az `origin/release/rc2` ágra; a remote és a lokális ág egyaránt `93bd17a7896a6287e02952b0f91bb1cf1faac325`. Ez branch-publikálás volt, nem deployment: a production Document Root, release, `.env`, adatbázisséma és alkalmazásadat nem változott.
+
+A dokumentált `21d15ea` release saját environment bootstrapjével végrehajtott, stdin-en átadott audit kizárólag a telepített `database/migrations/*.sql` fájlneveket, az `information_schema.tables` metadata nézetet és a `SELECT version FROM migrations ORDER BY version` eredményét olvasta. Eredmény:
+
+```text
+expected_count=28
+applied_count=28
+pending=[]
+unknown_applied=[]
+status=PASS
+```
+
+A `77db2c1..93bd17a` Git diff nem tartalmaz adatbázis-migrációt. Következésképpen a production séma naprakész a meglévő migrációkészlethez, és a Phase 7.4 operational hardening nem vezet be új migrációt. Ez nem deployment- vagy migrációfuttatási engedély.
+
+Az audit utáni credential nélküli `GET /health`, `GET /` és `GET /admin/login` smoke PASS. Aktív WePanel Document Root továbbra is OWNER CONFIRMATION REQUIRED; production snapshot, production-backup restore drill, SMTP-kézbesítési próba, owner UAT, cron/feed cutover és main merge nem történt.
