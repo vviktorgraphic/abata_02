@@ -1,7 +1,7 @@
 # A Bata foglalási rendszer – rendszerspecifikáció
 
-**Állapot:** IMPLEMENTED dokumentációs index; 1.0.0-rc1 repository-validáció
-**Utolsó ellenőrzés:** 2026-07-18, `release/rc1` munkafa (commit előtt)
+**Állapot:** IMPLEMENTED dokumentációs index; 1.0.0-rc2 repository-validáció
+**Utolsó ellenőrzés:** 2026-10-12, `release/rc2` baseline `21d15ea`
 
 ## Cél és igazságforrás
 
@@ -43,6 +43,7 @@ A jelölések jelentése:
 | [23 – Admin havi foglaltság](23_ADMIN_MONTHLY_OCCUPANCY.md) | Read-only havi napi lista, fordulónapok, kézi és külső blokkolások |
 | [24 – Vendégkommunikáció és életciklus](24_GUEST_COMMUNICATIONS_LIFECYCLE.md) | IFA nélküli előleg, kézi levelek, inline képek, review worker, completed és logout |
 | [25 – Megerősített foglalás módosítása](25_CONFIRMED_BOOKING_MODIFICATION.md) | Előnézet, újraárazás, inventory lock, változatlan előleg, audit és vendégértesítés |
+| [26 – Owner acceptance és go-live readiness](26_OWNER_ACCEPTANCE_AND_GO_LIVE_READINESS.md) | Biztonságos UAT, read-only smoke, környezeti/provider kapuk és cutover-határok |
 | [Owner decisions pending](OWNER_DECISIONS_PENDING.md) | RC2 production GO előtti tényleges tulajdonosi/hosting döntések |
 | [98 – Nyitott döntések](98_OPEN_DECISIONS.md) | Prioritásos, még tulajdonosi vagy architekturális döntést igénylő kérdések |
 | [99 – Tulajdonosi döntések](99_OWNER_DECISIONS.md) | Dátummal rögzített, lezárt tulajdonosi döntések |

@@ -6,6 +6,8 @@ A projekt változásai ebben a fájlban követik a release-eket. A formátum a K
 
 ### RC2 hardening
 
+- Added an owner acceptance/go-live readiness matrix and a safe GET-only PowerShell smoke for `/health`, `/` and `/admin/login`.
+- Reconciled stale RC1/early-RC2 documentation with the integrated Sprint 10, monthly occupancy and Phase 6 booking-modification state without asserting unverified production configuration.
 - Added configurable SMTP timeout, PDO MySQL dependency declaration, strict session mode enforcement and masked iCal edit URLs.
 - Added one shared `.env` bootstrap for web and CLI entry points with process-environment precedence and CRLF-safe parsing.
 - Added MySQL 8.0/MariaDB 10.6 migration compatibility coverage and corrected portable check-constraint removal.
@@ -15,6 +17,7 @@ A projekt változásai ebben a fájlban követik a release-eket. A formátum a K
 
 ### Added
 
+- Added confirmed-booking modification with signed preview, optimistic stale protection, inventory serialization, current repricing, immutable prior deposit, modification history and notification outbox.
 - Added Phase 3 guest communications: snapshot-safe payment reminders, manual arrival information with four CID JPEGs, exact-day review worker, completed booking lifecycle and shared CSRF logout icon.
 - Added v2 payment request snapshots and deterministic short payment references; advance now excludes tourism tax and is calculated from immutable accommodation fee.
 - Automatikus, forrásonként lockolt iCal CLI worker korlátozott retry/backoff, 24 órás eltűnési grace és bővített sync metrikák mellett.

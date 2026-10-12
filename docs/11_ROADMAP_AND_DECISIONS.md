@@ -1,7 +1,7 @@
 # Roadmap és döntési napló
 
 **Állapot:** Sprint 1–9 alkalmazási és deployment-readiness scope IMPLEMENTED, környezetfüggő release-kapuk nyitottak
-**Utolsó ellenőrzött állapot:** `release/rc1` munkafa, commit előtt
+**Utolsó ellenőrzött állapot:** `release/rc2` baseline `21d15ea`, 2026-10-12
 
 ## Kiindulási helyzet
 
@@ -111,3 +111,7 @@ Nyitott kapuk: abszolút session maximum; production SMTP port/TLS/auth/feladó;
 ## Sprint 10 teljesítési állapot
 
 **IMPLEMENTED:** automatikus iCal CLI, source lock, átmeneti hibák korlátozott retry-ja, teljes-feed reconciliation és DST-biztos minimum 24 órás grace; egységes HUF formatter; explicit legacy/person pricing, gyermek ársávok, optimistic admin mentés, v3 éjszakánkénti snapshot és cancellation regresszió. **DEPLOYMENT PENDING:** valós cPanel cron, provider smoke és tulajdonos által jóváhagyott production árkonfiguráció. **PLANNED:** outbox retry, tokenrotációs átfedés és online fizetés.
+
+## Phase 6–7 teljesítési állapot
+
+**IMPLEMENTED Phase 6:** confirmed booking módosítás aláírt előnézettel, stale/concurrency védelemmel, inventory lockkal, aktuális újraárazással, változatlan korábbi előleggel, history/audit/outbox és vendégértesítés támogatással. **IMPLEMENTED Phase 7 readiness:** owner UAT dokumentáció és GET-only read-only smoke. **PRODUCTION DISABLED/PENDING:** lifecycle és cron; Szallas.hu új feedre váltása provider cutover. **DEFERRED / DECISION REQUIRED:** általános outbox retry/stale reclaim és online fizetés.

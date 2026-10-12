@@ -4,13 +4,15 @@ Frameworkfüggetlen, PHP 8.2+ és MySQL 8 alapú foglalási rendszer egyetlen sz
 
 ## Release Candidate RC2
 
-Az `release/rc2` forrás release candidate állapotú. A funkciók és ismert korlátozások a [release notes](RELEASE_NOTES.md), a változások a [changelog](CHANGELOG.md), a hardening és végrehajtási bizonyíték pedig a [Sprint 11 RC2 dokumentumban](docs/20_SPRINT11_RC2_RELEASE_HARDENING.md) található. A nyitott owner/legal és valós cPanel/HTTPS/SMTP/restore kapuk miatt productionre jelenleg **NO-GO**.
+Az `release/rc2` az aktív integrációs/release ág. Az operátori handoff szerint a `21d15ea` baseline kontrollált production környezetben valós foglalásokat fogad, miközben a lifecycle és cron kikapcsolt, a Szallas.hu pedig még a legacy feedet használja. Ez nem igazolja automatikusan a fennmaradó owner/provider/cutover kapukat; ezek állapotát az [owner acceptance és go-live readiness](docs/26_OWNER_ACCEPTANCE_AND_GO_LIVE_READINESS.md) külön kezeli.
 
 Az RC1 utáni admin 2FA session redirect hibajavítás gyökérokát, session/cookie invariánsait és ellenőrzését a [2FA session fix dokumentum](docs/17_ADMIN_2FA_SESSION_REDIRECT_FIX.md) rögzíti.
 
 A kézi Szallas.hu iCal import az explicit `VALUE=DATE` mellett a szolgáltató bare `YYYYMMDD` egész napos eseményeit is támogatja; a pontos formátum- és időzónaszerződés az [iCal dokumentációban](docs/07_ICAL_SYNC.md) található.
 
-**Sprint 10 IMPLEMENTED a feature branch-en:** automatikus, lockolt/retry-zó iCal CLI 24 órás reconciliation grace-szel; explicit legacy/személyalapú pricing mód, gyermek ársávok, v3 immutable snapshot és egységes `20 000 Ft` formázás. Részletes szerződés és cPanel cron: [Sprint 10 dokumentáció](docs/18_SPRINT10_AUTOMATIC_ICAL_AND_PERSON_PRICING.md).
+**Sprint 10 IMPLEMENTED az `release/rc2` ágon:** automatikus, lockolt/retry-zó iCal CLI 24 órás reconciliation grace-szel; explicit legacy/személyalapú pricing mód, gyermek ársávok, v3 immutable snapshot és egységes `20 000 Ft` formázás. Részletes szerződés és cPanel cron: [Sprint 10 dokumentáció](docs/18_SPRINT10_AUTOMATIC_ICAL_AND_PERSON_PRICING.md). A production iCal cron és provider feedváltás ettől még külön cutover művelet.
+
+**Phase 6 IMPLEMENTED:** confirmed booking dátum- és létszámmódosítás aláírt előnézettel, stale/concurrency védelemmel, aktuális újraárazással, változatlan korábbi előleggel, módosítástörténettel és vendégértesítéssel. A részletek: [confirmed booking módosítás](docs/25_CONFIRMED_BOOKING_MODIFICATION.md).
 
 ## Rendszerspecifikáció
 
@@ -134,6 +136,8 @@ A `composer backup:database` webrooton/repositoryn kívüli könyvtárba készí
 - `POST /admin/logout` – CSRF-védett kijelentkezés
 - `POST /admin/bookings/{reference}/payment-reminder` – pending booking kézi előleg-emlékeztetője sikeres díjbekérő után
 - `POST /admin/bookings/{reference}/arrival-information` – confirmed booking kézi érkezési tájékoztatója, négy biztonságos inline képpel
+- `POST /admin/bookings/{reference}/modification-preview` – confirmed booking új dátumának/létszámának aláírt, mentés nélküli előnézete
+- `POST /admin/bookings/{reference}/modify` – előnézethez kötött, újraellenőrzött confirmed-booking módosítás
 - `GET /admin/pricing` – védett, egyszerű tulajdonosi felnőttár-, gyermekársáv- és előnézeti oldal
 - `POST /admin/pricing` – verzióvédett felnőttár-mentés, gyermekársáv létrehozás/szerkesztés/törlés
 - `POST /admin/pricing/preview` – üzleti nyelvű ár-előnézet; a `/admin/pricing/person` kompatibilitási útvonal a főoldalra irányít

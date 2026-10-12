@@ -2,7 +2,7 @@
 
 **Állapot:** RESOLVED tulajdonosi döntések és részben nyitott konfiguráció
 **Döntés dátuma:** 2026-07-16
-**Ellenőrzött kódbázis:** `release/rc1` munkafa, commit előtt
+**Ellenőrzött kódbázis:** `release/rc2` baseline `21d15ea`, readiness audit: 2026-10-12
 
 ## Projekt és design
 
@@ -37,7 +37,7 @@
 - **RESOLVED:** Szallas.hu és Google Calendar import/export támogatandó.
 - **RESOLVED / Phase 1B:** pending és confirmed booking, valamint aktív belső blocked period exportálódik; rejected/cancelled/invalidated és importált külső block nem.
 - **RESOLVED:** az exporttoken query paraméterben van: `/calendar/export.ics?token=...`.
-- **RESOLVED:** Sprint 7-ben kézi sync van; cron/retry/grace nincs feltételezve.
+- **HISTORICAL Sprint 7:** ekkor kézi sync készült. **IMPLEMENTED Sprint 10:** worker, lock, retry/backoff és legalább 24 órás grace; a production cron/provider aktiválás továbbra is deployment döntés.
 
 **RESOLVED Sprint 10 végrehajtási specifikáció:** a worker alapértelmezett javaslata 15 perc, a retry legfeljebb két újrapróbálkozás 1/2 másodperces backoffal, az eltűnési grace legalább 24 óra. A konkrét production cron aktiválása, monitor/SLA és útvonal deployment döntés.
 
@@ -116,7 +116,7 @@
 - **IMPLEMENTED:** az IFA mennyisége minden pricing módban kizárólag felnőttek × éjszakák; a 0–17 éves gyermekek ezt nem növelik. Régi snapshot nem számolódik újra.
 - **IMPLEMENTED:** a publikus árösszesítő a már beépített egyéjszakás felárat nem ismétli külön soron; az admin/snapshot bontás megmarad.
 - **IMPLEMENTED:** kontrasztosabb publikus foglaltsági jelölés, angol kommunikációs megjegyzés és egyértelmű „Technikai érvénytelenítés” adminszöveg.
-- **OWNER APPROVED / IMPLEMENTED Phase 1B:** a pending booking blokkolja a kapacitást és bekerül az iCal exportba. A havi admin foglaltsági nézet továbbra sincs ebben a fázisban implementálva.
+- **OWNER APPROVED / IMPLEMENTED Phase 1B:** a pending booking blokkolja a kapacitást és bekerül az iCal exportba. **IMPLEMENTED Phase 2:** a havi admin foglaltsági nézet elkészült.
 - **OWNER APPROVED / IMPLEMENTED Phase 1B:** az admin idle timeout konfigurálható, biztonságos alapértéke és minimuma 1800 másodperc; a 2FA és rate-limit értékek változatlanok.
-- **NOT IMPLEMENTED / DECISION REQUIRED:** a confirmed-booking módosítás teljes tranzakciós folyamata, az aktuális vagy eredeti tarifa A/B döntése, az új snapshot- és módosítástörténet-verziózás, valamint a módosító e-mail.
+- **RESOLVED / IMPLEMENTED Phase 6:** confirmed booking kizárólag aktuális pricinggel, aláírt előnézet és stale/concurrency védelem mellett módosítható; az előleg változatlan, új snapshot, módosítástörténet és `booking_modified` vendéglevél készül. Részletek: [25 – Megerősített foglalás módosítása](25_CONFIRMED_BOOKING_MODIFICATION.md).
 - **RESOLVED / IMPLEMENTED Phase 1B:** az egyedi időszak min/max szabályát az érkezési dátum választja ki; az éjszakánkénti ár továbbra is a tényleges nap alapján oldódik fel. **DECISION/INPUT REQUIRED:** rövid payment reference szerződése, új e-mail template-ek és ütemezési/retry szabályok. Az automatikus `completed` állapotváltás külön production automatizálási jóváhagyást igényel.

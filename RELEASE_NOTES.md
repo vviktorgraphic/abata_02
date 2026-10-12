@@ -1,5 +1,13 @@
 # A Bata 1.0.0-rc2 release notes
 
+## Phase 6 booking modification és Phase 7 readiness
+
+- A confirmed booking dátuma és létszáma aláírt előnézet után, inventory lockkal és optimista verzióvédelemmel módosítható. Az aktuális pricing újraszámolódik, a korábban megfizetett előleg változatlan, a history/audit/outbox atomi.
+- Az admin előnézet stabil `#booking-modification` horgonyra tér vissza siker és hiba esetén; a gyermeklétszám és életkor természetes magyar összegzésben jelenik meg.
+- Elkészült a külön owner acceptance/go-live readiness ellenőrzőlista és a credential nélküli, kizárólag GET-et használó RC2 read-only PowerShell smoke.
+- A lifecycle kód implementált, de productionben továbbra is kikapcsolt; iCal/lifecycle cron és Szallas.hu feedváltás külön cutover művelet.
+- Az ismert mail RBL/reputációs probléma külső hosting/provider kapu; az alkalmazás mail routingja emiatt nem változott.
+
 ## Phase 3 guest communications and lifecycle
 
 - Az előleg az immutable szállásdíj 50%-a; az IFA teljes egészében helyben fizetendő. Az új díjbekérő v2 payload rövid `AB-…` utalási közleményt és teljes banki snapshotot tárol, a v1 rekordok változatlanul olvashatók.
@@ -35,23 +43,23 @@
 - iCal private URLs are no longer rendered in admin edit forms; session strict mode is enforced.
 - Web and CLI entry points now share a CRLF-safe `.env` bootstrap; process environment variables retain precedence.
 - Migration 011 and the related pricing constraint migration use portable `DROP CONSTRAINT` syntax validated against MySQL 8.0 and MariaDB 10.6.28.
-- Production GO remains blocked on owner/provider decisions and cPanel/browser/restore smoke evidence.
+- At the Sprint 11 checkpoint, production GO was still blocked on owner/provider decisions and cPanel/browser/restore smoke evidence; the current handoff-reported baseline is documented separately below.
 
 ## Sprint 12 go-live operations
 
 - Added `tools/New-ReleasePackage.ps1` for commit-pinned Windows PowerShell `.tar.gz` release packages and manifests; `.git`, `.env` and tests are excluded by default.
 - Added a disposable local backup/restore drill and explicit SMTP/2FA and 15-minute iCal cron activation checklists.
-- Production remains deployment-gated until staging restore, HTTPS, SMTP and browser smoke evidence is recorded.
+- Further rollout/cutover remains gated until staging restore, HTTPS, SMTP and browser smoke evidence is recorded.
 - Added the owner-facing legacy WP Booking System CSV import with preview, safe status/calendar defaults, provenance and duplicate protection.
 
-**Állapot:** release candidate forráskód; production kiadásra jelenleg **NO-GO**
-**Dátum:** 2026-07-18
+**Állapot:** RC2 release forrás; a handoff szerinti kontrollált production baseline aktív, a lifecycle/cron/provider feedváltás és több owner/provider kapu még nincs GO állapotban.
+**Utolsó readiness audit:** 2026-10-12, baseline `21d15ea`
 
-> **RC1 hotfix:** a sikeres admin 2FA utáni same-second session touch téves logoutját a `fix/admin-2fa-session-redirect` branch javítja. A javítás részletei: [docs/17_ADMIN_2FA_SESSION_REDIRECT_FIX.md](docs/17_ADMIN_2FA_SESSION_REDIRECT_FIX.md).
+> **RC1 utáni hotfix, RC2-be integrálva:** a sikeres admin 2FA utáni same-second session touch téves logoutjának javítása. A részletek: [docs/17_ADMIN_2FA_SESSION_REDIRECT_FIX.md](docs/17_ADMIN_2FA_SESSION_REDIRECT_FIX.md).
 
 > **iCal hotfix:** a Szallas.hu paraméter nélküli `YYYYMMDD` DATE eseményei időzónaeltolás nélkül, exkluzív `DTEND` végponttal importálhatók; az idempotencia, availability és export-loop védelem regressziós teszttel igazolt.
 
-> **Sprint 10 feature branch:** elkészült az automatikus iCal worker, a személyalapú/gyermek ársávos árképzés és az egységes egész-HUF megjelenítés. Ez még nincs automatikusan merge-elve az RC1-be; részletek: [Sprint 10](docs/18_SPRINT10_AUTOMATIC_ICAL_AND_PERSON_PRICING.md).
+> **Sprint 10 RC2 integráció:** az automatikus iCal worker, a személyalapú/gyermek ársávos árképzés és az egységes egész-HUF megjelenítés az `release/rc2` ágon megtalálható. A production cron/provider aktiválás továbbra is külön cutover feladat; részletek: [Sprint 10](docs/18_SPRINT10_AUTOMATIC_ICAL_AND_PERSON_PRICING.md).
 
 > **Pricing admin UX-javítás:** az egyetlen `Árképzés` oldal tulajdonosi nyelven kezeli a felnőtt- és gyermekárakat, támogatja az auditált ársávtörlést, javítja a legacy HUF runtime hibát és a keskeny nézetek horizontális túlcsordulását. Részletek: [árképzési admin javítás](docs/19_PRICING_ADMIN_UX_FIX.md).
 
@@ -91,4 +99,4 @@ A teljes, prioritásos lista: [docs/98_OPEN_DECISIONS.md](docs/98_OPEN_DECISIONS
 
 ## Release recommendation
 
-**GO** a staging RC1 validációra. **NO-GO** production release-re mindaddig, amíg a fenti környezetfüggő és owner/legal kapuk nincsenek igazoltan lezárva.
+**GO** kontrollált owner acceptance tesztre a [Phase 7 readiness](docs/26_OWNER_ACCEPTANCE_AND_GO_LIVE_READINESS.md) adatbiztonsági szabályai szerint. További lifecycle/iCal cron/feed cutover vagy teljes release GO csak a dokumentált környezeti, owner/legal és provider kapuk lezárása után adható.

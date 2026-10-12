@@ -1,8 +1,8 @@
 # Nyitott döntések
 
 **Állapot:** DECISION REQUIRED
-**Utolsó felülvizsgálat:** 2026-07-18
-**Ellenőrzött kódbázis:** `release/rc1` munkafa, commit előtt
+**Utolsó felülvizsgálat:** 2026-10-12
+**Ellenőrzött kódbázis:** `release/rc2` baseline `21d15ea`
 
 A lezárt döntések forrása a [tulajdonosi döntési napló](99_OWNER_DECISIONS.md).
 
@@ -59,7 +59,7 @@ A lezárt döntések forrása a [tulajdonosi döntési napló](99_OWNER_DECISION
 
 ## Sprint 7 után nyitott
 
-- iCal cron gyakoriság, retry/backoff és eltűnt esemény grace.
+- iCal production cron aktiválás, pontos hosting útvonal, monitorozás és provider smoke. A worker retry/backoff/grace szerződése Sprint 10-ben lezárt.
 - Exporttoken-rotáció esetleges átfedési ideje.
 - Google Calendar és Szallas.hu production fixture/smoke.
 

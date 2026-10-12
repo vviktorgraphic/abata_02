@@ -1,6 +1,6 @@
-# Owner decisions pending for RC2
+# Owner decisions pending before final RC2 acceptance/cutover
 
-This list contains only values that must be supplied by the owner or hosting provider before production GO. No value below is invented by the implementation.
+This list contains only values that must be supplied or verified by the owner or hosting provider before final RC2 acceptance or further production cutover. No value below is invented by the implementation.
 
 - Approved legal text and version for the booking policy and privacy notice.
 - Production SMTP port, TLS/SSL mode, account, verified sender and secret for `s54.tarhely.com`; timeout is configurable through `MAIL_TIMEOUT_SECONDS`.
@@ -10,4 +10,4 @@ This list contains only values that must be supplied by the owner or hosting pro
 - Production rate-limit values, admin session absolute lifetime and data/log retention period.
 - Production pricing tables, child-age bands and tax/legal classification.
 
-Until these decisions are recorded and smoke-tested, RC2 remains a release candidate and production status is **NO-GO**.
+The operator handoff reports a controlled production baseline, but it does not prove the gates above. Until the decisions are recorded and smoke-tested, additional lifecycle/iCal cron/feed cutover and final RC2 acceptance remain **NO-GO**.
