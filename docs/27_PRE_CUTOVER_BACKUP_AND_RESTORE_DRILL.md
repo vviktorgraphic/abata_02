@@ -4,7 +4,7 @@
 
 **Időzóna:** Europe/Budapest
 
-**Utolsó felülvizsgálat:** 2026-10-12, Phase 7.6A
+**Utolsó felülvizsgálat:** 2026-10-12, Phase 7.6C
 
 Ez a runbook három külön bizonyítékot kezel. Egy sikeres adatbázis-checksum csak a dump sértetlenségét igazolja. Egy teljes state snapshot a dump mellett a release-t, a production environment fájlt és a futásállapotot is összefogja. A restore drill pedig azt igazolja, hogy egy checksum-valid dump külön céladatbázisba ténylegesen visszatölthető. Ezek egyike sem helyettesíti a másikat.
 
@@ -168,7 +168,7 @@ A snapshot rootban négy végleges nevű, de üres könyvtár található:
 
 Egy új, időbélyegzett candidate név az ellenőrzéskor nem ütközött. Könyvtár nem jött létre, a meglévőket tilos újrahasználni vagy automatikusan törölni.
 
-A `tools/New-StateSnapshot.ps1` továbbra is explicit `SshTarget`, `ReleaseRoot`, `SnapshotRoot`, `DatabaseBackupFile` és `DatabaseChecksumFile` értéket kér; opcionális a `SnapshotId`, `SshPort` és `IdentityFile`. A wrapper vagy a `New-StateSnapshot.Core.sh` nem tartalmaz production hostot vagy secretet. A core a távoli `realpath`, `sha256sum`, `tar`, `stat`, `find`, `sort`, `cp`, `chmod` és `mv` binárisokat igényli. A jövőbeni, külön engedélyezendő parancs alakja:
+A `tools/New-StateSnapshot.ps1` továbbra is explicit `SshTarget`, `ReleaseRoot`, `SnapshotRoot`, `DatabaseBackupFile` és `DatabaseChecksumFile` értéket kér; opcionális a `SnapshotId`, `SshPort` és `IdentityFile`. A wrapper vagy a `New-StateSnapshot.Core.sh` nem tartalmaz production hostot vagy secretet. A core a távoli `realpath`, `sha256sum`, `tar`, `stat`, `find`, `cp`, `chmod`, `mv` és `wc` binárisokat igényli. A jövőbeni, külön engedélyezendő parancs alakja:
 
 ```powershell
 .\tools\New-StateSnapshot.ps1 `
@@ -182,6 +182,16 @@ A `tools/New-StateSnapshot.ps1` továbbra is explicit `SshTarget`, `ReleaseRoot`
 Az alkalmazás DB credentialjének read-only grant vizsgálata nem mutatott globális `CREATE DATABASE` jogosultságot, és a látható sémák között nem volt külön restore/staging/sandbox/test névmintájú cél. Ez nem jogosít fel meglévő adatbázis használatára: az izolált restore drillhez owner/WePanel által provisionált eldobható target és külön least-privilege credential szükséges. A production adatbázis soha nem lehet restore-drill cél.
 
 A migrációs quick recheck változatlanul `28/28`, pending és unknown lista üres; az ezt követő három anonim HTTP GET smoke PASS. Production fájl, adatbázis, cron, Document Root vagy alkalmazásadat nem változott.
+
+### Phase 7.6B safe failure és Phase 7.6C hosting-kompatibilitási hotfix
+
+Az owner által engedélyezett első production kísérletben a friss `abatahu_abookbata_20261012_153135_e9ede119.sql` backup létrejött `0600` móddal, és checksumja PASS. Az atomi snapshot az exact artifact-lista ellenőrzésénél biztonságosan leállt, mert a shared-hosting Bash környezet nem biztosította a process substitution által igényelt `/dev/fd/62` hátteret. Végleges snapshot vagy rejtett staging könyvtár nem maradt; a négy korábbi üres könyvtár érintetlen, a friss backup checksum-valid maradt.
+
+A Phase 7.6C hotfix eltávolítja a production core-ból a process substitution és `/dev/fd` függést. A hat kötelező artifact továbbra is egyenként bizonyítottan reguláris, nem üres, `0600` módú fájl. Ezután a hordozható `find ... -print | wc -l` ellenőrzés minden top-level bejegyzést — fájlt, könyvtárat, symlinket vagy más típust — számol, és pontosan hatot követel. Így extra bejegyzés mellett nincs véglegesítés, az EXIT trap pedig eltávolítja a staginget. A hosting read-only inventory szerint a szükséges `wc` és minden további production-parancs elérhető.
+
+Az extra reguláris fájl, extra könyvtár és extra symlink tesztszimuláció kizárólag `/tmp` snapshot rootnál aktiválható. Az atomi rename, a DB- és manifest-checksum, a `0700`/`0600` jogosultságok, a meglévő staging/final elutasítása és a hibakori cleanup szerződése változatlan.
+
+**Production state snapshot: BLOCKED pending hotfix review + reauthorization.** A Phase 7.6B engedély az első kísérlettel elfogyott; a Phase 7.6C nem futtatott második production snapshotot. Egy későbbi retryhoz explicit owner jóváhagyás és külön döntés kell arról, hogy a `15:31:35 +02:00` backup a közben történt production változások alapján még újrahasználható-e, vagy új friss backup szükséges.
 
 ## 4. Biztonságos restore-rehearsal
 

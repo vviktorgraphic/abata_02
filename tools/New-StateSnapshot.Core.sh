@@ -27,7 +27,7 @@ while (($# > 0)); do
     esac
 done
 
-for command in realpath sha256sum tar stat find sort cp chmod mv; do
+for command in realpath sha256sum tar stat find cp chmod mv wc; do
     command -v "$command" >/dev/null 2>&1 || fail "required command is unavailable: $command"
 done
 
@@ -58,7 +58,14 @@ fi
 
 if [[ -n "$local_test_failure" ]]; then
     [[ "$snapshot_root" == /tmp/* ]] || fail 'failure simulation is restricted to /tmp'
-    [[ "$local_test_failure" == archive || "$local_test_failure" == manifest ]] || fail 'unsupported failure simulation'
+    [[ "$local_test_failure" == archive \
+        || "$local_test_failure" == manifest \
+        || "$local_test_failure" == extra-file \
+        || "$local_test_failure" == extra-directory \
+        || "$local_test_failure" == extra-symlink ]] || fail 'unsupported failure simulation'
+    if [[ "$local_test_failure" == extra-symlink ]]; then
+        command -v ln >/dev/null 2>&1 || fail 'required test command is unavailable: ln'
+    fi
 fi
 
 chmod 700 "$snapshot_root" || fail 'snapshot root permissions could not be restricted'
@@ -139,15 +146,20 @@ if [[ "$local_test_failure" == 'manifest' ]]; then
     printf '\nsimulated-manifest-change\n' >> "$staging/STATE.txt"
 fi
 
+case "$local_test_failure" in
+    extra-file) printf 'unexpected\n' > "$staging/unexpected-file" ;;
+    extra-directory) mkdir "$staging/unexpected-directory" ;;
+    extra-symlink) ln -s STATE.txt "$staging/unexpected-symlink" ;;
+esac
+
 required=(database.sql database.sql.sha256 production.env release.tar.gz STATE.txt SNAPSHOT.sha256)
 for artifact in "${required[@]}"; do
     [[ -f "$staging/$artifact" && -s "$staging/$artifact" ]] || fail 'required snapshot artifact is missing or empty'
     [[ "$(stat -c '%a' "$staging/$artifact")" == '600' ]] || fail 'snapshot artifact permissions are not 0600'
 done
 
-mapfile -t actual_files < <(find "$staging" -mindepth 1 -maxdepth 1 -type f -printf '%f\n' | sort)
-mapfile -t expected_files < <(printf '%s\n' "${required[@]}" | sort)
-[[ "${actual_files[*]}" == "${expected_files[*]}" ]] || fail 'snapshot artifact set is not exact'
+entry_count=$(find "$staging" -mindepth 1 -maxdepth 1 -print | wc -l)
+[[ "$entry_count" -eq "${#required[@]}" ]] || fail 'snapshot artifact set is not exact'
 
 (cd "$staging" && sha256sum -c --status SNAPSHOT.sha256) || fail 'snapshot manifest verification failed'
 [[ "$(stat -c '%a' "$staging")" == '700' ]] || fail 'snapshot directory permissions are not 0700'

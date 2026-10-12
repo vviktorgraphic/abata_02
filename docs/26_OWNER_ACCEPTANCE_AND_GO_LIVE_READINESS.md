@@ -28,7 +28,7 @@ Phase 7 kizárólag dokumentációt, read-only operátori eszközt és annak sze
 | Általános automatikus outbox retry | DEFERRED / OUT OF SCOPE | Nincs worker; attempts/backoff/stale-claim policy owner döntést igényel. |
 | Online fizetés és automatikus beszedés | DEFERRED / OUT OF SCOPE | Nincs implementálva. |
 | Jogi linkek és verziók | RUNTIME PASS / OWNER CONTENT CONFIRMATION REQUIRED | A Phase 7.3-ban az öt runtime érték megfelelt; a publikált dokumentumok tartalmi/jogi jóváhagyása továbbra is owner action. |
-| Backup/rollback | TOOLING HARDENED / PRODUCTION EVIDENCE BLOCKED | A 2026-10-12-i DB backup checksumja PASS; atomi snapshot tooling és helyi szintetikus restore-mechanizmus próba elkészült, de teljes production snapshot és production-backup restore drill nincs. |
+| Backup/rollback | BACKUP PASS / SNAPSHOT BLOCKED | A Phase 7.6B friss DB backupja checksum-valid; az első snapshotkísérlet `/dev/fd`-inkompatibilitás miatt biztonságosan leállt. A Phase 7.6C hotfix review-ja és új owner engedély kell; production-backup restore drill nincs. |
 | Migration state | PASS / READ-ONLY VERIFIED | A Phase 7.5 server-side audit a dokumentált `21d15ea` release 28 migrációs fájlját 28 alkalmazott verzióval egyezőnek találta; pending és unknown lista üres. |
 | Admin idle timeout | PASS / STALE HANDOFF RESOLVED | Phase 7.3 production bootstrap: idle 1800, absolute 28800 másodperc; a handoff 900 másodperces állítása elavult. |
 | Korai RC1/RC2 release-dokumentáció | STALE DOCUMENTATION — RECONCILED | Sprint 10, havi occupancy és Phase 6 állapota az aktuális kódhoz igazítva. |
@@ -200,7 +200,7 @@ Az ismert RBL elutasítás hosting/provider reputációs kérdés, amíg kódbiz
 | Cron | PASS / OFF | Lifecycle- és iCal-cron közvetlen crontab audit szerint nincs jelen. |
 | SMTP application path | PASS / PROVIDER BLOCKER | Hitelesített TLS konfiguráció megvan; RBL és kontrollált kézbesítési smoke nyitott. |
 | Legal links/versioning | PASS | Az öt allow-listelt runtime érték megfelel a production szerződésnek. |
-| Backup/rollback | TOOLING PASS / EVIDENCE BLOCKED | Az atomi snapshot eszköz és a helyi szintetikus restore mechanizmuspróba PASS; teljes production snapshot és production-backup restore drill nincs. |
+| Backup/rollback | BACKUP PASS / SNAPSHOT BLOCKED | A friss backup checksumja PASS; a hordozhatósági hotfix elkészült, de második production snapshotkísérlethez új owner engedély kell. Production-backup restore drill nincs. |
 | Migration state | PASS | Read-only production összevetés: expected 28, applied 28, pending/unknown üres; a Phase 7.4 nem ad hozzá migrációt. |
 | Session timeout | PASS | Effektív production idle/absolute érték: 1800/28800 másodperc. |
 | Generic outbox retry | DEFERRED / BLOCKED | Owner retry/stale-claim policy szükséges. |
@@ -323,3 +323,11 @@ Phase 7.6B előtt az ownernek külön kell:
 3. engedélyeznie a teljes, privát production state snapshot létrehozását;
 4. döntenie a production backup másolatával végzett izolált restore drill engedélyezéséről;
 5. engedélyezett restore drill esetén WePanelen/hostingon provisionálnia és megerősítenie az izolált target DB-t és annak least-privilege credentialjét.
+
+## Phase 7.6B safe failure és Phase 7.6C snapshot-tool hotfix — 2026-10-12
+
+Az owner a WePanelben megerősítette a `/home/abatahu/foglalas.abata.hu/release/21d15ea/public` aktív Document Rootot. A Phase 7.6B-ben létrehozott friss production DB backup `346476` byte, `0600` módú, checksumja PASS. A snapshotkísérlet az exact artifact-lista validációnál a shared-hosting `/dev/fd` hiánya miatt leállt; az atomi cleanup után sem végleges, sem staging snapshot nem maradt, a korábbi üres könyvtárak érintetlenek.
+
+A Phase 7.6C a `mapfile` + process substitution ellenőrzést hordozható, minden top-level bejegyzést számoló `find | wc -l` ellenőrzésre cseréli. A kötelező hat artifact egyenkénti regular-file, non-empty és `0600` ellenőrzése, a checksumok, az atomi rename és a hibakori cleanup változatlan. Productionön ebben a fázisban csak command-availability és backup-checksum read történt; második snapshotkísérlet nem.
+
+**Production state snapshot: BLOCKED pending hotfix review + reauthorization.** A következő engedélyezett retry előtt az ownernek döntenie kell, hogy a `2026-10-12 15:31:35 +02:00` backup a közben történt foglalási változások miatt még használható-e. Pre-cutover biztonsági alapértelmezésként új, közvetlenül a retry előtt készített backup javasolt.

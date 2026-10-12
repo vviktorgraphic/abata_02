@@ -111,6 +111,21 @@ final class StateSnapshotToolTest extends TestCase
         $this->assertCleanFailure('manifest-failure', 'manifest');
     }
 
+    public function testExtraRegularFileFailsExactSetValidationAndCleansTemporaryDirectory(): void
+    {
+        $this->assertCleanFailure('extra-file-failure', 'extra-file');
+    }
+
+    public function testExtraDirectoryFailsExactSetValidationAndCleansTemporaryDirectory(): void
+    {
+        $this->assertCleanFailure('extra-directory-failure', 'extra-directory');
+    }
+
+    public function testExtraSymlinkFailsExactSetValidationAndCleansTemporaryDirectory(): void
+    {
+        $this->assertCleanFailure('extra-symlink-failure', 'extra-symlink');
+    }
+
     public function testChecksumMustReferenceTheSuppliedBackupFilename(): void
     {
         file_put_contents(
@@ -141,6 +156,19 @@ final class StateSnapshotToolTest extends TestCase
         }
         self::assertStringContainsString('BatchMode=yes', $wrapper);
         self::assertStringContainsString('PasswordAuthentication=no', $wrapper);
+    }
+
+    public function testProductionCoreDoesNotDependOnProcessSubstitutionOrDevFd(): void
+    {
+        $core = file_get_contents(dirname(__DIR__, 3) . '/tools/New-StateSnapshot.Core.sh');
+        self::assertIsString($core);
+        self::assertDoesNotMatchRegularExpression('/<\s*<\s*\(/', $core);
+        self::assertDoesNotMatchRegularExpression('/>\s*>\s*\(/', $core);
+        self::assertStringNotContainsString('/dev/fd/', $core);
+        self::assertStringContainsString(
+            'find "$staging" -mindepth 1 -maxdepth 1 -print | wc -l',
+            $core,
+        );
     }
 
     private function assertCleanFailure(string $snapshotId, string $simulation = ''): void
