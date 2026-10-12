@@ -22,23 +22,23 @@ Phase 7 kizárólag dokumentációt, read-only operátori eszközt és annak sze
 | Díjbekérő, emlékeztető és érkezési tájékoztató | IMPLEMENTED | Commit utáni SMTP és workflow-specifikus kézi retry; csak tesztpostafiókkal ellenőrizhető. |
 | Confirmed booking módosítás | IMPLEMENTED | Aláírt preview, stale-védelem, újraárazás, változatlan előleg, history/outbox és stabil UI-horgony. |
 | iCal import/export alkalmazáslogika | IMPLEMENTED | Kézi sync és worker elkészült; az új export provider-oldali használata még nincs aktiválva. |
-| iCal production cron | IMPLEMENTED + PRODUCTION DISABLED/PENDING | Útvonal, monitorozás, kézi ismételt smoke és cutover szükséges. |
-| Lifecycle review/completed | IMPLEMENTED + PRODUCTION DISABLED/PENDING | `BOOKING_LIFECYCLE_ENABLED=false`, üres start date, cron nincs engedélyezve. |
-| SMTP alkalmazási út | IMPLEMENTED + EXTERNAL/PROVIDER BLOCKER | Hitelesített TLS/SSL transport és outbox működik; a kézbesíthetőségi/RBL kapu külső szolgáltatói blokk. |
+| iCal production cron | IMPLEMENTED + PRODUCTION DISABLED/PENDING | Phase 7.3 read-only audit: `ical-sync.php` cron nincs jelen; monitorozás és cutover döntés szükséges. |
+| Lifecycle review/completed | IMPLEMENTED + PRODUCTION DISABLED/PENDING | Phase 7.3 production bootstrap: `enabled=false`, üres start date; lifecycle cron nincs jelen. |
+| SMTP alkalmazási út | IMPLEMENTED + EXTERNAL/PROVIDER BLOCKER | Productionön hitelesített `tls`/587 konfiguráció van; a kézbesíthetőségi/RBL kapu kontrollált küldés vagy provider-bizonyíték nélkül nyitott. |
 | Általános automatikus outbox retry | DEFERRED / OUT OF SCOPE | Nincs worker; attempts/backoff/stale-claim policy owner döntést igényel. |
 | Online fizetés és automatikus beszedés | DEFERRED / OUT OF SCOPE | Nincs implementálva. |
-| Jogi linkek és verziók | OWNER DECISION REQUIRED | A runtime értékeket és a ténylegesen publikált dokumentumokat külön ellenőrizni kell. |
-| Backup/rollback | IMPLEMENTED | Tooling és runbook kész; friss operátori backup/restore bizonyíték szükséges. |
-| Admin idle timeout | OWNER / PRODUCTION VERIFICATION REQUIRED | A handoff 900 másodpercet mond, a kód minimuma és alapértéke 1800 másodperc. |
+| Jogi linkek és verziók | RUNTIME PASS / OWNER CONTENT CONFIRMATION REQUIRED | A Phase 7.3-ban az öt runtime érték megfelelt; a publikált dokumentumok tartalmi/jogi jóváhagyása továbbra is owner action. |
+| Backup/rollback | PARTIAL EVIDENCE / BLOCKED | A 2026-10-12-i DB backup checksumja PASS; a kapcsolódó state-snapshot könyvtár üres, restore drill bizonyíték nincs. |
+| Admin idle timeout | PASS / STALE HANDOFF RESOLVED | Phase 7.3 production bootstrap: idle 1800, absolute 28800 másodperc; a handoff 900 másodperces állítása elavult. |
 | Korai RC1/RC2 release-dokumentáció | STALE DOCUMENTATION — RECONCILED | Sprint 10, havi occupancy és Phase 6 állapota az aktuális kódhoz igazítva. |
 | Alapértelmezett lokális Compose web bootstrap | IMPLEMENTED / RESOLVED IN PHASE 7.1 | A Compose az auditált alkalmazásváltozókat explicit továbbítja, a DB root credentialt nem; a `.env.example` hamis fejlesztői payment adatokkal és regressziós teszttel használható. |
 | Main merge | DEFERRED / OUT OF SCOPE | Ebben a fázisban nem történik meg; külön release-döntés. |
 
 ## Ismert eltérések és kötelező ellenőrzések
 
-### Admin idle timeout — konfliktus
+### Admin idle timeout — Phase 7.3-ban megfigyeléssel lezárva
 
-A handoff 900 másodperces effektív production értéket állít, miközben a `config/auth.php` és a `.env.production.example` 1800 másodperces minimumot/alapértéket ír elő. A kód 900-zal fail-closed konfigurációs hibát adna. Ebben a fázisban egyik oldal sem lett átírva.
+A handoff 900 másodperces effektív production értéket állított, miközben a `config/auth.php` és a `.env.production.example` 1800 másodperces minimumot/alapértéket ír elő. A Phase 7.3 read-only production bootstrap az effektív idle értéket 1800, az absolute értéket 28800 másodpercnek mérte. Ezért a 900 másodperces handoff-állítás elavult dokumentáció, production konfigurációs konfliktus nincs.
 
 Az operátor az aktív release gyökerében, a production environment betöltésével kizárólag az effektív értéket olvassa ki:
 
@@ -46,11 +46,11 @@ Az operátor az aktív release gyökerében, a production environment betöltés
 php -r '$c=require "config/auth.php"; echo "ADMIN_SESSION_IDLE_TIMEOUT_SECONDS=", $c["session_idle_timeout_seconds"], PHP_EOL;'
 ```
 
-A parancs nem ír ki más environment változót vagy secretet. Az eredményt a release naplóban kell rögzíteni. Ha 900-at várnak, új tulajdonosi/security döntés és külön kódváltozás szükséges; Phase 7 nem csökkenti a minimumot.
+A parancs nem írt ki más environment változót vagy secretet. A Phase 7.3 nem módosított timeoutot vagy production `.env` fájlt.
 
-### Jogi URL-ek/verziók — runtime ellenőrzés
+### Jogi URL-ek/verziók — Phase 7.3 runtime ellenőrzés PASS
 
-A döntési dokumentumok belső technikai route-okat is rögzítenek, míg a production környezetminta külső, publikált jogi URL-eket mutat. A kód mindkettőt konfigurációként kezeli. A tényleges production `BOOKING_POLICY_URL`, `BOOKING_POLICY_VERSION`, `PRIVACY_POLICY_URL` és `PRIVACY_POLICY_VERSION` értékét, valamint a publikált tartalom egyezését secret vagy teljes `.env` kiírása nélkül kell ellenőrizni; repositorypéldából nem következtethető effektív érték.
+A Phase 7.3 production bootstrap az allow-listelt `BOOKING_POLICY_URL`, `BOOKING_POLICY_VERSION`, `PRIVACY_POLICY_URL`, `PRIVACY_POLICY_VERSION` és `HOUSE_RULES_URL` értékeket közvetlenül ellenőrizte; mind megfelelt a deployment szerződésnek. Ez technikai runtime PASS, nem helyettesíti a publikált dokumentumok tartalmi/jogi owner jóváhagyását.
 
 ### Lokális Compose bootstrap — Phase 7.1-ben lezárt konfigurációs rés
 
@@ -195,12 +195,12 @@ Az ismert RBL elutasítás hosting/provider reputációs kérdés, amíg kódbiz
 | Pricing | IMPLEMENTED | Nincs nem jóváhagyott pricing változás. |
 | Phase 6 modification | PASS / IMPLEMENTED | Automatizált regresszió + külön TEST owner UAT. |
 | iCal application logic | IMPLEMENTED | Provider cutover még függő. |
-| Lifecycle code | IMPLEMENTED / DISABLED | Aktiválási dátum és cutover döntés szükséges. |
-| Cron | OFF | Kézi smoke, útvonal, monitor és cutover döntés szükséges. |
-| SMTP application path | IMPLEMENTED | Provider/RBL és kézbesítési smoke függő. |
-| Legal links/versioning | VERIFY | Effektív runtime érték és publikált dokumentum egyezése szükséges. |
-| Backup/rollback | IMPLEMENTED | Friss operational backup/restore bizonyíték szükséges. |
-| Session timeout | CONFLICT | Effektív production érték read-only ellenőrzése kötelező. |
+| Lifecycle code | PASS / DISABLED | Production bootstrap szerint kikapcsolt, start date üres; aktiválás továbbra is cutover-only. |
+| Cron | PASS / OFF | Lifecycle- és iCal-cron közvetlen crontab audit szerint nincs jelen. |
+| SMTP application path | PASS / PROVIDER BLOCKER | Hitelesített TLS konfiguráció megvan; RBL és kontrollált kézbesítési smoke nyitott. |
+| Legal links/versioning | PASS | Az öt allow-listelt runtime érték megfelel a production szerződésnek. |
+| Backup/rollback | BLOCKED | DB checksum PASS, de a legfrissebb state-snapshot üres és restore drill nincs igazolva. |
+| Session timeout | PASS | Effektív production idle/absolute érték: 1800/28800 másodperc. |
 | Generic outbox retry | DEFERRED / BLOCKED | Owner retry/stale-claim policy szükséges. |
 | Main merge | NOT PERFORMED | Külön release döntés. |
 
@@ -214,7 +214,7 @@ Az ismert RBL elutasítás hosting/provider reputációs kérdés, amíg kódbiz
 
 ### REQUIRED BEFORE GO-LIVE/CUTOVER
 
-- Effektív production admin idle timeout, jogi URL/verzió, backup/restore bizonyíték és owner UAT eredmény.
+- Aktív WePanel Document Root owner megerősítés, jogi tartalomjóváhagyás, teljes state snapshot/restore bizonyíték és owner UAT eredmény.
 - Lifecycle start date/engedélyezés, cron, iCal feedváltás és main merge külön GO/NO-GO döntése.
 
 ### EXTERNAL HOSTING/PROVIDER ACTION
@@ -242,3 +242,34 @@ A dokumentált SSH kulcsot a production szerver felismerte és elfogadta, de a k
 - az aktuális backup/checksum/state-snapshot metaadatok és a restore drill bizonyítéka.
 
 A handoff szerinti `21d15ea`, kikapcsolt lifecycle/cron, legacy Szallas.hu feed és korábbi backup csak dokumentált utolsó ismert állapot; közvetlen SSH-bizonyíték nélkül ebben az auditban nem lett újra PASS-ra minősítve. Az RBL/deliverability blokk kontrollált levélküldés nélkül nem tekinthető megoldottnak. Owner UAT sign-off nem áll rendelkezésre, friss pre-cutover backup továbbra is kötelező.
+
+## Phase 7.3 befejezett read-only production audit — 2026-10-12
+
+Az előzetesen feloldott SSH-agenttel a nem interaktív, jelszavas fallbacket tiltó kapcsolatpróba sikeres volt. A `21d15ea` release és annak `public/` könyvtára létezik, de a tárhelyen nem található olvasható current-release symlink vagy Document Root metadata. Emiatt az aktív release SSH-ból továbbra sem bizonyítható; a WePanel owner megerősítése szükséges. `82077dd` nem lett deployolva.
+
+A Phase 7 read-only smoke ismét PASS eredményt adott a `/health`, `/` és `/admin/login` végpontokra. A production bootstrap és az allow-listelt konfigurációk közvetlen eredménye:
+
+- admin idle timeout: `1800` másodperc — PASS, a handoff `900` értéke elavult;
+- admin absolute timeout: `28800` másodperc — PASS;
+- `BOOKING_POLICY_URL=https://abata.hu/abata_foglalasi_szabalyzat.pdf` — PASS;
+- `BOOKING_POLICY_VERSION=sha256:835f39e0695bbe125654516965543bfabf09ed1c0cc82a87407136ab8a94e06e` — PASS;
+- `PRIVACY_POLICY_URL=https://abata.hu/adatkezelesi_tajekoztato/` — PASS;
+- `PRIVACY_POLICY_VERSION=2018-09-10` — PASS;
+- `HOUSE_RULES_URL=https://abata.hu/abata_hazirend.pdf` — PASS;
+- lifecycle `enabled=false`, start date üres — PASS / DISABLED;
+- lifecycle cron: ABSENT; iCal cron: ABSENT;
+- SMTP: `we035.tarhely.com`, port `587`, `tls`, feladó `foglalas@abata.hu` / `A Bata`, konfigurált username és password, guest Reply-To `info@abata.hu` / `A Bata` — CONFIGURATION PASS.
+
+Az SMTP/RBL kézbesíthetőség továbbra is PROVIDER ACTION / UNVERIFIED: e-mail nem lett küldve, kontrollált TLS/SPF/DKIM/DMARC delivery evidence nem áll rendelkezésre. A közvetlen, kizárólag `SELECT 1` production adatbázis-ellenőrzés PASS. Read-only migration-status eszköz nincs, ezért a migration state `UNKNOWN — PRE-DEPLOY CHECK REQUIRED`; migráció nem futott.
+
+A backup audit közvetlen bizonyítéka:
+
+- legfrissebb DB backup: `abatahu_abookbata_20261012_095730_f376e475.sql`;
+- timestamp: `2026-10-12 09:57:30 +02:00`;
+- méret: `345603` byte;
+- kapcsolódó checksum fájl jelen van, `sha256sum -c --status` eredménye PASS;
+- legfrissebb snapshot könyvtár: `20261012_095730_21d15ea`, de teljesen üres;
+- ezért DB SQL/checksum, `production.env`, release archive, `STATE.txt` és `SNAPSHOT.sha256` snapshot-bizonyíték nincs;
+- restore drill dokumentum vagy log nem található: RESTORE DRILL NOT VERIFIED.
+
+Owner UAT továbbra sincs aláírva. A Szallas.hu legacy feed használata dokumentált feltételezés; a feedváltás és tokenrotáció CUTOVER ONLY / OWNER-PROVIDER CONFIRMATION REQUIRED. Friss, teljes és ellenőrzött pre-cutover state snapshot, valamint restore drill bizonyíték nélkül go-live nem minősíthető késznek.
