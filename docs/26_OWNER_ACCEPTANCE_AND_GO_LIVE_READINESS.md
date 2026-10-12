@@ -301,3 +301,25 @@ status=PASS
 A `77db2c1..93bd17a` Git diff nem tartalmaz adatbázis-migrációt. Következésképpen a production séma naprakész a meglévő migrációkészlethez, és a Phase 7.4 operational hardening nem vezet be új migrációt. Ez nem deployment- vagy migrációfuttatási engedély.
 
 Az audit utáni credential nélküli `GET /health`, `GET /` és `GET /admin/login` smoke PASS. Aktív WePanel Document Root továbbra is OWNER CONFIRMATION REQUIRED; production snapshot, production-backup restore drill, SMTP-kézbesítési próba, owner UAT, cron/feed cutover és main merge nem történt.
+
+## Phase 7.6A docs sync és read-only snapshot preflight — 2026-10-12
+
+A review-zott `2e0c6bc` docs-only commit felkerült az `origin/release/rc2` ágra. A lokális és remote branch egyaránt `2e0c6bc5658c7c752e42b01a7c250f7940048559` állapotot mutatott; `main` push, deploy és production módosítás nem történt.
+
+A kizárólag read-only production preflight közvetlenül igazolta a dokumentált `21d15ea` release és `public/` könyvtár, valamint a privát backup- és snapshot-root létezését. A release és a `public/` tulajdonosa/csoportja `abatahu:abatahu`, módja `0775`; a backup root `0700`, a snapshot root `0775`. A kapcsolódó SSH identity írási lehetősége kizárólag a mód- és ownership-adatokból következtetett, write probe nem történt. Olvasható hosting metadata vagy symlink továbbra sem bizonyítja, hogy a `21d15ea/public` az aktív WePanel Document Root, ezért ez kemény owner gate marad.
+
+A release nyers, symlinkeket nem követő mérete `2697950` byte, a checksum-valid legutóbbi DB backup `345603` byte, a snapshot filesystem szabad kapacitása `494574338048` byte. Az 1 MiB environment/metaadat kerettel és a teljes becsült payload kétszeres biztonsági szorzójával számolt minimum `8184258` byte, ezért a disk-space preflight PASS. Ez kapacitás-ellenőrzés, nem snapshot-bizonyíték.
+
+A `20261012_095730_21d15ea` legacy snapshot változatlanul üres. A snapshot rootban további három, szintén üres könyvtár látható: `20261012_095613_21d15ea`, `20261012_095650_21d15ea` és `20261012_095706_21d15ea`. Egy új, időbélyegzett snapshotnév az ellenőrzéskor nem ütközött, de könyvtár nem jött létre és a meglévő üres könyvtárakhoz nem nyúltunk.
+
+Az izolált restore-target preflight nem talált külön, restore/staging/sandbox/test névmintájú adatbázist, és az alkalmazás credentialje nem rendelkezik globális adatbázis-létrehozási jogosultsággal. A production adatbázis nem használható restore célként. Production-backup restore drillhez ezért owner/WePanel által provisionált, eldobható adatbázis és külön least-privilege credential szükséges. A friss pre-cutover DB backup, a teljes state snapshot és a restore drill továbbra is külön owner jóváhagyást igényel, és **BLOCKED / NOT YET PERFORMED**.
+
+A read-only migrációs újraellenőrzés `expected=28`, `applied=28`, üres pending és unknown listát adott. Az ezt követő anonim `GET /health`, `GET /` és `GET /admin/login` smoke ismét PASS.
+
+Phase 7.6B előtt az ownernek külön kell:
+
+1. megerősítenie az aktív WePanel Document Rootot és release útvonalat;
+2. engedélyeznie egy friss production DB backup létrehozását;
+3. engedélyeznie a teljes, privát production state snapshot létrehozását;
+4. döntenie a production backup másolatával végzett izolált restore drill engedélyezéséről;
+5. engedélyezett restore drill esetén WePanelen/hostingon provisionálnia és megerősítenie az izolált target DB-t és annak least-privilege credentialjét.

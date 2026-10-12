@@ -4,7 +4,7 @@
 
 **Időzóna:** Europe/Budapest
 
-**Utolsó felülvizsgálat:** 2026-10-12, Phase 7.5
+**Utolsó felülvizsgálat:** 2026-10-12, Phase 7.6A
 
 Ez a runbook három külön bizonyítékot kezel. Egy sikeres adatbázis-checksum csak a dump sértetlenségét igazolja. Egy teljes state snapshot a dump mellett a release-t, a production environment fájlt és a futásállapotot is összefogja. A restore drill pedig azt igazolja, hogy egy checksum-valid dump külön céladatbázisba ténylegesen visszatölthető. Ezek egyike sem helyettesíti a másikat.
 
@@ -129,6 +129,59 @@ Egyedi könyvtár `MIGRATION_DIRECTORY` environment változóval ellenőrizhető
 A dokumentált `21d15ea` release könyvtárban, annak normál environment bootstrapjével végzett server-side összevetés 28 repository migration fájlt és 28 alkalmazott verziót talált. A pending és `unknown_applied` lista üres, ezért a meglévő production migrációkészlet állapota PASS. A `77db2c1..93bd17a` Phase 7.4 diff nem módosít és nem ad hozzá migrációs fájlt.
 
 Az ellenőrzés nem töltött fel eszközt, nem deployolt, nem hívta a `Migrator` osztályt vagy a `bin/migrate.php` parancsot, és nem hajtott végre DDL/DML műveletet. Az audit utáni három anonim production GET smoke PASS. Az aktív WePanel Document Root ettől még nem bizonyított; owner-megerősítés szükséges.
+
+### Phase 7.6A read-only snapshot preflight
+
+A productionön írási próba nélkül ellenőrzött útvonalak:
+
+| Útvonal | Tulajdonos/csoport | Mód | Read-only eredmény |
+|---|---|---:|---|
+| `/home/abatahu/foglalas.abata.hu/release/21d15ea` | `abatahu:abatahu` | `0775` | létezik; writable inferred: yes, kizárólag mode/ownership alapján |
+| `/home/abatahu/foglalas.abata.hu/release/21d15ea/public` | `abatahu:abatahu` | `0775` | létezik; writable inferred: yes; aktív WePanel Document Rootként nem bizonyított |
+| `/home/abatahu/backups/foglalas` | `abatahu:abatahu` | `0700` | létezik, privát; writable inferred: yes |
+| `/home/abatahu/backups/foglalas/state-snapshots` | `abatahu:abatahu` | `0775` | létezik; writable inferred: yes; a snapshot tool jóváhagyott futáskor `0700` módra szűkíti |
+
+Nem található olvasható symlink vagy hosting metadata, amely a `21d15ea/public` aktív Document Root státuszát igazolja. Az aktív release útvonalat az ownernek a WePanelben kell megerősítenie, és addig új state snapshot nem hagyható jóvá.
+
+Kapacitásbecslés:
+
+```text
+release nyers méret (konzervatív archive estimate): 2697950 byte
+DB backup:                                      345603 byte
+environment/metaadat allowance:                1048576 byte
+becsült payload:                                4092129 byte
+minimum 2x biztonsági igény:                    8184258 byte
+elérhető kapacitás:                        494574338048 byte
+disk-space preflight: PASS
+```
+
+A `abatahu_abookbata_20261012_095730_f376e475.sql` backup `345603` byte, timestampje `2026-10-12 09:57:30 +02:00`, a hozzá tartozó checksum fájl `0600` módú, és az újraellenőrzött SHA-256 egyezik. Ez korábbi evidence; **friss pre-cutover DB backup továbbra is kötelező**.
+
+A snapshot rootban négy végleges nevű, de üres könyvtár található:
+
+```text
+20261012_095613_21d15ea
+20261012_095650_21d15ea
+20261012_095706_21d15ea
+20261012_095730_21d15ea
+```
+
+Egy új, időbélyegzett candidate név az ellenőrzéskor nem ütközött. Könyvtár nem jött létre, a meglévőket tilos újrahasználni vagy automatikusan törölni.
+
+A `tools/New-StateSnapshot.ps1` továbbra is explicit `SshTarget`, `ReleaseRoot`, `SnapshotRoot`, `DatabaseBackupFile` és `DatabaseChecksumFile` értéket kér; opcionális a `SnapshotId`, `SshPort` és `IdentityFile`. A wrapper vagy a `New-StateSnapshot.Core.sh` nem tartalmaz production hostot vagy secretet. A core a távoli `realpath`, `sha256sum`, `tar`, `stat`, `find`, `sort`, `cp`, `chmod` és `mv` binárisokat igényli. A jövőbeni, külön engedélyezendő parancs alakja:
+
+```powershell
+.\tools\New-StateSnapshot.ps1 `
+  -SshTarget '<confirmed target>' `
+  -ReleaseRoot '<CONFIRMED ACTIVE RELEASE ROOT>' `
+  -SnapshotRoot '<private snapshot root>' `
+  -DatabaseBackupFile '<fresh backup path>' `
+  -DatabaseChecksumFile '<checksum path>'
+```
+
+Az alkalmazás DB credentialjének read-only grant vizsgálata nem mutatott globális `CREATE DATABASE` jogosultságot, és a látható sémák között nem volt külön restore/staging/sandbox/test névmintájú cél. Ez nem jogosít fel meglévő adatbázis használatára: az izolált restore drillhez owner/WePanel által provisionált eldobható target és külön least-privilege credential szükséges. A production adatbázis soha nem lehet restore-drill cél.
+
+A migrációs quick recheck változatlanul `28/28`, pending és unknown lista üres; az ezt követő három anonim HTTP GET smoke PASS. Production fájl, adatbázis, cron, Document Root vagy alkalmazásadat nem változott.
 
 ## 4. Biztonságos restore-rehearsal
 
