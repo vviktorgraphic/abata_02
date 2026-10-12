@@ -225,3 +225,20 @@ Az ismert RBL elutasítás hosting/provider reputációs kérdés, amíg kódbiz
 ### OPTIONAL / DEFERRED
 
 - Általános outbox retry worker, bounce/complaint feldolgozás, tokenrotációs átfedés és online fizetés.
+
+## Phase 7.2 read-only production audit — 2026-10-12
+
+Az ellenőrzött `c2eed7d` és `82077dd` commitok felkerültek az `origin/release/rc2` ágra; a remote és a lokális ág egyaránt `82077dd18687b5e939c939c1d255a8b962f59912` állapotot mutatott. Ez kizárólag branch-szinkron volt, deployment, tag, `main` merge vagy production Document Root váltás nem történt.
+
+A credential nélküli production GET smoke a `https://foglalas.abata.hu` címen sikeresen ellenőrizte a `/health`, `/` és `/admin/login` végpontot. A `/health` implementációja read-only `SELECT 1` readiness checket végez, ezért az audit időpontjában a publikus alkalmazás és az adatbázis-kapcsolat elérhető volt. A főoldal által renderelt foglalási szabályzat, adatkezelési tájékoztató és házirend URL-je megegyezett az elvárt owner-facing célokkal, és mindhárom cél read-only HEAD kérése sikeres volt.
+
+A dokumentált SSH kulcsot a production szerver felismerte és elfogadta, de a kulcs nem volt nem interaktívan feloldható, és betöltött SSH-agent identity sem állt rendelkezésre. Jelszó- vagy passphrase-kérést, alternatív hitelesítési próbát és szerveroldali módosítást az audit nem végzett. Emiatt a következők továbbra is közvetlen production megfigyelésre várnak:
+
+- az aktív WePanel Document Root és a `21d15ea` release/public könyvtár metaadata;
+- az effektív admin idle/absolute timeout;
+- a legal version értékek;
+- a lifecycle flag/start date és a lifecycle/iCal crontab;
+- az SMTP konfiguráció biztonságosan megjeleníthető mezői;
+- az aktuális backup/checksum/state-snapshot metaadatok és a restore drill bizonyítéka.
+
+A handoff szerinti `21d15ea`, kikapcsolt lifecycle/cron, legacy Szallas.hu feed és korábbi backup csak dokumentált utolsó ismert állapot; közvetlen SSH-bizonyíték nélkül ebben az auditban nem lett újra PASS-ra minősítve. Az RBL/deliverability blokk kontrollált levélküldés nélkül nem tekinthető megoldottnak. Owner UAT sign-off nem áll rendelkezésre, friss pre-cutover backup továbbra is kötelező.
