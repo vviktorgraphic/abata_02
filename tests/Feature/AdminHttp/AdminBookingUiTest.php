@@ -166,6 +166,7 @@ final class AdminBookingUiTest extends TestCase
             3,
             new ConfirmedBookingModification('2026-09-05', '2026-09-08', 2, [2, 6, 11]),
             new PricingResult('96000.00', '90000.00', '6000.00', 'HUF', [], [], []),
+            new PricingResult('96000.00', '90000.00', '6000.00', 'HUF', [], [], []),
             '45000.00',
             'pricing-hash',
         );

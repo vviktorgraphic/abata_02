@@ -65,6 +65,30 @@ final class BookingPaymentRequestTest extends TestCase
         }
         self::assertStringContainsString('&lt;Guest&gt;', $message->htmlBody);
         self::assertStringNotContainsString('<Guest>', $message->htmlBody);
+        self::assertStringNotContainsString('Egyedi végösszeg', $message->textBody);
+        self::assertStringNotContainsString('Egyedi végösszeg', $message->htmlBody);
+    }
+
+    public function testCustomPriceRowsAreRenderedOnlyForCustomImmutablePayload(): void
+    {
+        $data = new BookingPaymentRequestMailData(
+            'TEST-CUSTOM', 'guest@example.test', 'Guest', '2040-01-01', '2040-01-04',
+            'HUF', '28500.00', 50, '14000.00', 'Test beneficiary', 'TEST-ACCOUNT',
+            '28000.00', '500.00', 'AB-000043', 'Test Bank', 'SWIFTTEST', 2,
+            '30000.00', '28500.00',
+        );
+        self::assertEquals($data, BookingPaymentRequestMailData::fromPayload($data->payload()));
+
+        $message = $this->renderer()->render($data);
+        foreach ([$message->textBody, $message->htmlBody] as $body) {
+            self::assertStringContainsString('Kalkulált szállásdíj', $body);
+            self::assertStringContainsString('30 000 Ft', $body);
+            self::assertStringContainsString('Egyedi végösszeg', $body);
+            self::assertStringContainsString('28 500 Ft', $body);
+            self::assertStringContainsString('Fizetendő szállásdíj', $body);
+            self::assertStringContainsString('28 000 Ft', $body);
+            self::assertStringContainsString('14 000 Ft', $body);
+        }
     }
 
     public function testV1PayloadRemainsReadableAndRendersLegacyAmountAndSubject():void

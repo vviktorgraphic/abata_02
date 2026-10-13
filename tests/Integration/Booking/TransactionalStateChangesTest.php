@@ -166,6 +166,52 @@ final class TransactionalStateChangesTest extends TestCase
         self::assertSame('30000.00', $payload['cancellation_accommodation_fee']);
     }
 
+    public function testCancellationUsesEffectiveCustomAccommodationAndExcludesCalculatedIfa(): void
+    {
+        $id = $this->booking('confirmed', '2042-02-20', '2042-02-23');
+        $customSnapshot = [
+            'version' => 5,
+            'accommodation_fee' => '28000.00',
+            'taxes' => '500.00',
+            'total' => '28500.00',
+            'currency' => 'HUF',
+            'price_override' => [
+                'type' => 'admin_custom_total',
+                'calculated_accommodation_fee' => '30000.00',
+                'calculated_tourism_tax' => '500.00',
+                'calculated_total' => '30500.00',
+                'custom_accommodation_fee' => '28000.00',
+                'custom_total' => '28500.00',
+            ],
+        ];
+        $this->pdo->prepare('UPDATE bookings SET total_amount=:total WHERE id=:id')
+            ->execute(['total' => '28500.00', 'id' => $id]);
+        $this->pdo->prepare('UPDATE booking_pricing_snapshots SET snapshot=:snapshot WHERE booking_id=:id')
+            ->execute(['snapshot' => json_encode($customSnapshot, JSON_THROW_ON_ERROR), 'id' => $id]);
+        $repository = new TransactionalBookingRepository(
+            $this->pdo,
+            null,
+            null,
+            static fn (): \DateTimeImmutable => new \DateTimeImmutable('2042-02-15T12:00:00+01:00'),
+        );
+
+        $repository->transition($this->reference($id), 'cancelled', $this->adminId);
+
+        $statement = $this->pdo->prepare(
+            'SELECT cancellation_penalty_rate,cancellation_penalty_amount,cancellation_calculation_snapshot FROM bookings WHERE id=:id'
+        );
+        $statement->execute(['id' => $id]);
+        $booking = $statement->fetch();
+        self::assertSame('0.5000', $booking['cancellation_penalty_rate']);
+        self::assertSame('14000.00', $booking['cancellation_penalty_amount']);
+        $cancellation = json_decode((string) $booking['cancellation_calculation_snapshot'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('28000.00', $cancellation['accommodation_fee']);
+        self::assertSame('14000.00', $cancellation['penalty_amount']);
+        $payload = json_decode($this->row('email_outbox', $id)['payload'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('28000.00', $payload['cancellation_accommodation_fee']);
+        self::assertSame('14000.00', $payload['cancellation_penalty_amount']);
+    }
+
     public function testForbiddenAndMissingTransitionsLeaveNoSideEffects(): void
     {
         $id = $this->booking('rejected', '2042-03-10', '2042-03-13');

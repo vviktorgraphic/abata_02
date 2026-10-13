@@ -20,6 +20,10 @@ Idegenforgalmi adó:
 Módosított végösszeg:
 <?= \App\Presentation\HufFormatter::format($data->total) ?>
 
+<?php if ($data->customTotal !== null): ?>Egyedi végösszeg:
+<?= \App\Presentation\HufFormatter::format($data->customTotal) ?>
+
+<?php endif ?>
 Korábban megfizetett előleg:
 <?= $data->unchangedDepositAmount === null ? 'nem áll rendelkezésre' : \App\Presentation\HufFormatter::format($data->unchangedDepositAmount) ?>
 

@@ -7,6 +7,7 @@ namespace Tests\Unit\Booking;
 use App\Application\Availability\BlockedPeriodReadRepository;
 use App\Application\Availability\BookingReadRepository;
 use App\Application\Booking\AdminManualBookingService;
+use App\Application\Booking\AdminCustomPrice;
 use App\Application\Booking\BookingClock;
 use App\Application\Booking\BookingConflict;
 use App\Application\Booking\BookingPersistenceCommand;
@@ -39,6 +40,22 @@ final class AdminManualBookingServiceTest extends TestCase
         self::assertSame('2047-06-12', $pricing->input->departureDate);
         self::assertSame(2, $pricing->input->adults);
         self::assertSame([3], $pricing->input->childAges);
+    }
+
+    public function testPreviewRetainsCalculatedPricingAndBuildsEffectiveCustomSnapshot(): void
+    {
+        $preview = $this->service([], [], new ManualPricingPreviewerSpy())->preview(
+            $this->request('2047-06-10', '2047-06-12'),
+            AdminCustomPrice::fromCanonical('48000.00'),
+        );
+
+        self::assertSame('50000.00', $preview->calculatedPricing->totalAmount);
+        self::assertSame('48000.00', $preview->pricing->totalAmount);
+        self::assertSame('43000.00', $preview->pricing->accommodationFee);
+        self::assertSame('5000.00', $preview->pricing->tourismTax);
+        self::assertSame('48000.00', $preview->customTotal);
+        self::assertSame('admin_custom_total', $preview->pricing->snapshot['price_override']['type']);
+        self::assertMatchesRegularExpression('/^[a-f0-9]{64}$/', $preview->pricingHash);
     }
 
     public function testPreviewRejectsBookingOrBlockedPeriodOverlapBeforePricing(): void

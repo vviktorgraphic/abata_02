@@ -19,7 +19,11 @@ h1 { border-bottom: 3px solid var(--color-accent); }
 <h1 style="color:#19194B;border-bottom:3px solid #F0A236;padding-bottom:12px">A Bata</h1>
 <p>Tisztelt <?= $escape($data->contactName) ?>!</p>
 <p>Foglalási igényét rögzítettük!</p>
-<p>Kalkulált szállásdíj: <?= $escape(HufFormatter::format((string) $data->accommodationFee)) ?><br>
+<p><?php if ($data->customTotal !== null): ?>Kalkulált szállásdíj: <?= $escape(HufFormatter::format((string) $data->calculatedAccommodationFee)) ?><br>
+Egyedi végösszeg: <?= $escape(HufFormatter::format($data->customTotal)) ?><br>
+Fizetendő szállásdíj: <?= $escape(HufFormatter::format((string) $data->accommodationFee)) ?><br>
+<?php else: ?>Kalkulált szállásdíj: <?= $escape(HufFormatter::format((string) $data->accommodationFee)) ?><br>
+<?php endif ?>
 Az idegenforgalmi adó összege: <?= $escape(HufFormatter::format((string) $data->taxes)) ?>, mely a szálláshelyen külön fizetendő<br>
 <strong>Előleg összege: <?= $escape(HufFormatter::format($data->advanceAmount)) ?></strong></p>
 <p>Kérjük az előleg összegét 5 napon belül az alábbi bankszámlára szíveskedjen átutalni:</p>

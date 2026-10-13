@@ -21,7 +21,7 @@ Ez a dokumentum az 1.0 árkalkuláció implementálható keretét rögzíti. Nem
 
 ## 2. Számítási modell — IMPLEMENTED és PLANNED elemek
 
-**IMPLEMENTED:** éjszakaszám, stay-length sáv, occupancy alapár és egyedi dátum override, override-onkénti tartózkodási minimum/maximum, három legacy base unit, szezonális és konfigurált hétvégi adjustment, fix díj, IFA/exemption és egész-HUF HALF_UP line-item kerekítés. **PLANNED / DECISION REQUIRED az alábbi célmodellben:** általános gyermek-kedvezmény, cleaning fee mint külön üzleti típus, általános discount és manuális booking-ár override. A következő alpontok normatív célmodellje csak az explicit IMPLEMENTED listáig tekinthető elkészültnek.
+**IMPLEMENTED:** éjszakaszám, stay-length sáv, occupancy alapár és egyedi dátum override, override-onkénti tartózkodási minimum/maximum, három legacy base unit, szezonális és konfigurált hétvégi adjustment, fix díj, IFA/exemption és egész-HUF HALF_UP line-item kerekítés. A hitelesített admin a kézi foglalás létrehozásakor és a confirmed foglalás módosításakor opcionális, IFA-t is tartalmazó egyedi végösszeget adhat meg; az IFA változatlanul a közös engine számítása, ezért az effektív szállásdíj `egyedi végösszeg - számított IFA`. **PLANNED / DECISION REQUIRED az alábbi célmodellben:** általános gyermek-kedvezmény, cleaning fee mint külön üzleti típus, általános discount és az implementált szűk admin végösszeg-mezőn túli általános manuális árpolitika. A következő alpontok normatív célmodellje csak az explicit IMPLEMENTED listáig tekinthető elkészültnek.
 
 ### 2.1 Alapfogalmak és invariánsok
 
@@ -102,7 +102,7 @@ Javasolt technikai szabály: minden tétel nagy pontosságú decimális értékk
 
 ## 3. Ár-pillanatkép és életciklus — IMPLEMENTED és PLANNED elemek
 
-**IMPLEMENTED snapshot:** kalkulációs időpont, dátumok/éjszakák/vendégszám, alkalmazott szabályazonosítók, line itemek, accommodation fee, tax, total és HUF. Az occupancy v5 snapshot ezen felül rögzíti az érkezési override azonosítóját és min/max korlátját, a governing stay rule-t, az éjszakánkénti árforrást és az alkalmazott override-azonosítókat. A korábbi booking snapshotot későbbi szabálymódosítás nem írja át. **PLANNED:** általános discount/cleaning/manual override mezők, explicit újraszámítás és snapshot-verziótörténet. Az alábbi teljes célmezőlista ezeket a tervezett elemeket is tartalmazza.
+**IMPLEMENTED snapshot:** kalkulációs időpont, dátumok/éjszakák/vendégszám, alkalmazott szabályazonosítók, line itemek, accommodation fee, tax, total és HUF. Az occupancy v5 snapshot ezen felül rögzíti az érkezési override azonosítóját és min/max korlátját, a governing stay rule-t, az éjszakánkénti árforrást és az alkalmazott override-azonosítókat. Admin egyedi végösszeg esetén a top-level `accommodation_fee` és `total` az effektív érték, a `price_override` pedig megőrzi a számított szállásdíjat, IFA-t és teljes összeget, valamint az egyedi szállásdíjat és végösszeget. A korábbi booking snapshotot későbbi szabálymódosítás nem írja át. **PLANNED:** általános discount/cleaning override mezők, az admin személyazonosító és indok snapshotba építése, explicit újraszámítás és általános snapshot-verziótörténet. Az alábbi teljes célmezőlista ezeket a tervezett elemeket is tartalmazza.
 
 Árajánlat vagy foglalás létrehozásakor megváltoztathatatlan snapshot készüljön legalább ezekkel:
 
@@ -154,24 +154,24 @@ A publikus API mezőszintű, PII-mentes validációs hibát adjon; belső konfig
 
 ## 6. Admin szerkesztés — IMPLEMENTED és PLANNED elemek
 
-**IMPLEMENTED:** szabálylista, létrehozás/szerkesztés, aktiválás/inaktiválás, validáció, CSRF/auth guard, audit és preview. **PLANNED:** külön jövőbeli verzió workflow, tömeges módosítás/megerősítés és manuális booking-árfelülírás. Az alábbi igénylista a teljes célállapotot írja le.
+**IMPLEMENTED:** szabálylista, létrehozás/szerkesztés, aktiválás/inaktiválás, validáció, CSRF/auth guard, audit és preview; továbbá opcionális, aláírt és stale-védett egyedi admin végösszeg a kézi létrehozás és confirmed módosítás folyamatában. **PLANNED:** külön jövőbeli verzió workflow, tömeges módosítás/megerősítés és az implementált végösszeg-mezőn túli általános booking-árfelülírás. Az alábbi igénylista a teljes célállapotot írja le.
 
 - Lista, létrehozás, jövőbeli hatályú verzió létrehozása és inaktiválás; felhasznált szabály hard delete-je tilos.
 - Dátum-, tartózkodáshossz- és prioritásátfedések azonnali jelzése.
 - Előnézet megadott dátumokra és vendégösszetételre, teljes számítási bontással.
 - Pénzértékek decimális validációja, explicit `HUF`, CSRF-védelem és jogosultság-ellenőrzés.
 - Minden módosítás auditálása régi/új értékkel; tömeges módosítás előtt megerősítés.
-- Manuális booking-árfelülírás külön jogosultság, kötelező indok és az eredeti összeg megtartása mellett.
+- A jelenlegi, minden aktív admin számára elérhető egyedi végösszeg az eredeti számított összeget immutable `price_override` metaadatban megtartja és az auditba kizárólag pénzügyi, PII-mentes adatot ír. Külön jogosultság és kötelező indok bevezetése csak új owner döntéssel történhet.
 
 ## 7. Elfogadási feltételek — részben IMPLEMENTED
 
-**IMPLEMENTED elfogadás:** a jelenlegi engine, repository, admin controller és immutable booking snapshot automatizált tesztjei. **PLANNED elfogadás:** gyermek-kedvezmény, általános discount, explicit újraszámítás/verziótörténet és manuális override pontjai; ezek teljesítését az RC1 nem állítja.
+**IMPLEMENTED elfogadás:** a jelenlegi engine, repository, admin controller és immutable booking snapshot automatizált tesztjei, valamint az admin egyedi végösszeg validációja, aláírása, stale-védelme, persistence-e és downstream díjbekérő/lemondási felhasználása. **PLANNED elfogadás:** gyermek-kedvezmény, általános discount és explicit újraszámítás/verziótörténet; ezek teljesítését az RC2 nem állítja.
 
 1. Unit tesztek fedik a fél-nyitott éjszakaszámot, sávhatárokat, gyermek-kategóriákat, szezonváltást, hétvégét, díjat, IFA-t, kedvezményt és kerekítést.
 2. Integrációs teszt igazolja a szabályverziók determinisztikus kiválasztását és a snapshot változtathatatlanságát.
 3. Minden publikus ár tételesen összeadódik a megjelenített végösszegre; pénzszámítás nem használ `float` típust.
 4. Korábbi foglalás ára szabálymódosítás után változatlan; explicit újraszámítás új verziót hoz létre.
-5. Manuális override jogosultság- és CSRF-védett, indokolt és auditált.
+5. Az admin egyedi végösszeg auth- és CSRF-védett, az előnézeti aláírás része, stale állapotban elutasított, az eredeti számítással együtt auditált; külön indok jelenleg nem része a jóváhagyott szerződésnek.
 6. Nincs sémamódosítás új migráció nélkül, és minden új üzleti szabály ugyanabban a PR-ban tesztet és dokumentációt kap.
 
 ## 8. Sprint 4 minimális ármodell — IMPLEMENTED
@@ -186,7 +186,7 @@ A Sprint 4 történeti implementációja kizárólag konfigurált `person_night`
 
 Hiányzó szabály vagy azonos nyertes prioritás konfigurációs hiba; booking nem jön létre hamis `0.00` árral. Az immutable snapshot tartalmazza a számítás időpontját, intervallumot, éjszakaszámot, vendégadatokat, szabályazonosítókat, a három támogatott alapegység egyikét, line itemeket, accommodation fee/tax/total értéket és `HUF` pénznemet.
 
-**OPEN / PLANNED, döntés szükséges:** gyermekár/kedvezmény, konkrét production IFA és jogi mentességek, konkrét hétvégi/szezonális/fix díj értékek, kedvezmény és admin ár-felülírás. A konfigurálható IFA/exemption, hétvégi/szezonális adjustment és fix díj számítási mechanizmusa IMPLEMENTED, de a kód nem talál ki production üzleti értéket. A demo seed kizárólag szemléltető fejlesztési adat.
+**OPEN / PLANNED, döntés szükséges:** gyermekár/kedvezmény, konkrét production IFA és jogi mentességek, konkrét hétvégi/szezonális/fix díj értékek, általános kedvezmény és az implementált admin végösszeg-mezőn túli árpolitika. A konfigurálható IFA/exemption, hétvégi/szezonális adjustment és fix díj számítási mechanizmusa IMPLEMENTED, de a kód nem talál ki production üzleti értéket. A demo seed kizárólag szemléltető fejlesztési adat.
 ## Sprint 10 személyalapú mód – IMPLEMENTED
 
 Az adatmodell változatlanul tartalmazza a kompatibilitási `legacy` és `person` módot; a migráció minden meglévő rendszert legacy állapotban hagy. A normál tulajdonosi UI nem kér motorválasztást: a felnőttárak mentése explicit person módra vált. Person módban egy éjszaka díja `adult_count × adult_rate + Σ child_band_rate(age)`. Péntek és szombat hétvégi; gyermek 0–17, felnőtt legalább 18. Az inkluzív ársávok nem fedhetik egymást, hiányzó sáv fail-closed.
@@ -201,4 +201,4 @@ A közös pricing engine minden támogatott módban kizárólag a felnőttek sz�
 
 ## Confirmed booking újraárazás — IMPLEMENTED Phase 6
 
-Admin dátum- vagy létszámmódosításkor a korábbi immutable létrehozási snapshot helyére az explicit módosításkor számított új immutable snapshot kerül, miközben a régi teljes snapshot a `booking_modifications.before_snapshot` részében megmarad. Az új számítás a mindenkori közös engine teljes konfigurációját használja, kliensoldali összeget nem fogad el. A fizetési/díjbekérő snapshot nem íródik át, az előleg változatlan. Egy későbbi lemondás az új snapshot `accommodation_fee` értékéből számol, a policy és rule version nem változik.
+Admin dátum- vagy létszámmódosításkor a korábbi immutable létrehozási snapshot helyére az explicit módosításkor számított új immutable snapshot kerül, miközben a régi teljes snapshot a `booking_modifications.before_snapshot` részében megmarad. Az új számítás a mindenkori közös engine teljes konfigurációját használja. A hitelesített admin opcionális egyedi végösszege csak aláírt előnézetből fogadható el; a mentéskor a szerver újraszámol, újraalkalmazza az override-ot és ellenőrzi a teljes pricing hash-t. A fizetési/díjbekérő snapshot nem íródik át, az előleg változatlan vagy díjbekérő nélküli megerősítésnél `NULL`. Egy későbbi lemondás az új, effektív snapshot `accommodation_fee` értékéből számol, az IFA továbbra sem része a kötbéralapnak, a policy és rule version nem változik.

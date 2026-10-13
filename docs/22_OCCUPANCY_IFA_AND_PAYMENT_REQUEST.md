@@ -14,6 +14,8 @@ A `025_add_occupancy_tourism_tax.sql` forward migráció a konfigurációhoz `to
 
 Minden támogatott pricing módban IFA = konfigurált egységár × felnőttek × éjszakák. A publikus modellben a felnőttek 18 évesek vagy idősebbek; a 0–17 évesként rögzített gyermekek nem növelik az adóköteles mennyiséget. A meglévő alkalmazható exemption adómentességet biztosít; ilyen esetben az adóköteles mennyiség és az adó nulla. A legacy `tourism_tax` összegek occupancy módban kimaradnak. A snapshot tárolja az IFA egységárát, a `tourism_tax_quantity` mennyiséget és a `taxes` összeget. Quote, booking, admin preview és e-mail ugyanazt az adaptert/engine-t használja. A korábbi snapshotok nem számolódnak újra.
 
+Az admin kézi foglalás és confirmed módosítás opcionális egyedi végösszege az IFA-t is tartalmazza, de az IFA összege továbbra is a közös engine változatlan eredménye. Override esetén az effektív `accommodation_fee = custom_total - taxes`; a snapshot top-level összegei ezt használják, a `price_override` pedig megőrzi a számított és egyedi értékeket. A publikus quote és booking nem fogad el ilyen override-ot.
+
 **Üzemeltetési következmény:** migráció után az új occupancy IFA alapértéke nulla; nincs feltételezett production adóérték vagy automatikus legacy-IFA átvétel. A jóváhagyott összeget az admin külön beállítja az éles aktiválás során.
 
 ## Egyedi időszakos tartózkodási korlátok — IMPLEMENTED
@@ -32,7 +34,7 @@ Csak pending foglaláshoz indítható díjbekérő. A védett `POST /admin/booki
 
 A `booking_payment_request` a meglévő `email_outbox` táblába kerül. A `026` utáni egyediség booking/message-type/recipient alapú; mivel a díjbekérőnek egy vendég címzettje van, ebből továbbra is foglalásonként egy rekord készül. A foglalás zárolása, a payload létrehozása és a `processing` claim tranzakciós; SMTP csak commit után fut. A küldés nem vált foglalási státuszt és nem foglal kapacitást. A levél `sent` állapota SMTP-átvételt jelent, nem banki jóváírást vagy garantált inbox-kézbesítést.
 
-**SUPERSEDED:** az előleg alapja az immutable `accommodation_fee`, nem a teljes végösszeg; az IFA nem része. Az alapbeállítás 50%, a százalék 1–100 között konfigurálható, a kerekítés determinisztikus egész-HUF HALF_UP. A v2 levél a snapshotolt százalékot és összeget mutatja.
+**SUPERSEDED:** az előleg alapja az immutable, effektív `accommodation_fee`, nem a teljes végösszeg; az IFA nem része. Admin egyedi végösszeg esetén ezért az előleg az egyedi szállásdíjból készül, továbbra is az IFA nélkül. Az alapbeállítás 50%, a százalék 1–100 között konfigurálható, a kerekítés determinisztikus egész-HUF HALF_UP. A v2 levél a snapshotolt százalékot és összeget mutatja.
 
 Konfiguráció a `config/payment-request.php` fájlon keresztül:
 
@@ -44,7 +46,7 @@ Konfiguráció a `config/payment-request.php` fájlon keresztül:
 
 A repository csak üres vagy placeholder bankadatokat tartalmaz a példafájlokban. Hiányzó bankadat nem akadályozza az admin bejelentkezést; a küldés ad konfigurációs hibát. Ismeretlen árú régi importból nem készül kitalált nulla összegű díjbekérő.
 
-**SUPERSEDED:** a v2 TXT/HTML levél az immutable szállásdíjat, a helyben fizetendő IFA-t, az előleget és a teljes banki snapshotot mutatja. A közlemény az `AB-%06d` payment reference; kizárólag a v1 kompatibilitási levél használja a booking referenciát.
+**SUPERSEDED:** a v2 TXT/HTML levél az immutable szállásdíjat, a helyben fizetendő IFA-t, az előleget és a teljes banki snapshotot mutatja. Admin override esetén külön, feltételes sorban a kalkulált szállásdíj és az egyedi végösszeg is látható; override nélküli és régi payloadok renderelése változatlan. A közlemény az `AB-%06d` payment reference; kizárólag a v1 kompatibilitási levél használja a booking referenciát.
 
 A retry ugyanazt a payloadot használja: recipient, név, referencia, dátumok, pénznem, végösszeg, százalék, előleg és bankadatok az első kéréskor rögzülnek. Új ár vagy banki konfiguráció nem írja át. `sent` és `processing` rekord ismételt kattintása nem küld új levelet. SMTP-hiba `failed`, a foglalás pending marad. Sikeres SMTP utáni persistence/audithiba nem teszi automatikusan újraküldhetővé a levelet.
 

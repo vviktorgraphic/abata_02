@@ -58,6 +58,35 @@ final class ConfirmedBookingModificationValidatorTest extends TestCase
         self::assertFalse($signer->verify($signature, 'AB-1', 3, $request, $hash));
     }
 
+    public function testCanonicalPayloadIncludesNormalizedOptionalCustomTotalAndSignatureRejectsTampering(): void
+    {
+        $request = $this->validator()->validate([...$this->valid(), 'custom_total' => '28 500']);
+        self::assertSame('28500.00', $request->customTotal);
+        self::assertSame('28500.00', $request->canonicalPayload()['custom_total']);
+
+        $signer = new BookingModificationPreviewSigner('test-secret');
+        $hash = str_repeat('a', 64);
+        $signature = $signer->sign('AB-1', 2, $request, $hash);
+        $tampered = new \App\Application\Booking\ConfirmedBookingModification(
+            $request->arrivalDate,
+            $request->departureDate,
+            $request->adults,
+            $request->childAges,
+            '28000.00',
+        );
+        self::assertFalse($signer->verify($signature, 'AB-1', 2, $tampered, $hash));
+    }
+
+    public function testRejectsNonIntegerCustomTotal(): void
+    {
+        try {
+            $this->validator()->validate([...$this->valid(), 'custom_total' => '28500.50']);
+            self::fail('Decimal custom total was accepted.');
+        } catch (BookingValidationFailed $error) {
+            self::assertArrayHasKey('custom_total', $error->errors());
+        }
+    }
+
     /** @return array<string,mixed> */
     private function valid(): array
     {

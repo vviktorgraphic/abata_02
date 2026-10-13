@@ -8,7 +8,15 @@ use App\Domain\Booking\BookingCreateRequest;
 
 interface AdminManualBookingWorkflow
 {
-    public function preview(BookingCreateRequest $request): AdminManualBookingPreview;
+    public function preview(BookingCreateRequest $request, ?AdminCustomPrice $customPrice = null): AdminManualBookingPreview;
 
-    public function create(BookingCreateRequest $request, int $adminId, string $expectedTotal, string $expectedCurrency): BookingPersistenceResult;
+    public function create(
+        BookingCreateRequest $request,
+        int $adminId,
+        string $expectedCalculatedTotal,
+        string $expectedPricingHash,
+        ?AdminCustomPrice $customPrice,
+        string $expectedEffectiveTotal,
+        string $expectedCurrency,
+    ): BookingPersistenceResult;
 }

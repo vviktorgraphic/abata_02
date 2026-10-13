@@ -7,6 +7,7 @@ namespace Tests\Feature\AdminHttp;
 use App\Application\Booking\AdminManualBookingPreview;
 use App\Application\Booking\AdminManualBookingPreviewSigner;
 use App\Application\Booking\AdminManualBookingWorkflow;
+use App\Application\Booking\AdminCustomPrice;
 use App\Application\Booking\BookingClock;
 use App\Application\Booking\BookingConflict;
 use App\Application\Booking\BookingPersistenceResult;
@@ -99,14 +100,59 @@ final class AdminManualBookingControllerTest extends TestCase
         self::assertStringContainsString('Automatikus e-mail nem kerül kiküldésre.', $response->body);
     }
 
+    public function testCustomTotalSurvivesPreviewAndIsBoundIntoSignedSave(): void
+    {
+        [$controller, $workflow, $csrf, $signer] = $this->fixture();
+        $form = [...$this->form(), 'custom_total' => '48000', '_csrf' => $csrf->token()];
+
+        $previewResponse = $controller->preview($form, 'application/x-www-form-urlencoded', 900);
+
+        self::assertSame(200, $previewResponse->status);
+        self::assertStringContainsString('Kalkulált végösszeg', $previewResponse->body);
+        self::assertStringContainsString('Egyedi végösszeg', $previewResponse->body);
+        self::assertStringContainsString('48 000 Ft', $previewResponse->body);
+        self::assertStringContainsString('name="custom_total" value="48000"', $previewResponse->body);
+
+        $request = $this->validator()->validate($form);
+        $form += [
+            'preview_signature' => $signer->sign($request, '50000.00', str_repeat('a', 64), '48000.00', '48000.00', 'HUF'),
+            'expected_calculated_total' => '50000.00',
+            'expected_pricing_hash' => str_repeat('a', 64),
+            'expected_effective_total' => '48000.00',
+            'expected_currency' => 'HUF',
+        ];
+        $tampered = [...$form, 'custom_total' => '47000'];
+        self::assertSame(409, $controller->save($tampered, 'application/x-www-form-urlencoded', 1200)->status);
+        self::assertSame(0, $workflow->createCalls);
+
+        self::assertInstanceOf(RedirectResponse::class, $controller->save($form, 'application/x-www-form-urlencoded', 1200));
+        self::assertSame(1, $workflow->createCalls);
+        self::assertSame('48000.00', $workflow->lastExpectedTotal);
+    }
+
+    public function testInvalidCustomTotalIsRetainedAndRejectedBeforeWorkflow(): void
+    {
+        [$controller, $workflow, $csrf] = $this->fixture();
+        $form = [...$this->form(), 'custom_total' => '12.50', '_csrf' => $csrf->token()];
+
+        $response = $controller->preview($form, 'application/x-www-form-urlencoded', 900);
+
+        self::assertSame(422, $response->status);
+        self::assertStringContainsString('egész, nem negatív forintösszeg', $response->body);
+        self::assertStringContainsString('value="12.50"', $response->body);
+        self::assertSame(0, $workflow->previewCalls);
+    }
+
     public function testSignedSaveCreatesPendingBookingAndStoresOneTimeSuccessMessage(): void
     {
         [$controller, $workflow, $csrf, $signer, $flash] = $this->fixture();
         $form = [...$this->form(), '_csrf' => $csrf->token()];
         $request = $this->validator()->validate($form);
         $form += [
-            'preview_signature' => $signer->sign($request, '50000.00', 'HUF'),
-            'expected_total' => '50000.00',
+            'preview_signature' => $signer->sign($request, '50000.00', str_repeat('a', 64), null, '50000.00', 'HUF'),
+            'expected_calculated_total' => '50000.00',
+            'expected_pricing_hash' => str_repeat('a', 64),
+            'expected_effective_total' => '50000.00',
             'expected_currency' => 'HUF',
         ];
 
@@ -129,8 +175,10 @@ final class AdminManualBookingControllerTest extends TestCase
         $form = [...$this->form(), '_csrf' => $csrf->token()];
         $request = $this->validator()->validate($form);
         $form += [
-            'preview_signature' => $signer->sign($request, '50000.00', 'HUF'),
-            'expected_total' => '50001.00',
+            'preview_signature' => $signer->sign($request, '50000.00', str_repeat('a', 64), null, '50000.00', 'HUF'),
+            'expected_calculated_total' => '50000.00',
+            'expected_pricing_hash' => str_repeat('a', 64),
+            'expected_effective_total' => '50001.00',
             'expected_currency' => 'HUF',
         ];
 
@@ -148,8 +196,10 @@ final class AdminManualBookingControllerTest extends TestCase
         $form = [...$this->form(), '_csrf' => $csrf->token()];
         $request = $this->validator()->validate($form);
         $form += [
-            'preview_signature' => $signer->sign($request, '50000.00', 'HUF'),
-            'expected_total' => '50000.00',
+            'preview_signature' => $signer->sign($request, '50000.00', str_repeat('a', 64), null, '50000.00', 'HUF'),
+            'expected_calculated_total' => '50000.00',
+            'expected_pricing_hash' => str_repeat('a', 64),
+            'expected_effective_total' => '50000.00',
             'expected_currency' => 'HUF',
         ];
         $workflow->createError = new BookingConflict('changed');
@@ -168,8 +218,10 @@ final class AdminManualBookingControllerTest extends TestCase
         $form = [...$this->form(), '_csrf' => $csrf->token()];
         $request = $this->validator()->validate($form);
         $form += [
-            'preview_signature' => $signer->sign($request, '50000.00', 'HUF'),
-            'expected_total' => '50000.00',
+            'preview_signature' => $signer->sign($request, '50000.00', str_repeat('a', 64), null, '50000.00', 'HUF'),
+            'expected_calculated_total' => '50000.00',
+            'expected_pricing_hash' => str_repeat('a', 64),
+            'expected_effective_total' => '50000.00',
             'expected_currency' => 'HUF',
         ];
         $workflow->createError = new BookingPreviewStale('Az ár időközben megváltozott. Kérj új előnézetet.');
@@ -250,6 +302,7 @@ final class AdminManualBookingControllerTest extends TestCase
             'children' => '1',
             'child_ages' => ['3'],
             'notes' => 'Admin csatorna',
+            'custom_total' => '',
             'idempotency_key' => 'admin-feature-key-1234',
         ];
     }
@@ -264,11 +317,11 @@ final class ManualBookingWorkflowSpy implements AdminManualBookingWorkflow
     public ?string $lastExpectedCurrency = null;
     public ?\Throwable $createError = null;
 
-    public function preview(BookingCreateRequest $request): AdminManualBookingPreview
+    public function preview(BookingCreateRequest $request, ?AdminCustomPrice $customPrice = null): AdminManualBookingPreview
     {
         ++$this->previewCalls;
 
-        return new AdminManualBookingPreview($request, new PricingResult(
+        $calculated = new PricingResult(
             '50000.00',
             '45000.00',
             '5000.00',
@@ -276,14 +329,24 @@ final class ManualBookingWorkflowSpy implements AdminManualBookingWorkflow
             [],
             [],
             ['version' => 3],
-        ));
+        );
+        $effective = $customPrice === null ? $calculated : (new \App\Application\Booking\AdminPricingOverride())->applyToResult($calculated, $customPrice);
+
+        return new AdminManualBookingPreview($request, $calculated, $effective, $customPrice?->total, str_repeat('a', 64));
     }
 
-    public function create(BookingCreateRequest $request, int $adminId, string $expectedTotal, string $expectedCurrency): BookingPersistenceResult
-    {
+    public function create(
+        BookingCreateRequest $request,
+        int $adminId,
+        string $expectedCalculatedTotal,
+        string $expectedPricingHash,
+        ?AdminCustomPrice $customPrice,
+        string $expectedEffectiveTotal,
+        string $expectedCurrency,
+    ): BookingPersistenceResult {
         ++$this->createCalls;
         $this->lastAdminId = $adminId;
-        $this->lastExpectedTotal = $expectedTotal;
+        $this->lastExpectedTotal = $expectedEffectiveTotal;
         $this->lastExpectedCurrency = $expectedCurrency;
         if ($this->createError !== null) {
             throw $this->createError;

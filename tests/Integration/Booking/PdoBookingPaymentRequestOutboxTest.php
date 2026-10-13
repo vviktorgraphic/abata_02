@@ -83,6 +83,45 @@ final class PdoBookingPaymentRequestOutboxTest extends TestCase
         self::assertFalse($query->fetch());
     }
 
+    public function testCustomSnapshotUsesEffectiveAccommodationForAdvanceAndFreezesCustomMailMetadata(): void
+    {
+        $snapshot = [
+            'version' => 5,
+            'accommodation_fee' => '28000.00',
+            'taxes' => '500.00',
+            'total' => '28500.00',
+            'currency' => 'HUF',
+            'price_override' => [
+                'type' => 'admin_custom_total',
+                'calculated_accommodation_fee' => '30000.00',
+                'calculated_tourism_tax' => '500.00',
+                'calculated_total' => '30500.00',
+                'custom_accommodation_fee' => '28000.00',
+                'custom_total' => '28500.00',
+            ],
+        ];
+        $this->pdo->prepare('UPDATE bookings SET total_amount=:total WHERE id=:id')
+            ->execute(['total' => '28500.00', 'id' => $this->bookingId]);
+        $this->pdo->prepare('UPDATE booking_pricing_snapshots SET snapshot=:snapshot WHERE booking_id=:id')
+            ->execute(['snapshot' => json_encode($snapshot, JSON_THROW_ON_ERROR), 'id' => $this->bookingId]);
+
+        $outbox = new PdoBookingPaymentRequestOutbox($this->pdo);
+        $item = $outbox->claim($this->reference, $this->config());
+
+        self::assertSame('28000.00', $item['data']->accommodationFee);
+        self::assertSame('500.00', $item['data']->taxes);
+        self::assertSame('28500.00', $item['data']->total);
+        self::assertSame('14000.00', $item['data']->advanceAmount);
+        self::assertSame('30000.00', $item['data']->calculatedAccommodationFee);
+        self::assertSame('28500.00', $item['data']->customTotal);
+        $payload = $item['data']->payload();
+        self::assertSame('28500.00', $payload['custom_total']);
+        self::assertSame('30000.00', $payload['calculated_accommodation_fee']);
+        $message = $this->renderer()->render($item['data']);
+        self::assertStringContainsString('Egyedi végösszeg: 28 500 Ft', $message->textBody);
+        self::assertStringContainsString('Előleg összege: 14 000 Ft', $message->textBody);
+    }
+
     public function testOnlyPendingCanSendOrRetry(): void
     {
         $outbox = new PdoBookingPaymentRequestOutbox($this->pdo);

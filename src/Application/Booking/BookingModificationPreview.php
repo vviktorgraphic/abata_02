@@ -8,6 +8,7 @@ final readonly class BookingModificationPreview
         public int $bookingId,
         public int $version,
         public ConfirmedBookingModification $modification,
+        public PricingResult $calculatedPricing,
         public PricingResult $pricing,
         public ?string $unchangedDepositAmount,
         public string $pricingHash,

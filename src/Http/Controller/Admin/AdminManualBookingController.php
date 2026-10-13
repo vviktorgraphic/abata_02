@@ -7,6 +7,8 @@ namespace App\Http\Controller\Admin;
 use App\Application\Booking\AdminManualBookingPreview;
 use App\Application\Booking\AdminManualBookingPreviewSigner;
 use App\Application\Booking\AdminManualBookingWorkflow;
+use App\Application\Booking\AdminCustomPrice;
+use App\Application\Booking\AdminCustomPriceInvalid;
 use App\Application\Booking\BookingClock;
 use App\Application\Booking\BookingConflict;
 use App\Application\Booking\BookingPreviewStale;
@@ -23,7 +25,7 @@ final readonly class AdminManualBookingController
 {
     private const INPUT_FIELDS = [
         'arrival_date', 'departure_date', 'contact_name', 'email', 'phone',
-        'adults', 'children', 'child_ages', 'notes', 'idempotency_key',
+        'adults', 'children', 'child_ages', 'notes', 'custom_total', 'idempotency_key',
     ];
 
     public function __construct(
@@ -49,6 +51,7 @@ final readonly class AdminManualBookingController
         return $this->render($admin, [
             'arrival_date' => '', 'departure_date' => '', 'contact_name' => '', 'email' => '',
             'phone' => '', 'adults' => '1', 'children' => '0', 'child_ages' => [], 'notes' => '',
+            'custom_total' => '',
             'idempotency_key' => bin2hex(random_bytes(16)),
         ]);
     }
@@ -67,12 +70,23 @@ final readonly class AdminManualBookingController
 
         try {
             $request = $this->validator->validate($values);
-            $preview = $this->workflow->preview($request);
-            $signature = $this->signer->sign($request, $preview->pricing->totalAmount, $preview->pricing->currency);
+            $customPrice = AdminCustomPrice::optionalFromInput($values['custom_total'] ?? null);
+            $preview = $this->workflow->preview($request, $customPrice);
+            $values['custom_total'] = $customPrice === null ? '' : substr($customPrice->total, 0, -3);
+            $signature = $this->signer->sign(
+                $request,
+                $preview->calculatedPricing->totalAmount,
+                $preview->pricingHash,
+                $preview->customTotal,
+                $preview->pricing->totalAmount,
+                $preview->pricing->currency,
+            );
 
             return $this->render($authorization->admin, $values, [], 200, $preview, $signature);
         } catch (BookingValidationFailed $error) {
             return $this->render($authorization->admin, $values, $error->errors(), 422);
+        } catch (AdminCustomPriceInvalid $error) {
+            return $this->render($authorization->admin, $values, ['custom_total' => $error->getMessage()], 422);
         } catch (BookingConflict) {
             return $this->render($authorization->admin, $values, ['dates' => 'A megadott időszak foglalt vagy aktív blokkolással ütközik.'], 409);
         } catch (OccupancyStayLengthViolation $error) {
@@ -98,16 +112,30 @@ final readonly class AdminManualBookingController
 
         try {
             $request = $this->validator->validate($values);
+            $customPrice = AdminCustomPrice::optionalFromInput($values['custom_total'] ?? null);
             $signature = is_string($form['preview_signature'] ?? null) ? $form['preview_signature'] : '';
-            $expectedTotal = is_string($form['expected_total'] ?? null) ? $form['expected_total'] : '';
+            $expectedCalculatedTotal = is_string($form['expected_calculated_total'] ?? null) ? $form['expected_calculated_total'] : '';
+            $expectedPricingHash = is_string($form['expected_pricing_hash'] ?? null) ? $form['expected_pricing_hash'] : '';
+            $expectedEffectiveTotal = is_string($form['expected_effective_total'] ?? null) ? $form['expected_effective_total'] : '';
             $expectedCurrency = is_string($form['expected_currency'] ?? null) ? $form['expected_currency'] : '';
-            if (!$this->signer->verify($signature, $request, $expectedTotal, $expectedCurrency)) {
+            if (!$this->signer->verify(
+                $signature,
+                $request,
+                $expectedCalculatedTotal,
+                $expectedPricingHash,
+                $customPrice?->total,
+                $expectedEffectiveTotal,
+                $expectedCurrency,
+            )) {
                 throw new BookingPreviewStale('Az előnézet lejárt vagy az adatok megváltoztak. Kérj új előnézetet.');
             }
             $result = $this->workflow->create(
                 $request,
                 (int) $authorization->admin['id'],
-                $expectedTotal,
+                $expectedCalculatedTotal,
+                $expectedPricingHash,
+                $customPrice,
+                $expectedEffectiveTotal,
                 $expectedCurrency,
             );
             $this->flash->put($result->reference, 'A foglalás rögzítve.');
@@ -115,6 +143,8 @@ final readonly class AdminManualBookingController
             return new RedirectResponse('/admin/bookings/' . rawurlencode($result->reference));
         } catch (BookingValidationFailed $error) {
             return $this->render($authorization->admin, $values, $error->errors(), 422);
+        } catch (AdminCustomPriceInvalid $error) {
+            return $this->render($authorization->admin, $values, ['custom_total' => $error->getMessage()], 422);
         } catch (BookingPreviewStale $error) {
             return $this->render($authorization->admin, $values, ['stale' => $error->getMessage()], 409);
         } catch (IdempotencyConflict) {
@@ -160,7 +190,14 @@ final readonly class AdminManualBookingController
     {
         $allowed = ['_csrf', ...self::INPUT_FIELDS];
         if ($save) {
-            $allowed = [...$allowed, 'preview_signature', 'expected_total', 'expected_currency'];
+            $allowed = [
+                ...$allowed,
+                'preview_signature',
+                'expected_calculated_total',
+                'expected_pricing_hash',
+                'expected_effective_total',
+                'expected_currency',
+            ];
         }
 
         return array_diff(array_keys($form), $allowed) !== [];

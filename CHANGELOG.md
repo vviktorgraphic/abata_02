@@ -19,6 +19,7 @@ A projekt változásai ebben a fájlban követik a release-eket. A formátum a K
 
 ### Added
 
+- Added optional whole-HUF custom totals to signed admin manual-booking and confirmed-modification previews, preserving calculated pricing provenance and using the effective accommodation fee for payment requests and cancellation.
 - Added confirmed-booking modification with signed preview, optimistic stale protection, inventory serialization, current repricing, immutable prior deposit, modification history and notification outbox.
 - Added Phase 3 guest communications: snapshot-safe payment reminders, manual arrival information with four CID JPEGs, exact-day review worker, completed booking lifecycle and shared CSRF logout icon.
 - Added v2 payment request snapshots and deterministic short payment references; advance now excludes tourism tax and is calculated from immutable accommodation fee.

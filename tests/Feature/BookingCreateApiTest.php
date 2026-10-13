@@ -106,6 +106,7 @@ final class BookingCreateApiTest extends TestCase
         $payload['arrival_date'] = '2040-08-10';
         $payload['departure_date'] = '2040-08-13';
         $payload['idempotency_key'] = 'api-integrated-' . bin2hex(random_bytes(10));
+        $payload['custom_total'] = '1.00';
 
         try {
             $first = $controller->create(json_encode($payload, JSON_THROW_ON_ERROR), ['content-type' => 'application/json'], '192.0.2.20');
@@ -122,6 +123,11 @@ final class BookingCreateApiTest extends TestCase
                 $count->execute(['id' => $bookingId]);
                 self::assertSame(1, (int) $count->fetchColumn(), $table);
             }
+            $snapshotQuery = $pdo->prepare('SELECT snapshot FROM booking_pricing_snapshots WHERE booking_id=:id');
+            $snapshotQuery->execute(['id' => $bookingId]);
+            $snapshot = json_decode((string) $snapshotQuery->fetchColumn(), true, 512, JSON_THROW_ON_ERROR);
+            self::assertArrayNotHasKey('price_override', $snapshot);
+            self::assertSame($first->payload['total_amount'], (string) $snapshot['total']);
             self::assertCount(1, $mailer->messages());
         } finally {
             if (isset($bookingId) && $bookingId > 0) $pdo->prepare('DELETE FROM bookings WHERE id = :id')->execute(['id' => $bookingId]);

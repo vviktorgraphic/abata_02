@@ -6,8 +6,11 @@ Tisztelt <?= $data->contactName ?>!
 
 Foglalási igényét rögzítettük!
 
-Kalkulált szállásdíj: <?= HufFormatter::format((string) $data->accommodationFee) ?>
-Az idegenforgalmi adó összege: <?= HufFormatter::format((string) $data->taxes) ?>, mely a szálláshelyen külön fizetendő
+<?php if ($data->customTotal !== null): ?>Kalkulált szállásdíj: <?= HufFormatter::format((string) $data->calculatedAccommodationFee) ?>
+Egyedi végösszeg: <?= HufFormatter::format($data->customTotal) ?>
+Fizetendő szállásdíj: <?= HufFormatter::format((string) $data->accommodationFee) ?>
+<?php else: ?>Kalkulált szállásdíj: <?= HufFormatter::format((string) $data->accommodationFee) ?>
+<?php endif ?>Az idegenforgalmi adó összege: <?= HufFormatter::format((string) $data->taxes) ?>, mely a szálláshelyen külön fizetendő
 Előleg összege: <?= HufFormatter::format($data->advanceAmount) ?>
 
 Kérjük az előleg összegét 5 napon belül az alábbi bankszámlára szíveskedjen átutalni:

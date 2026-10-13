@@ -12,6 +12,7 @@ final readonly class ConfirmedBookingModification
         public string $departureDate,
         public int $adults,
         public array $childAges,
+        public ?string $customTotal = null,
     ) {
     }
 
@@ -20,7 +21,7 @@ final readonly class ConfirmedBookingModification
         return (int) (new \DateTimeImmutable($this->arrivalDate))->diff(new \DateTimeImmutable($this->departureDate))->days;
     }
 
-    /** @return array{arrival_date:string,departure_date:string,adults:int,child_ages:list<int>} */
+    /** @return array{arrival_date:string,departure_date:string,adults:int,child_ages:list<int>,custom_total:?string} */
     public function canonicalPayload(): array
     {
         return [
@@ -28,6 +29,7 @@ final readonly class ConfirmedBookingModification
             'departure_date' => $this->departureDate,
             'adults' => $this->adults,
             'child_ages' => $this->childAges,
+            'custom_total' => $this->customTotal,
         ];
     }
 }

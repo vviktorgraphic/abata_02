@@ -66,12 +66,20 @@ final readonly class PdoBookingPaymentRequestOutbox implements BookingPaymentReq
                 if ($accommodationFee === null || $taxes === null || $total === null || $currency !== 'HUF') {
                     throw new \InvalidArgumentException('A díjbekérő pricing snapshotja hiányos vagy nem támogatott.');
                 }
+                $priceOverride = is_array($snapshot['price_override'] ?? null) ? $snapshot['price_override'] : null;
+                $calculatedAccommodationFee = $priceOverride === null
+                    ? null
+                    : $this->money($priceOverride['calculated_accommodation_fee'] ?? null);
+                $customTotal = $priceOverride === null ? null : $this->money($priceOverride['custom_total'] ?? null);
+                if ($priceOverride !== null && ($calculatedAccommodationFee === null || $customTotal === null)) {
+                    throw new \InvalidArgumentException('A díjbekérő egyedi ár-pillanatképe hiányos.');
+                }
                 $data = new BookingPaymentRequestMailData($reference, $booking['guest_email'], $booking['guest_name'],
                     $booking['arrival_date'], $booking['departure_date'], $currency, $total,
                     $configuration->advancePercent, $configuration->advanceFor($accommodationFee),
                     $configuration->beneficiary, $configuration->bankAccount, $accommodationFee, $taxes,
                     PaymentReference::forBookingId((int) $booking['id']), $configuration->bankName,
-                    $configuration->swiftBic, 2);
+                    $configuration->swiftBic, 2, $calculatedAccommodationFee, $customTotal);
                 $insert = $this->pdo->prepare("INSERT INTO email_outbox (booking_id, message_type, recipient, subject, payload)
                     VALUES (:booking_id, 'booking_payment_request', :recipient, :subject, :payload)");
                 $insert->execute(['booking_id' => $booking['id'], 'recipient' => $data->recipient,

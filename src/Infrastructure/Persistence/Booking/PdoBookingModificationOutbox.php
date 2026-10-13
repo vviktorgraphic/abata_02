@@ -134,6 +134,8 @@ final readonly class PdoBookingModificationOutbox implements BookingModification
         foreach (['arrival_date', 'departure_date', 'nights', 'adults', 'accommodation_fee', 'tourism_tax', 'total_amount'] as $field) {
             if (!array_key_exists($field, $after)) throw new \RuntimeException('A módosítás pillanatképe hiányos.');
         }
+        $pricingSnapshot = is_array($after['pricing_snapshot'] ?? null) ? $after['pricing_snapshot'] : [];
+        $priceOverride = is_array($pricingSnapshot['price_override'] ?? null) ? $pricingSnapshot['price_override'] : null;
         return [
             'booking_reference' => (string) $row['reference'],
             'contact_name' => (string) $row['guest_name'],
@@ -148,6 +150,9 @@ final readonly class PdoBookingModificationOutbox implements BookingModification
             'unchanged_deposit_amount' => $row['unchanged_deposit_amount'] !== null ? (string) $row['unchanged_deposit_amount'] : null,
             'currency' => (string) $row['currency'],
             'modification_id' => $modificationId,
+            ...($priceOverride === null ? [] : [
+                'custom_total' => (string) ($priceOverride['custom_total'] ?? ''),
+            ]),
         ];
     }
 
@@ -163,6 +168,7 @@ final readonly class PdoBookingModificationOutbox implements BookingModification
             (string) $payload['accommodation_fee'], (string) $payload['tourism_tax'], (string) $payload['total_amount'],
             isset($payload['unchanged_deposit_amount']) ? (string) $payload['unchanged_deposit_amount'] : null,
             (string) $payload['currency'],
+            isset($payload['custom_total']) ? (string) $payload['custom_total'] : null,
         )];
     }
 }

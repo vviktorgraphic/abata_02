@@ -10,6 +10,10 @@ use App\Application\Booking\BookingPersistenceCommand;
 use App\Application\Booking\BookingPersistenceResult;
 use App\Application\Booking\BookingPricingProvider;
 use App\Application\Booking\BookingPreviewStale;
+use App\Application\Booking\AdminCustomPrice;
+use App\Application\Booking\AdminCustomPriceInvalid;
+use App\Application\Booking\AdminPricingOverride;
+use App\Application\Booking\PricingSnapshotHasher;
 use App\Application\Booking\BookingNotFound;
 use App\Application\Booking\BookingTransitionResult;
 use App\Application\Booking\IdempotencyConflict;
@@ -389,12 +393,26 @@ final class TransactionalBookingRepository
 
             // Pricing deliberately runs inside this transaction, after the final
             // availability check, so the persisted amount and snapshot are one unit.
-            $pricing = $pricingProvider->calculate($this->pdo, $command);
-            if ($options->expectedTotal !== null && (
-                !hash_equals($options->expectedTotal, $pricing->totalAmount)
-                || !hash_equals((string) $options->expectedCurrency, $pricing->currency)
-            )) {
+            $calculatedPricing = $pricingProvider->calculate($this->pdo, $command);
+            if ($options->expectedCalculatedTotal !== null
+                && !hash_equals($options->expectedCalculatedTotal, $calculatedPricing->totalAmount)) {
                 throw new BookingPreviewStale('Az ár időközben megváltozott. Kérj új előnézetet.');
+            }
+            $pricing = $calculatedPricing;
+            if ($options->adminId !== null) {
+                try {
+                    $pricing = (new AdminPricingOverride())->applyToBookingPricing(
+                        $calculatedPricing,
+                        $options->customTotal === null ? null : AdminCustomPrice::fromCanonical($options->customTotal),
+                    );
+                } catch (AdminCustomPriceInvalid) {
+                    throw new BookingPreviewStale('Az ár időközben megváltozott. Kérj új előnézetet.');
+                }
+                if (!hash_equals((string) $options->expectedPricingHash, PricingSnapshotHasher::hash($pricing->snapshot))
+                    || !hash_equals((string) $options->expectedEffectiveTotal, $pricing->totalAmount)
+                    || !hash_equals((string) $options->expectedCurrency, $pricing->currency)) {
+                    throw new BookingPreviewStale('Az ár időközben megváltozott. Kérj új előnézetet.');
+                }
             }
 
             $booking = $this->pdo->prepare(
@@ -491,6 +509,12 @@ final class TransactionalBookingRepository
                         'booking_reference' => $command->reference,
                         'status' => 'pending',
                         'source' => 'admin',
+                        ...(!isset($pricing->snapshot['price_override']) ? [] : [
+                            'pricing_mode' => 'admin_custom_total',
+                            'calculated_total' => $pricing->snapshot['price_override']['calculated_total'],
+                            'custom_total' => $pricing->snapshot['price_override']['custom_total'],
+                            'currency' => $pricing->currency,
+                        ]),
                     ], JSON_THROW_ON_ERROR),
                 ]);
             }

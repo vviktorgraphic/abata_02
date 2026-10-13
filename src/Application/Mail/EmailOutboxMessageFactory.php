@@ -161,6 +161,7 @@ final readonly class EmailOutboxMessageFactory
             (string) $payload['total_amount'],
             isset($payload['unchanged_deposit_amount']) ? (string) $payload['unchanged_deposit_amount'] : null,
             (string) $payload['currency'],
+            isset($payload['custom_total']) ? (string) $payload['custom_total'] : null,
         );
     }
 

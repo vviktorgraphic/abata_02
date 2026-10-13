@@ -19,6 +19,7 @@ final readonly class BookingModificationMailData
         public string $total,
         public ?string $unchangedDepositAmount,
         public string $currency,
+        public ?string $customTotal = null,
     ) {
         if ($currency !== 'HUF') throw new \InvalidArgumentException('A módosítási levél kizárólag HUF pénznemet támogat.');
     }

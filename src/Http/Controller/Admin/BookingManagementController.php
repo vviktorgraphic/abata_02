@@ -6,6 +6,7 @@ namespace App\Http\Controller\Admin;
 
 use App\Application\Booking\AdminBookingDetailQuery;
 use App\Application\Booking\AdminBookingListQuery;
+use App\Application\Booking\AdminCustomPriceInvalid;
 use App\Application\Booking\BookingConflict;
 use App\Application\Booking\BookingModificationNotAllowed;
 use App\Application\Booking\BookingModificationPreviewSigner;
@@ -85,6 +86,8 @@ final readonly class BookingManagementController
                 $this->modificationSigner->sign($reference, $preview->version, $request, $preview->pricingHash));
         } catch (BookingValidationFailed $error) {
             return $this->renderDetail($reference, 422, $form, null, $error->errors());
+        } catch (AdminCustomPriceInvalid $error) {
+            return $this->renderDetail($reference, 422, $form, null, ['custom_total' => $error->getMessage()]);
         } catch (BookingNotFound) {
             return $this->error(404, 'A foglalás nem található.');
         } catch (BookingModificationNotAllowed $error) {
@@ -120,6 +123,8 @@ final readonly class BookingManagementController
             return new RedirectResponse('/admin/bookings/' . rawurlencode($reference));
         } catch (BookingValidationFailed $error) {
             return $this->renderDetail($reference, 422, $form, null, $error->errors());
+        } catch (AdminCustomPriceInvalid $error) {
+            return $this->renderDetail($reference, 422, $form, null, ['custom_total' => $error->getMessage()]);
         } catch (BookingNotFound) {
             return $this->error(404, 'A foglalás nem található.');
         } catch (BookingModificationNotAllowed $error) {
@@ -189,7 +194,8 @@ final readonly class BookingManagementController
             $modificationForm = [
                 'arrival_date' => $booking['arrival_date'], 'departure_date' => $booking['departure_date'],
                 'adults' => $booking['adults'], 'children' => $booking['children'],
-                'child_ages' => $booking['children_ages'], 'idempotency_key' => bin2hex(random_bytes(16)),
+                'child_ages' => $booking['children_ages'], 'custom_total' => '',
+                'idempotency_key' => bin2hex(random_bytes(16)),
             ];
         }
         return new HtmlResponse($this->view->render('booking-detail', [

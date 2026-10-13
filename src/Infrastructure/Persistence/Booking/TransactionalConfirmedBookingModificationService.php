@@ -10,8 +10,12 @@ use App\Application\Booking\BookingModificationPreview;
 use App\Application\Booking\BookingModificationResult;
 use App\Application\Booking\BookingModificationStale;
 use App\Application\Booking\BookingNotFound;
+use App\Application\Booking\AdminCustomPrice;
+use App\Application\Booking\AdminCustomPriceInvalid;
+use App\Application\Booking\AdminPricingOverride;
 use App\Application\Booking\ConfirmedBookingModification;
 use App\Application\Booking\IdempotencyConflict;
+use App\Application\Booking\PricingSnapshotHasher;
 use App\Domain\Booking\BookingStatus;
 use App\Domain\Pricing\PricingInput;
 use App\Infrastructure\Persistence\Pricing\PdoPricingEngineAdapter;
@@ -25,6 +29,7 @@ final readonly class TransactionalConfirmedBookingModificationService
         private PDO $pdo,
         private PdoPricingEngineAdapter $pricing,
         private ?\Closure $transactionProbe = null,
+        private AdminPricingOverride $pricingOverride = new AdminPricingOverride(),
     )
     {
     }
@@ -34,13 +39,17 @@ final readonly class TransactionalConfirmedBookingModificationService
         $booking = $this->booking($reference, false);
         $this->assertConfirmed($booking);
         $this->assertAvailable((int) $booking['id'], $request->arrivalDate, $request->departureDate);
-        $pricing = $this->pricing->preview(new PricingInput(
+        $calculated = $this->pricing->preview(new PricingInput(
             $request->arrivalDate, $request->departureDate, $request->adults, $request->childAges
         ));
+        $pricing = $this->pricingOverride->applyToResult(
+            $calculated,
+            $request->customTotal === null ? null : AdminCustomPrice::fromCanonical($request->customTotal),
+        );
 
         return new BookingModificationPreview(
-            (int) $booking['id'], (int) $booking['modification_version'], $request, $pricing,
-            $this->depositAmount((int) $booking['id']), $this->pricingHash($pricing->snapshot)
+            (int) $booking['id'], (int) $booking['modification_version'], $request, $calculated, $pricing,
+            $this->depositAmount((int) $booking['id']), PricingSnapshotHasher::hash($pricing->snapshot)
         );
     }
 
@@ -77,10 +86,18 @@ final readonly class TransactionalConfirmedBookingModificationService
             }
             $bookingId = (int) $booking['id'];
             $this->assertAvailable($bookingId, $request->arrivalDate, $request->departureDate);
-            $pricing = $this->pricing->calculateFor($this->pdo, new PricingInput(
+            $calculated = $this->pricing->calculateFor($this->pdo, new PricingInput(
                 $request->arrivalDate, $request->departureDate, $request->adults, $request->childAges
             ));
-            if (!hash_equals($expectedPricingHash, $this->pricingHash($pricing->snapshot))) {
+            try {
+                $pricing = $this->pricingOverride->applyToResult(
+                    $calculated,
+                    $request->customTotal === null ? null : AdminCustomPrice::fromCanonical($request->customTotal),
+                );
+            } catch (AdminCustomPriceInvalid) {
+                throw new BookingModificationStale('Az árbeállítás az előnézet óta megváltozott. Készítsen új előnézetet.');
+            }
+            if (!hash_equals($expectedPricingHash, PricingSnapshotHasher::hash($pricing->snapshot))) {
                 throw new BookingModificationStale('Az árbeállítás az előnézet óta megváltozott. Készítsen új előnézetet.');
             }
             $oldPricing = $this->pricingSnapshot($bookingId, true);
@@ -131,6 +148,11 @@ final readonly class TransactionalConfirmedBookingModificationService
                 'accommodation_fee' => $pricing->accommodationFee, 'tourism_tax' => $pricing->tourismTax,
                 'total_amount' => $pricing->totalAmount, 'currency' => $pricing->currency,
                 'pricing_snapshot' => $pricing->snapshot,
+                ...($request->customTotal === null ? [] : [
+                    'pricing_mode' => 'admin_custom_total',
+                    'calculated_total' => $calculated->totalAmount,
+                    'custom_total' => $request->customTotal,
+                ]),
             ];
             $modification = $this->pdo->prepare(
                 'INSERT INTO booking_modifications
@@ -257,6 +279,11 @@ final readonly class TransactionalConfirmedBookingModificationService
             'accommodation_fee' => $pricing['accommodation_fee'] ?? null,
             'tourism_tax' => $pricing['taxes'] ?? null, 'total_amount' => (string) $booking['total_amount'],
             'currency' => (string) $booking['currency'], 'pricing_snapshot' => $pricing,
+            ...(!isset($pricing['price_override']) ? [] : [
+                'pricing_mode' => 'admin_custom_total',
+                'calculated_total' => $pricing['price_override']['calculated_total'] ?? null,
+                'custom_total' => $pricing['price_override']['custom_total'] ?? null,
+            ]),
         ];
     }
 
@@ -266,6 +293,7 @@ final readonly class TransactionalConfirmedBookingModificationService
         return array_intersect_key($state, array_flip([
             'arrival_date', 'departure_date', 'nights', 'adults', 'children', 'child_ages',
             'accommodation_fee', 'tourism_tax', 'total_amount', 'currency',
+            'pricing_mode', 'calculated_total', 'custom_total',
         ]));
     }
 
@@ -284,10 +312,4 @@ final readonly class TransactionalConfirmedBookingModificationService
         return new BookingModificationResult($bookingId, (int) $row['id'], (int) $row['version'], true);
     }
 
-    /** @param array<string,mixed> $snapshot */
-    private function pricingHash(array $snapshot): string
-    {
-        unset($snapshot['calculated_at']);
-        return hash('sha256', json_encode($snapshot, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
-    }
 }

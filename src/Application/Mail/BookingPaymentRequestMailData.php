@@ -24,6 +24,8 @@ final readonly class BookingPaymentRequestMailData
         public string $bankName = '',
         public string $swiftBic = '',
         public int $templateVersion = 1,
+        public ?string $calculatedAccommodationFee = null,
+        public ?string $customTotal = null,
     ) {
         if ($currency !== 'HUF') {
             throw new \InvalidArgumentException('A díjbekérő kizárólag HUF pénznemet támogat.');
@@ -31,6 +33,9 @@ final readonly class BookingPaymentRequestMailData
         if ($templateVersion === 2 && ($accommodationFee === null || $taxes === null || $paymentReference === null
             || $paymentReference === '' || $bankName === '' || $swiftBic === '')) {
             throw new \InvalidArgumentException('A v2 díjbekérő snapshot hiányos.');
+        }
+        if ($customTotal !== null && $calculatedAccommodationFee === null) {
+            throw new \InvalidArgumentException('Az egyedi árhoz tartozó kalkulált szállásdíj hiányzik.');
         }
     }
 
@@ -53,6 +58,12 @@ final readonly class BookingPaymentRequestMailData
                 'bank_name' => $this->bankName,
                 'swift_bic' => $this->swiftBic,
             ];
+            if ($this->customTotal !== null) {
+                $payload += [
+                    'calculated_accommodation_fee' => (string) $this->calculatedAccommodationFee,
+                    'custom_total' => $this->customTotal,
+                ];
+            }
         }
         return $payload;
     }
@@ -66,7 +77,12 @@ final readonly class BookingPaymentRequestMailData
             isset($payload['accommodation_fee']) ? (string) $payload['accommodation_fee'] : null,
             isset($payload['taxes']) ? (string) $payload['taxes'] : null,
             isset($payload['payment_reference']) ? (string) $payload['payment_reference'] : null,
-            (string) ($payload['bank_name'] ?? ''), (string) ($payload['swift_bic'] ?? ''), (int) ($payload['template_version'] ?? 1));
+            (string) ($payload['bank_name'] ?? ''),
+            (string) ($payload['swift_bic'] ?? ''),
+            (int) ($payload['template_version'] ?? 1),
+            isset($payload['calculated_accommodation_fee']) ? (string) $payload['calculated_accommodation_fee'] : null,
+            isset($payload['custom_total']) ? (string) $payload['custom_total'] : null,
+        );
     }
 
     public function subject(): string

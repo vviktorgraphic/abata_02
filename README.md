@@ -12,11 +12,11 @@ A kézi Szallas.hu iCal import az explicit `VALUE=DATE` mellett a szolgáltató 
 
 **Sprint 10 IMPLEMENTED az `release/rc2` ágon:** automatikus, lockolt/retry-zó iCal CLI 24 órás reconciliation grace-szel; explicit legacy/személyalapú pricing mód, gyermek ársávok, v3 immutable snapshot és egységes `20 000 Ft` formázás. Részletes szerződés és cPanel cron: [Sprint 10 dokumentáció](docs/18_SPRINT10_AUTOMATIC_ICAL_AND_PERSON_PRICING.md). A production iCal cron és provider feedváltás ettől még külön cutover művelet.
 
-**Phase 6 IMPLEMENTED + kliens UAT-korrekció:** confirmed booking dátum- és létszámmódosítás aláírt előnézettel, stale/concurrency védelemmel, aktuális újraárazással, változatlan korábbi előleggel és módosítástörténettel. A mentés nem küld automatikus levelet; a legutóbbi módosítás vendégértesítését az admin külön indítja. A részletek: [confirmed booking módosítás](docs/25_CONFIRMED_BOOKING_MODIFICATION.md).
+**Phase 6 IMPLEMENTED + kliens UAT-korrekció:** confirmed booking dátum- és létszámmódosítás aláírt előnézettel, stale/concurrency védelemmel, aktuális újraárazással, opcionális admin egyedi végösszeggel, változatlan korábbi előleggel és módosítástörténettel. A mentés nem küld automatikus levelet; a legutóbbi módosítás vendégértesítését az admin külön indítja. A részletek: [confirmed booking módosítás](docs/25_CONFIRMED_BOOKING_MODIFICATION.md).
 
 **Kliens scope-fix IMPLEMENTED:** pending foglalás kivételesen, kétlépcsős szerveroldali megerősítéssel díjbekérő nélkül is elfogadható, de csak akkor, ha még semmilyen díjbekérő-outbox nem létezik. A normál megerősítés továbbra is elküldött díjbekérőt követel; mindkét sikeres út a szokásos foglalás-visszaigazoló levelet használja. Részletek: [díjbekérő és megerősítés](docs/22_OCCUPANCY_IFA_AND_PAYMENT_REQUEST.md#díjbekérő-és-megerősítés).
 
-**Phase 9 IMPLEMENTED:** a teljes 2FA-val védett admin felület aláírt ár- és foglaltsági előnézet után normál `pending` foglalást rögzíthet. A közös tranzakció inventory lockot, idempotenciát és immutable pricing snapshotot használ; az admin csatorna nem fabrikál publikus jogi elfogadást és nem küld automatikus létrehozáskori e-mailt. Részletek: [admin kézi foglalásrögzítés](docs/28_ADMIN_MANUAL_BOOKING_CREATION.md).
+**Phase 9 IMPLEMENTED:** a teljes 2FA-val védett admin felület aláírt ár- és foglaltsági előnézet után normál `pending` foglalást rögzíthet. Az admin opcionális, IFA-t tartalmazó egész-HUF végösszeget adhat meg; üresen a kalkulált ár marad érvényes. A közös tranzakció inventory lockot, idempotenciát és az eredeti számítást is megőrző immutable pricing snapshotot használ; az admin csatorna nem fabrikál publikus jogi elfogadást és nem küld automatikus létrehozáskori e-mailt. Részletek: [admin kézi foglalásrögzítés](docs/28_ADMIN_MANUAL_BOOKING_CREATION.md).
 
 **Phase 10 IMPLEMENTED:** a meglévő booking outbox rekordokat cron-kompatibilis worker küldi és próbálja újra legfeljebb öt teljes kísérletig (5 perc, 15 perc, 1 óra, 6 óra), a legalább 15 perce beragadt `processing` állapotot konzervatívan helyreállítja. A production cron még nincs aktiválva; retention/törlés nincs. Részletek: [e-mail folyamatok](docs/06_EMAIL_WORKFLOWS.md#phase-10-cli-és-cron--implemented-kód-production-aktiválás-nélkül).
 
@@ -302,7 +302,7 @@ A demo seed szemléltető fejlesztési árat tartalmaz, production árként nem 
 
 ## Phase 6 – megerősített foglalás módosítása
 
-**IMPLEMENTED:** a booking részletoldalon a `confirmed` foglalás dátuma és létszáma kötelező szerveroldali előnézet után módosítható. A mentés inventory lockkal, optimista verzióval és idempotenciával újraellenőrzi a foglaltságot, a közös pricing engine-nel újraszámol, before/after auditot és retry-képes vendégértesítést készít. A korábbi előleg és díjbekérő változatlan; a státusz és státusztörténet nem módosul. Lásd [Phase 6 dokumentáció](docs/25_CONFIRMED_BOOKING_MODIFICATION.md).
+**IMPLEMENTED:** a booking részletoldalon a `confirmed` foglalás dátuma, létszáma és opcionális, IFA-t tartalmazó egyedi admin végösszege kötelező szerveroldali előnézet után módosítható. A mentés inventory lockkal, optimista verzióval és idempotenciával újraellenőrzi a foglaltságot, a közös pricing engine-nel újraszámol, majd az aláírt override-ot újraalkalmazza; before/after auditot és külön indítható, retry-képes vendégértesítést készít. A korábbi előleg és díjbekérő változatlan; a státusz és státusztörténet nem módosul. Lásd [Phase 6 dokumentáció](docs/25_CONFIRMED_BOOKING_MODIFICATION.md).
 
 ## Phase 8 – admin operatív dashboard
 
@@ -310,7 +310,7 @@ A demo seed szemléltető fejlesztési árat tartalmaz, production árként nem 
 
 ## Phase 9 – admin kézi foglalásrögzítés
 
-**IMPLEMENTED:** a booking listáról és dashboardról elérhető `/admin/bookings/create` űrlap a Budapest szerinti mai vagy későbbi érkezést fogadja, a publikus minimum előfoglalási szabály nélkül, de minden közös stay/horizon/capacity/pricing szabállyal. A preview nem ír adatot; az aláírt save újraáraz és inventory lock alatt újraellenőrzi az átfedést. Siker esetén `pending` booking készül, létrehozó-admin history/audittal, jogi acceptance snapshot és automatikus create e-mail nélkül.
+**IMPLEMENTED:** a booking listáról és dashboardról elérhető `/admin/bookings/create` űrlap a Budapest szerinti mai vagy későbbi érkezést fogadja, a publikus minimum előfoglalási szabály nélkül, de minden közös stay/horizon/capacity/pricing szabállyal. A preview nem ír adatot; opcionális, IFA-t tartalmazó egész-HUF egyedi végösszeget fogad, miközben a kalkulált árat is megmutatja. Az aláírt save újraáraz, ellenőrzi a teljes pricing hash-t és inventory lock alatt újraellenőrzi az átfedést. Siker esetén `pending` booking készül, létrehozó-admin history/audittal, jogi acceptance snapshot és automatikus create e-mail nélkül.
 
 ## Sprint 6 – pricing, policy és lemondás
 

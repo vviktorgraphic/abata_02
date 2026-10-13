@@ -70,10 +70,20 @@ final readonly class ConfirmedBookingModificationValidator
             if ($arrival > $horizon) $errors['arrival_date'] = 'Az érkezés kívül esik a foglalási időhorizonton.';
             if ($departure > $horizon) $errors['departure_date'] = 'A távozás kívül esik a foglalási időhorizonton.';
         }
+        $customPrice = null;
+        try {
+            $customPrice = AdminCustomPrice::optionalFromInput($payload['custom_total'] ?? null);
+        } catch (AdminCustomPriceInvalid $error) {
+            $errors['custom_total'] = $error->getMessage();
+        }
         if ($errors !== []) throw new BookingValidationFailed($errors);
 
         return new ConfirmedBookingModification(
-            $arrival->format('Y-m-d'), $departure->format('Y-m-d'), (int) $adults, array_values($ages)
+            $arrival->format('Y-m-d'),
+            $departure->format('Y-m-d'),
+            (int) $adults,
+            array_values($ages),
+            $customPrice?->total,
         );
     }
 

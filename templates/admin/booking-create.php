@@ -53,27 +53,46 @@ require __DIR__ . '/_layout_start.php';
             </div>
             <label for="admin-booking-notes">Megjegyzés (opcionális)</label><textarea id="admin-booking-notes" name="notes" maxlength="2000"><?= $e($values['notes'] ?? '') ?></textarea><?= $error('notes') ?>
         </fieldset>
+        <fieldset>
+            <legend>Árazás</legend>
+            <label for="admin-booking-custom-total">Egyedi végösszeg (opcionális)</label>
+            <input id="admin-booking-custom-total" type="number" name="custom_total" min="0" max="9999999999" step="1" value="<?= $e($values['custom_total'] ?? '') ?>" aria-describedby="admin-booking-custom-total-help<?= isset($errors['custom_total']) ? ' error-custom_total' : '' ?>">
+            <p class="field-help" id="admin-booking-custom-total-help">Ha üresen hagyod, a kalkulátor által számolt végösszeg kerül mentésre. Az IFA nem írható felül.</p>
+            <?= $error('custom_total') ?>
+        </fieldset>
         <?= $error('pricing') ?><?= $error('stale') ?><?= $error('form') ?>
         <button type="submit">Előnézet</button>
     </form>
 
-    <?php if ($preview !== null && $previewSignature !== null): $request=$preview->request; $pricing=$preview->pricing; ?>
+    <?php if ($preview !== null && $previewSignature !== null): $request=$preview->request; $pricing=$preview->pricing; $calculated=$preview->calculatedPricing; $hasCustom=$preview->customTotal !== null; ?>
         <section class="panel booking-create-preview" aria-labelledby="booking-create-preview-title" aria-live="polite">
             <h2 id="booking-create-preview-title">Foglalás előnézete</h2>
             <dl class="facts">
                 <div><dt>Éjszakák</dt><dd><?= $request->nights() ?></dd></div>
                 <div><dt>Vendégek</dt><dd><?= $request->adults ?> felnőtt, <?= count($request->childAges) ?> gyermek</dd></div>
-                <div><dt>Szállásdíj</dt><dd><?= $e(\App\Presentation\HufFormatter::format($pricing->accommodationFee)) ?></dd></div>
-                <div><dt>IFA/adó</dt><dd><?= $e(\App\Presentation\HufFormatter::format($pricing->tourismTax)) ?></dd></div>
-                <div><dt>Végösszeg</dt><dd><?= $e(\App\Presentation\HufFormatter::format($pricing->totalAmount)) ?></dd></div>
+                <?php if ($hasCustom): ?>
+                    <div><dt>Kalkulált szállásdíj</dt><dd><?= $e(\App\Presentation\HufFormatter::format($calculated->accommodationFee)) ?></dd></div>
+                    <div><dt>Kalkulált IFA/adó</dt><dd><?= $e(\App\Presentation\HufFormatter::format($calculated->tourismTax)) ?></dd></div>
+                    <div><dt>Kalkulált végösszeg</dt><dd><?= $e(\App\Presentation\HufFormatter::format($calculated->totalAmount)) ?></dd></div>
+                    <div><dt>Egyedi végösszeg</dt><dd><?= $e(\App\Presentation\HufFormatter::format((string) $preview->customTotal)) ?></dd></div>
+                    <div><dt>Egyedi szállásdíj</dt><dd><?= $e(\App\Presentation\HufFormatter::format($pricing->accommodationFee)) ?></dd></div>
+                    <div><dt>IFA/adó</dt><dd><?= $e(\App\Presentation\HufFormatter::format($pricing->tourismTax)) ?></dd></div>
+                <?php else: ?>
+                    <div><dt>Szállásdíj</dt><dd><?= $e(\App\Presentation\HufFormatter::format($pricing->accommodationFee)) ?></dd></div>
+                    <div><dt>IFA/adó</dt><dd><?= $e(\App\Presentation\HufFormatter::format($pricing->tourismTax)) ?></dd></div>
+                    <div><dt>Végösszeg</dt><dd><?= $e(\App\Presentation\HufFormatter::format($pricing->totalAmount)) ?></dd></div>
+                <?php endif ?>
                 <div><dt>Pénznem</dt><dd><?= $e($pricing->currency) ?></dd></div>
             </dl>
             <p class="notice">A rögzítéskor a rendszer újra ellenőrzi a foglaltságot és az árat. Automatikus e-mail nem kerül kiküldésre.</p>
             <form id="booking-create-submit" method="post" action="/admin/bookings/create">
                 <input type="hidden" name="_csrf" value="<?= $e($csrfToken) ?>">
                 <input type="hidden" name="preview_signature" value="<?= $e($previewSignature) ?>">
-                <input type="hidden" name="expected_total" value="<?= $e($pricing->totalAmount) ?>">
+                <input type="hidden" name="expected_calculated_total" value="<?= $e($calculated->totalAmount) ?>">
+                <input type="hidden" name="expected_pricing_hash" value="<?= $e($preview->pricingHash) ?>">
+                <input type="hidden" name="expected_effective_total" value="<?= $e($pricing->totalAmount) ?>">
                 <input type="hidden" name="expected_currency" value="<?= $e($pricing->currency) ?>">
+                <input type="hidden" name="custom_total" value="<?= $e($preview->customTotal === null ? '' : substr($preview->customTotal, 0, -3)) ?>">
                 <input type="hidden" name="idempotency_key" value="<?= $e($request->idempotencyKey) ?>">
                 <input type="hidden" name="arrival_date" value="<?= $e($request->period->arrival->format('Y-m-d')) ?>">
                 <input type="hidden" name="departure_date" value="<?= $e($request->period->departure->format('Y-m-d')) ?>">

@@ -23,6 +23,24 @@ final class BookingModificationNotificationTest extends TestCase
         self::assertSame('A Bata', $message->fromName);
         self::assertSame('info@abata.test', $message->replyToEmail);
         self::assertStringContainsString('&lt;Vendég&gt;', $message->htmlBody);
+        self::assertStringNotContainsString('Egyedi végösszeg', $message->textBody);
+        self::assertStringNotContainsString('Egyedi végösszeg', $message->htmlBody);
+    }
+
+    public function testCustomPriceRowIsRenderedWhenOverrideWasUsed(): void
+    {
+        $data = new BookingModificationMailData(
+            'guest@example.test', 'Vendég', 'AB-2', '2026-11-10', '2026-11-13',
+            3, 2, [3], '28000.00', '500.00', '28500.00', null, 'HUF', '28500.00',
+        );
+        $message = $this->renderer()->render($data);
+        foreach ([$message->textBody, $message->htmlBody] as $body) {
+            self::assertStringContainsString('Egyedi végösszeg', $body);
+            self::assertStringContainsString('28 500 Ft', $body);
+            self::assertStringContainsString('28 000 Ft', $body);
+            self::assertStringContainsString('500 Ft', $body);
+            self::assertStringContainsString('nem áll rendelkezésre', $body);
+        }
     }
 
     public function testDispatchIsRetryableAndDoesNotDuplicateSuccessfulDelivery(): void

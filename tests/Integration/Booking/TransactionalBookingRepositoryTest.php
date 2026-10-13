@@ -13,6 +13,9 @@ use App\Application\Booking\BookingPreviewStale;
 use App\Application\Booking\IdempotencyConflict;
 use App\Application\Booking\AdminBookingListQuery;
 use App\Application\Booking\AdminMonthlyOccupancyQuery;
+use App\Application\Booking\AdminCustomPrice;
+use App\Application\Booking\AdminPricingOverride;
+use App\Application\Booking\PricingSnapshotHasher;
 use App\Application\Mail\BookingNotificationRecipientProvider;
 use App\Application\Mail\BookingNotificationRecipientResolver;
 use App\Domain\Booking\AvailabilityService;
@@ -70,7 +73,7 @@ final class TransactionalBookingRepositoryTest extends TestCase
         $repository = new TransactionalBookingRepository($this->pdo);
         $reference = 'ADMIN-MANUAL-' . strtoupper(bin2hex(random_bytes(5)));
         $command = $this->adminCommand($reference, '2097-02-10', '2097-02-13');
-        $options = BookingCreationOptions::adminManual($adminId, '30000.00', 'HUF');
+        $options = $this->adminOptions($adminId, $command);
         $baselinePending = (new PdoAdminDashboardRepository($this->pdo))->fetch(
             new DateTimeImmutable('2097-02-01', new DateTimeZone('Europe/Budapest')),
         )->pendingCount;
@@ -154,24 +157,122 @@ final class TransactionalBookingRepositoryTest extends TestCase
         );
         self::assertContains('2097-02-10', $exportedStarts);
 
+        $turnoverCommand = $this->adminCommand('ADMIN-TURNOVER-' . strtoupper(bin2hex(random_bytes(5))), '2097-02-13', '2097-02-15');
         $turnover = $repository->create(
-            $this->adminCommand('ADMIN-TURNOVER-' . strtoupper(bin2hex(random_bytes(5))), '2097-02-13', '2097-02-15'),
+            $turnoverCommand,
             $this->pricing(),
-            $options,
+            $this->adminOptions($adminId, $turnoverCommand),
         );
         $this->bookingIds[] = $turnover->bookingId;
         self::assertSame('pending', $turnover->status);
     }
 
+    public function testAdminManualCustomTotalPersistsEffectiveSnapshotAndSafeAuditWithoutEmail(): void
+    {
+        $adminId = $this->insertAdmin();
+        $command = $this->adminCommand(
+            'ADMIN-CUSTOM-' . strtoupper(bin2hex(random_bytes(5))),
+            '2097-07-10',
+            '2097-07-12',
+        );
+        $calculated = new BookingPricing('30500.00', 'HUF', [
+            'version' => 5,
+            'arrival_date' => $command->arrivalDate,
+            'departure_date' => $command->departureDate,
+            'accommodation_fee' => '30000.00',
+            'taxes' => '500.00',
+            'total' => '30500.00',
+            'currency' => 'HUF',
+            'line_items' => [],
+        ]);
+        $provider = new class($calculated) implements BookingPricingProvider {
+            public function __construct(private BookingPricing $pricing) {}
+            public function calculate(PDO $pdo, BookingPersistenceCommand $command): BookingPricing { return $this->pricing; }
+        };
+        $custom = AdminCustomPrice::fromCanonical('28500.00');
+        $effective = (new AdminPricingOverride())->applyToBookingPricing($calculated, $custom);
+        $options = BookingCreationOptions::adminManual(
+            $adminId,
+            $calculated->totalAmount,
+            PricingSnapshotHasher::hash($effective->snapshot),
+            $custom->total,
+            $effective->totalAmount,
+            'HUF',
+        );
+
+        $created = (new TransactionalBookingRepository($this->pdo))->create($command, $provider, $options);
+        $this->bookingIds[] = $created->bookingId;
+
+        self::assertSame('28500.00', $created->totalAmount);
+        $storedTotal = $this->pdo->prepare('SELECT total_amount FROM bookings WHERE id = :id');
+        $storedTotal->execute(['id' => $created->bookingId]);
+        self::assertSame('28500.00', $storedTotal->fetchColumn());
+        $snapshotQuery = $this->pdo->prepare('SELECT snapshot FROM booking_pricing_snapshots WHERE booking_id = :id');
+        $snapshotQuery->execute(['id' => $created->bookingId]);
+        $snapshot = json_decode((string) $snapshotQuery->fetchColumn(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('28000.00', $snapshot['accommodation_fee']);
+        self::assertSame('500.00', $snapshot['taxes']);
+        self::assertSame('28500.00', $snapshot['total']);
+        self::assertSame('30500.00', $snapshot['price_override']['calculated_total']);
+        self::assertSame(0, $this->countBookingRows('email_outbox', $created->bookingId));
+        $audit = $this->pdo->prepare("SELECT metadata_json FROM audit_logs WHERE event_type='booking.admin_created' AND target_id=:id");
+        $audit->execute(['id' => (string) $created->bookingId]);
+        $metadata = json_decode((string) $audit->fetchColumn(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('admin_custom_total', $metadata['pricing_mode']);
+        self::assertSame('30500.00', $metadata['calculated_total']);
+        self::assertSame('28500.00', $metadata['custom_total']);
+        self::assertArrayNotHasKey('email', $metadata);
+    }
+
+    public function testAdminManualCustomTotalRejectsChangedCalculatorSnapshotAfterPreview(): void
+    {
+        $adminId = $this->insertAdmin();
+        $command = $this->adminCommand(
+            'ADMIN-CUSTOM-STALE-' . strtoupper(bin2hex(random_bytes(5))),
+            '2097-08-10',
+            '2097-08-12',
+        );
+        $provider = new class implements BookingPricingProvider {
+            public function calculate(PDO $pdo, BookingPersistenceCommand $command): BookingPricing
+            {
+                return new BookingPricing('30500.00', 'HUF', [
+                    'version' => 6,
+                    'accommodation_fee' => '29900.00',
+                    'taxes' => '600.00',
+                    'total' => '30500.00',
+                    'currency' => 'HUF',
+                ]);
+            }
+        };
+        $options = BookingCreationOptions::adminManual(
+            $adminId,
+            '30500.00',
+            str_repeat('a', 64),
+            '28500.00',
+            '28500.00',
+            'HUF',
+        );
+
+        try {
+            (new TransactionalBookingRepository($this->pdo))->create($command, $provider, $options);
+            self::fail('Changed calculator/IFA snapshot was accepted.');
+        } catch (BookingPreviewStale $error) {
+            self::assertStringContainsString('Az ár időközben megváltozott', $error->getMessage());
+        }
+        $statement = $this->pdo->prepare('SELECT COUNT(*) FROM bookings WHERE reference=:reference');
+        $statement->execute(['reference' => $command->reference]);
+        self::assertSame(0, (int) $statement->fetchColumn());
+    }
+
     public function testAdminManualCreationRejectsBookingAndBlockedPeriodConflictsAndStalePriceAtomically(): void
     {
         $adminId = $this->insertAdmin();
-        $options = BookingCreationOptions::adminManual($adminId, '30000.00', 'HUF');
         $repository = new TransactionalBookingRepository($this->pdo);
+        $winnerCommand = $this->adminCommand('ADMIN-WINNER-' . strtoupper(bin2hex(random_bytes(5))), '2097-03-10', '2097-03-13');
         $winner = $repository->create(
-            $this->adminCommand('ADMIN-WINNER-' . strtoupper(bin2hex(random_bytes(5))), '2097-03-10', '2097-03-13'),
+            $winnerCommand,
             $this->pricing(),
-            $options,
+            $this->adminOptions($adminId, $winnerCommand),
         );
         $this->bookingIds[] = $winner->bookingId;
 
@@ -179,7 +280,7 @@ final class TransactionalBookingRepositoryTest extends TestCase
             $repository->create(
                 $this->adminCommand('ADMIN-LOSER-' . strtoupper(bin2hex(random_bytes(5))), '2097-03-11', '2097-03-12'),
                 $this->pricing(),
-                $options,
+                $this->adminOptions($adminId, $this->adminCommand('UNUSED', '2097-03-11', '2097-03-12')),
             );
             self::fail('Overlapping admin booking was accepted.');
         } catch (BookingConflict) {
@@ -192,7 +293,7 @@ final class TransactionalBookingRepositoryTest extends TestCase
             $repository->create(
                 $this->adminCommand('ADMIN-CONFIRMED-CONFLICT-' . strtoupper(bin2hex(random_bytes(4))), '2097-03-21', '2097-03-22'),
                 $this->pricing(),
-                $options,
+                $this->adminOptions($adminId, $this->adminCommand('UNUSED', '2097-03-21', '2097-03-22')),
             );
             self::fail('Confirmed booking overlap was accepted.');
         } catch (BookingConflict) {
@@ -206,7 +307,7 @@ final class TransactionalBookingRepositoryTest extends TestCase
             $repository->create(
                 $this->adminCommand('ADMIN-BLOCKED-' . strtoupper(bin2hex(random_bytes(5))), '2097-04-11', '2097-04-12'),
                 $this->pricing(),
-                $options,
+                $this->adminOptions($adminId, $this->adminCommand('UNUSED', '2097-04-11', '2097-04-12')),
             );
             self::fail('Blocked period overlap was accepted.');
         } catch (BookingConflict) {
@@ -219,7 +320,7 @@ final class TransactionalBookingRepositoryTest extends TestCase
             $repository->create(
                 $staleCommand,
                 $this->pricing(),
-                BookingCreationOptions::adminManual($adminId, '30001.00', 'HUF'),
+                $this->adminOptions($adminId, $staleCommand, '30001.00'),
             );
             self::fail('Stale preview price was accepted.');
         } catch (BookingPreviewStale) {
@@ -241,7 +342,7 @@ final class TransactionalBookingRepositoryTest extends TestCase
         $first = $repository->create(
             $this->adminCommand('ADMIN-IDEMPOTENT-' . strtoupper(bin2hex(random_bytes(4))), '2097-06-10', '2097-06-12', $key),
             $this->pricing(),
-            BookingCreationOptions::adminManual($adminId, '30000.00', 'HUF'),
+            $this->adminOptions($adminId, $this->adminCommand('UNUSED', '2097-06-10', '2097-06-12')),
         );
         $this->bookingIds[] = $first->bookingId;
 
@@ -249,7 +350,7 @@ final class TransactionalBookingRepositoryTest extends TestCase
         $repository->create(
             $this->adminCommand('ADMIN-IDEMPOTENT-CHANGED-' . strtoupper(bin2hex(random_bytes(4))), '2097-06-12', '2097-06-14', $key),
             $this->pricing(),
-            BookingCreationOptions::adminManual($adminId, '30000.00', 'HUF'),
+            $this->adminOptions($adminId, $this->adminCommand('UNUSED', '2097-06-12', '2097-06-14')),
         );
     }
 
@@ -629,6 +730,29 @@ final class TransactionalBookingRepositoryTest extends TestCase
                 ]);
             }
         };
+    }
+
+    private function adminOptions(
+        int $adminId,
+        BookingPersistenceCommand $command,
+        string $expectedCalculatedTotal = '30000.00',
+    ): BookingCreationOptions {
+        $snapshot = [
+            'version' => 1,
+            'arrival_date' => $command->arrivalDate,
+            'departure_date' => $command->departureDate,
+            'total' => 30000,
+            'currency' => 'HUF',
+        ];
+
+        return BookingCreationOptions::adminManual(
+            $adminId,
+            $expectedCalculatedTotal,
+            \App\Application\Booking\PricingSnapshotHasher::hash($snapshot),
+            null,
+            '30000.00',
+            'HUF',
+        );
     }
 
     private function countBookingRows(string $table, int $bookingId): int

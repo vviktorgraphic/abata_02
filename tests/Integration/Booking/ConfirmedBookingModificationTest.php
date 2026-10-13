@@ -99,6 +99,91 @@ final class ConfirmedBookingModificationTest extends TestCase
         self::assertContains($this->reference($id),array_column($newDay['bookings'],'reference'));
     }
 
+    public function testCustomPriceModificationPersistsEffectiveSnapshotPreservesProvenanceDepositAndManualEmail(): void
+    {
+        $id = $this->booking('confirmed', '2044-11-10', '2044-11-12', []);
+        $service = $this->service();
+        $firstRequest = new ConfirmedBookingModification('2044-11-14', '2044-11-17', 2, [], '100000.00');
+        $firstPreview = $service->preview($this->reference($id), $firstRequest);
+
+        self::assertSame('100000.00', $firstPreview->pricing->totalAmount);
+        self::assertSame($firstPreview->calculatedPricing->tourismTax, $firstPreview->pricing->tourismTax);
+        self::assertSame(
+            100000 - (int) substr($firstPreview->pricing->tourismTax, 0, -3),
+            (int) substr($firstPreview->pricing->accommodationFee, 0, -3),
+        );
+        self::assertSame('admin_custom_total', $firstPreview->pricing->snapshot['price_override']['type']);
+
+        $first = $service->modify(
+            $this->reference($id), $firstRequest, 0, $firstPreview->pricingHash,
+            'custom-modification-key-0001', $this->adminId,
+        );
+        self::assertSame('100000.00', $this->value('SELECT total_amount FROM bookings WHERE id=:id', ['id' => $id]));
+        self::assertSame('45000.00', $this->value(
+            "SELECT JSON_UNQUOTE(JSON_EXTRACT(payload,'$.advance_amount')) FROM email_outbox WHERE booking_id=:id AND message_type='booking_payment_request'",
+            ['id' => $id],
+        ));
+        self::assertSame(0, (int) $this->value(
+            "SELECT COUNT(*) FROM email_outbox WHERE booking_id=:id AND message_type='booking_modified'",
+            ['id' => $id],
+        ));
+
+        $secondRequest = new ConfirmedBookingModification('2044-11-15', '2044-11-19', 2, [], '110000.00');
+        $secondPreview = $service->preview($this->reference($id), $secondRequest);
+        $second = $service->modify(
+            $this->reference($id), $secondRequest, 1, $secondPreview->pricingHash,
+            'custom-modification-key-0002', $this->adminId,
+        );
+        $stored = $this->row(
+            'SELECT before_snapshot,after_snapshot,unchanged_deposit_amount FROM booking_modifications WHERE id=:id',
+            ['id' => $second->modificationId],
+        );
+        $before = json_decode((string) $stored['before_snapshot'], true, 512, JSON_THROW_ON_ERROR);
+        $after = json_decode((string) $stored['after_snapshot'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('100000.00', $before['pricing_snapshot']['price_override']['custom_total']);
+        self::assertSame('110000.00', $after['pricing_snapshot']['price_override']['custom_total']);
+        self::assertSame('admin_custom_total', $after['pricing_mode']);
+        self::assertSame('45000.00', $stored['unchanged_deposit_amount']);
+
+        $mailer = new InMemoryMailer();
+        $dispatcher = new BookingModificationNotificationDispatcher(
+            new PdoBookingModificationOutbox($this->pdo), $this->mailRenderer(), $mailer
+        );
+        self::assertSame('sent', $dispatcher->dispatch($this->reference($id), $second->modificationId, $this->adminId)->status);
+        self::assertCount(1, $mailer->messages());
+        self::assertStringContainsString('Egyedi végösszeg:', $mailer->messages()[0]->textBody);
+        self::assertStringContainsString('110 000 Ft', $mailer->messages()[0]->textBody);
+        self::assertStringContainsString(
+            \App\Presentation\HufFormatter::format($secondPreview->pricing->accommodationFee),
+            $mailer->messages()[0]->textBody,
+        );
+        self::assertSame(1, $first->version);
+    }
+
+    public function testCustomModificationWithoutPaymentRequestKeepsDepositNull(): void
+    {
+        $id = $this->booking('confirmed', '2044-12-10', '2044-12-12', []);
+        $this->pdo->prepare("DELETE FROM email_outbox WHERE booking_id=:id AND message_type='booking_payment_request'")
+            ->execute(['id' => $id]);
+        $service = $this->service();
+        $request = new ConfirmedBookingModification('2044-12-14', '2044-12-17', 2, [], '100000.00');
+        $preview = $service->preview($this->reference($id), $request);
+        self::assertNull($preview->unchangedDepositAmount);
+
+        $result = $service->modify(
+            $this->reference($id), $request, 0, $preview->pricingHash,
+            'custom-no-deposit-key-0001', $this->adminId,
+        );
+        self::assertNull($this->value(
+            'SELECT unchanged_deposit_amount FROM booking_modifications WHERE id=:id',
+            ['id' => $result->modificationId],
+        ));
+        self::assertSame(0, (int) $this->value(
+            "SELECT COUNT(*) FROM email_outbox WHERE booking_id=:id AND message_type='booking_payment_request'",
+            ['id' => $id],
+        ));
+    }
+
     public function testSameIdempotencyKeyReplaysWithoutSecondAuditOrEmailAndStaleVersionIsRejected(): void
     {
         $id=$this->booking('confirmed','2044-03-10','2044-03-12',[]);
