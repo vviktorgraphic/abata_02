@@ -13,6 +13,7 @@ use App\Application\Booking\BookingModificationStale;
 use App\Application\Booking\BookingNotFound;
 use App\Application\Booking\ConfirmedBookingModificationValidator;
 use App\Application\Booking\IdempotencyConflict;
+use App\Application\Booking\PaymentRequestAlreadyExists;
 use App\Application\Mail\BookingModificationNotificationDispatcher;
 use App\Application\Pricing\PricingConfigurationException;
 use App\Domain\Booking\BookingValidationFailed;
@@ -199,6 +200,69 @@ final readonly class BookingManagementController
             'modificationErrors' => $modificationErrors, 'modificationPreviewSignature' => $modificationPreviewSignature,
             'successMessage' => $this->flash?->consume((string) $booking['reference']),
         ]), $status);
+    }
+
+    /** @param array<string, mixed> $form */
+    public function promptConfirmWithoutPaymentRequest(
+        string $reference,
+        array $form,
+        ?string $contentType,
+        ?int $contentLength,
+    ): AdminResponse {
+        $authorization = $this->guard->authorizeForm(
+            'booking.confirm_without_payment_prompt', $form, $contentType, $contentLength
+        );
+        if (!$authorization->allowed()) return $authorization->rejection;
+
+        $booking = $this->queries->fetchBookingDetail(new AdminBookingDetailQuery($reference));
+        if ($booking === null) return $this->error(404, 'A foglalás nem található.');
+        if ($booking['status'] !== 'pending') {
+            return $this->error(409, 'Csak függőben lévő foglalás erősíthető meg díjbekérő nélkül.');
+        }
+        if ($booking['payment_request'] !== null) {
+            return $this->error(
+                409,
+                'Ehhez a foglaláshoz már tartozik díjbekérő-küldési folyamat. Használd a normál megerősítést.'
+            );
+        }
+
+        return new HtmlResponse($this->view->render('booking-confirm-without-payment', [
+            'booking' => $booking,
+            'csrfToken' => $this->csrf->token(),
+        ]));
+    }
+
+    /** @param array<string, mixed> $form */
+    public function confirmWithoutPaymentRequest(
+        string $reference,
+        array $form,
+        ?string $contentType,
+        ?int $contentLength,
+    ): AdminResponse {
+        $authorization = $this->guard->authorizeForm(
+            'booking.confirm_without_payment', $form, $contentType, $contentLength
+        );
+        if (!$authorization->allowed()) return $authorization->rejection;
+
+        try {
+            $result = $this->transitions->confirmWithoutPaymentRequest(
+                $reference, (int) $authorization->admin['id'], $authorization->adminNote
+            );
+            $this->notifications->dispatch(
+                $result->bookingId, $result->newStatus, (int) $authorization->admin['id']
+            );
+            return new RedirectResponse(
+                '/admin/bookings/' . rawurlencode($reference) . '?result=confirmed_without_payment'
+            );
+        } catch (BookingNotFound) {
+            return $this->error(404, 'A foglalás nem található.');
+        } catch (PaymentRequestAlreadyExists $error) {
+            return $this->error(409, $error->getMessage());
+        } catch (BookingConflict|BookingTransitionNotAllowed) {
+            return $this->error(409, 'A státuszváltás ütközés vagy az aktuális státusz miatt nem hajtható végre.');
+        } catch (\InvalidArgumentException) {
+            return $this->error(422, 'A státuszváltás adatai érvénytelenek.');
+        }
     }
 
     /** @param array<string, mixed> $form */

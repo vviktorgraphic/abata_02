@@ -344,3 +344,5 @@ git status
 **PLANNED / KÖRNYEZETFÜGGŐ:** production ár- és adókonfiguráció jóváhagyása; production SMTP/TLS smoke; teljes interaktív browser/accessibility audit; online pénzügyi beszedés nincs a Sprint 6 hatókörében.
 
 Az automatikus concurrency teszt két PHP processzel ellenőrzi az átfedő pending confirmot. Mailpitben request/confirmed/rejected/cancelled levél, címzett, tárgy, referencia, státusz, összeg és az admin note hiánya ellenőrzendő.
+
+**AUTOMATIZÁLTAN LEFEDETT kliens scope-fix:** a normál megerősítés továbbra is `sent` díjbekérőt követel; a kivételes díjbekérő nélküli út két külön, védett POST lépésből áll. A prompt booking/outbox/SMTP szempontból read-only. A végleges művelet pending/processing/sent/failed díjbekérő-rekordnál egyaránt tiltott, inventory- és blocked-period konfliktust újraellenőriz, explicit history/audit nyomot és pontosan egy normál `booking_confirmed` outboxot készít. A szekvenciális dupla-submit egyetlen átmenetet és levelet eredményez.

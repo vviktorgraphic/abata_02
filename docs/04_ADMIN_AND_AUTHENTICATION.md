@@ -162,6 +162,8 @@ Az admin/auth sprint csak akkor fogadható el, ha:
 
 A 2FA-val hitelesített admin lista-, részlet- és blocked-period oldalt kap. Minden válasz no-store; a POST-ok form Content-Type-, 8 KiB body-, CSRF-, admin/action rate-limit-, mező-whitelist- és 500 karakteres note ellenőrzést használnak, PRG redirecttel.
 
+Pending foglalásnál, ha még nincs `booking_payment_request` outbox rekord, a normál díjbekérő-küldés mellett külön „Megerősítés díjbekérő nélkül” művelet érhető el. Az első CSRF- és rate-limit-védett POST kizárólag szerveroldali figyelmeztető oldalt renderel; állapotot vagy outboxot nem módosít. A második, külön POST ismét teljes auth/CSRF/action-guard ellenőrzést végez, és csak ez indíthatja el a kivételes státuszváltást. Bármilyen meglévő pending/processing/sent/failed díjbekérő-rekord esetén a bypass rejtett és szerveroldalon is `409`-cel tiltott.
+
 ## Admin kézi foglalásrögzítés – IMPLEMENTED Phase 9
 
 A booking lista és dashboard `Új foglalás` művelete teljes sessionnel a `/admin/bookings/create` oldalra vezet. A szerveroldali form/preview/save folyamat a közös vendég-, tartózkodás-, kapacitás-, pricing-, idempotencia- és inventory-szabályokat használja; az admin a Budapest szerinti mai érkezést is rögzítheti, mert a publikus minimum előfoglalási korlát itt nem fut. A preview HMAC-aláírása az összes adatot, idempotenciakulcsot, végösszeget és pénznemet köti össze, a végleges tranzakció pedig újraellenőrzi a foglaltságot és az árat.

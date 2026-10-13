@@ -13,6 +13,7 @@ use App\Application\Booking\BookingPreviewStale;
 use App\Application\Booking\BookingNotFound;
 use App\Application\Booking\BookingTransitionResult;
 use App\Application\Booking\IdempotencyConflict;
+use App\Application\Booking\PaymentRequestAlreadyExists;
 use App\Application\Mail\BookingNotificationRecipientResolver;
 use App\Domain\Booking\AdminNote;
 use App\Domain\Booking\BookingStateMachine;
@@ -42,11 +43,32 @@ final class TransactionalBookingRepository
         int $adminId,
         ?string $note = null,
     ): BookingTransitionResult {
+        return $this->performTransition($reference, $targetStatus, $adminId, $note, false);
+    }
+
+    public function confirmWithoutPaymentRequest(
+        string $reference,
+        int $adminId,
+        ?string $note = null,
+    ): BookingTransitionResult {
+        return $this->performTransition($reference, 'confirmed', $adminId, $note, true);
+    }
+
+    private function performTransition(
+        string $reference,
+        string $targetStatus,
+        int $adminId,
+        ?string $note,
+        bool $withoutPaymentRequest,
+    ): BookingTransitionResult {
         if ($this->pdo->inTransaction()) {
             throw new \LogicException('Booking transition owns its transaction boundary.');
         }
 
         $note = (new AdminNote($note))->value;
+        $historyNote = $withoutPaymentRequest && $note === null
+            ? 'Megerősítve díjbekérő nélkül'
+            : $note;
         $stateMachine = new BookingStateMachine();
         $bookingId = null;
         $this->pdo->beginTransaction();
@@ -65,10 +87,16 @@ final class TransactionalBookingRepository
             if ($targetStatus === 'confirmed') {
                 $payment = $this->pdo->prepare(
                     "SELECT status FROM email_outbox WHERE booking_id = :id
-                     AND message_type = 'booking_payment_request' FOR UPDATE"
+                     AND message_type = 'booking_payment_request' ORDER BY id FOR UPDATE"
                 );
                 $payment->execute(['id' => $bookingId]);
-                if ($payment->fetchColumn() !== 'sent') {
+                $paymentStatuses = array_map('strval', $payment->fetchAll(PDO::FETCH_COLUMN));
+                if ($withoutPaymentRequest && $paymentStatuses !== []) {
+                    throw new PaymentRequestAlreadyExists(
+                        'Ehhez a foglaláshoz már tartozik díjbekérő-küldési folyamat. Használd a normál megerősítést.'
+                    );
+                }
+                if (!$withoutPaymentRequest && ($paymentStatuses[0] ?? null) !== 'sent') {
                     throw new \App\Application\Booking\PaymentRequestRequired('A foglalás a díjbekérő sikeres elküldése után erősíthető meg.');
                 }
                 $this->assertAvailableForConfirmation(
@@ -106,7 +134,7 @@ final class TransactionalBookingRepository
             );
             $history->execute([
                 'booking_id' => $booking['id'], 'old_status' => $oldStatus,
-                'new_status' => $targetStatus, 'admin_id' => $adminId, 'note' => $note,
+                'new_status' => $targetStatus, 'admin_id' => $adminId, 'note' => $historyNote,
             ]);
             ($this->transactionProbe ?? static fn (string $stage): null => null)('transition_history_inserted');
 
@@ -116,15 +144,18 @@ final class TransactionalBookingRepository
                  VALUES (:event_type, :admin_id, \'booking\', :target_id, \'success\', :metadata)'
             );
             $audit->execute([
-                'event_type' => $cancellation === null
+                'event_type' => $withoutPaymentRequest
+                    ? 'booking.confirmed_without_payment_request'
+                    : ($cancellation === null
                     ? 'booking.' . $targetStatus
-                    : ($cancellation->hasPenalty() ? 'booking.cancelled_with_penalty' : 'booking.cancelled_without_penalty'),
+                    : ($cancellation->hasPenalty() ? 'booking.cancelled_with_penalty' : 'booking.cancelled_without_penalty')),
                 'admin_id' => $adminId,
                 'target_id' => (string) $booking['id'],
                 'metadata' => json_encode([
                     'booking_reference' => $reference,
                     'old_status' => $oldStatus,
                     'new_status' => $targetStatus,
+                    ...($withoutPaymentRequest ? ['confirmation_mode' => 'without_payment_request'] : []),
                     ...($cancellation === null ? [] : [
                         'cancellation_rule_version' => $cancellation->ruleVersion,
                         'penalty_rate' => $cancellation->penaltyRate,
@@ -149,7 +180,9 @@ final class TransactionalBookingRepository
             if ($this->pdo->inTransaction()) {
                 $this->pdo->rollBack();
             }
-            $this->auditFailedTransition($reference, $targetStatus, $adminId, $bookingId, $error);
+            $this->auditFailedTransition(
+                $reference, $targetStatus, $adminId, $bookingId, $error, $withoutPaymentRequest
+            );
 
             throw $error;
         }
@@ -161,6 +194,7 @@ final class TransactionalBookingRepository
         int $adminId,
         ?int $bookingId,
         Throwable $error,
+        bool $withoutPaymentRequest = false,
     ): void {
         try {
             $statement = $this->pdo->prepare(
@@ -169,14 +203,18 @@ final class TransactionalBookingRepository
                  VALUES (:event_type, :admin_id, \'booking\', :target_id, \'failure\', :metadata)'
             );
             $statement->execute([
-                'event_type' => $error instanceof \App\Application\Booking\PaymentRequestRequired
-                    ? 'booking.confirm_blocked_payment_request_missing' : 'booking.transition_failed',
+                'event_type' => $withoutPaymentRequest
+                    ? 'booking.confirm_without_payment_request_failed'
+                    : ($error instanceof \App\Application\Booking\PaymentRequestRequired
+                    ? 'booking.confirm_blocked_payment_request_missing' : 'booking.transition_failed'),
                 'admin_id' => $adminId,
                 'target_id' => $bookingId === null ? $reference : (string) $bookingId,
                 'metadata' => json_encode([
                     'booking_reference' => $reference,
                     'target_status' => $targetStatus,
+                    ...($withoutPaymentRequest ? ['confirmation_mode' => 'without_payment_request'] : []),
                     'reason_code' => match (true) {
+                        $error instanceof PaymentRequestAlreadyExists => 'payment_request_exists',
                         $error instanceof \App\Application\Booking\PaymentRequestRequired => 'payment_request_not_sent',
                         $error instanceof BookingNotFound => 'booking_not_found',
                         $error instanceof BookingConflict => 'booking_conflict',

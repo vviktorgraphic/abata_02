@@ -45,6 +45,15 @@
 <input type="hidden" name="_csrf" value="<?= $e($csrfToken) ?>">
 <button type="submit"><?= $paymentStatus === 'failed' ? 'Díjbekérő újraküldése' : 'Díjbekérő e-mail küldése' ?></button>
 </form>
+<?php endif ?>
+<?php if ($payment === null): ?>
+<div class="secondary-action">
+<p class="field-help">Csak kivételes esetben használd, ha a foglalást előleg nélkül szeretnéd visszaigazolni.</p>
+<form method="post" action="/admin/bookings/<?= rawurlencode((string) $booking['reference']) ?>/confirm-without-payment/prompt">
+<input type="hidden" name="_csrf" value="<?= $e($csrfToken) ?>">
+<button class="button-secondary" type="submit">Megerősítés díjbekérő nélkül</button>
+</form>
+</div>
 <?php endif; endif ?>
 </section>
 <?php endif ?>

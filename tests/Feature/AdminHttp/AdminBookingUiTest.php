@@ -111,7 +111,8 @@ final class AdminBookingUiTest extends TestCase
             self::assertStringContainsString('2 fő × 10 000 Ft', $html);
             self::assertStringNotContainsString('Árkonfiguráció verziója', $html);
         }
-        self::assertSame(3, substr_count($html, 'name="_csrf"'));
+        self::assertSame(4, substr_count($html, 'name="_csrf"'));
+        self::assertStringContainsString('/confirm-without-payment/prompt', $html);
         self::assertStringContainsString('maxlength="500"', $html);
         self::assertStringContainsString('Technikai érvénytelenítés', $html);
         self::assertStringContainsString('Téves, teszt vagy duplikált foglalás lezárására. A vendég nem kap lemondási e-mailt.', $html);

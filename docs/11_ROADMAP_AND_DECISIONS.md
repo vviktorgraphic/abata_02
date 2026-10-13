@@ -117,6 +117,8 @@ Nyitott kapuk: abszolút session maximum; production SMTP port/TLS/auth/feladó;
 
 **IMPLEMENTED Phase 6 + kliens UAT-korrekció:** confirmed booking módosítás aláírt előnézettel, stale/concurrency védelemmel, inventory lockkal, aktuális újraárazással, változatlan korábbi előleggel és history/audittal. A mentés nem küld automatikus levelet; kizárólag a legutóbbi módosítás immutable snapshotjához indíthat az admin explicit értesítést, amelynek sikertelen kísérletét a Phase 10 retry/stale policy kezeli. **IMPLEMENTED Phase 7 readiness:** owner UAT dokumentáció és GET-only read-only smoke. **PRODUCTION DISABLED/PENDING:** lifecycle és cron; Szallas.hu új feedre váltása provider cutover. **DEFERRED:** online fizetés.
 
+**IMPLEMENTED kliens scope-fix:** a normál confirmation változatlanul elküldött díjbekérőhöz kötött. Ettől elkülönül a ritka, kétlépcsős „Megerősítés díjbekérő nélkül” út: csak bármilyen díjbekérő-outbox létrejötte előtt használható, explicit history/audit nyomot hagy, nem fabrikál előleget, és a normál booking-confirmation levelet küldi.
+
 ## Phase 8 teljesítési állapot
 
 **IMPLEMENTED:** teljes 2FA-val védett, read-only admin operatív dashboard. A négy kártya definíciója: minden `pending`; mai `confirmed` érkezés; mai `confirmed` távozás; valamint `confirmed`, ahol `arrival_date <= today < departure_date`. A mai és hét napon belüli listák nem mutatnak e-mailt vagy telefonszámot, és összesen négy, N+1 nélküli prepared lekérdezésből készülnek. A „ma” mindenhol `Europe/Budapest`; booking-, pricing-, lifecycle- és production-viselkedés változatlan.

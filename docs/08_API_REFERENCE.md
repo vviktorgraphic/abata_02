@@ -326,6 +326,8 @@ A hitelesített admin GET route-ok: `/admin/calendar`, `/admin/calendar/sources`
 ## Admin booking route-ok – IMPLEMENTED Sprint 5
 
 `GET /admin/bookings`, `GET /admin/bookings/{reference-or-id}`, `POST /admin/bookings/{reference}/confirm|reject|cancel|invalidate`, `POST /admin/bookings/{reference}/retry-email`, `GET|POST /admin/blocked-periods`, `POST /admin/blocked-periods/{id}/remove`. Mind hitelesített és no-store; POST esetén CSRF kötelező, konfliktus `409`, hiányzó erőforrás `404`.
+
+Kivételes megerősítés: `POST /admin/bookings/{reference}/confirm-without-payment/prompt` csak a második megerősítő oldalt rendereli, míg `POST /admin/bookings/{reference}/confirm-without-payment` végzi a tranzakciós státuszváltást. Mindkettő teljes admin-authot, form Content-Type/body limitet, CSRF-et és külön action rate limitet használ. A végleges művelet kizárólag `pending` státusznál és bármilyen `booking_payment_request` outbox teljes hiányában engedélyezett; egy létező pending/processing/sent/failed rekord determinisztikus `409`. A normál `/confirm` követelménye változatlanul egy `sent` díjbekérő.
 ### Tulajdonosi áradmin HTML és booking válasz – IMPLEMENTED
 
 `GET /admin/pricing` megjeleníti a felnőttárakat, gyermek ársávokat és preview űrlapot. `POST /admin/pricing` `action=settings|band|delete` formot fogad teljes admin/CSRF/action-guard és optimistic-version védelemmel; sikerre PRG redirect, stale verzióra `409`, hibás/hiányzó egész HUF vagy overlap esetén `422`. A kompatibilitási `GET /admin/pricing/person` a kanonikus oldalra irányít; a korábbi általános legacy rule CRUD nem publikus admin route.

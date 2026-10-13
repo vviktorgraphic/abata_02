@@ -177,6 +177,14 @@ $router->post('/admin/bookings/{reference}/arrival-information', static fn (arra
     $params['reference'], $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
     isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
 )->send());
+$router->post('/admin/bookings/{reference}/confirm-without-payment/prompt', static fn (array $_query, array $params) => $admin()['bookings']->promptConfirmWithoutPaymentRequest(
+    $params['reference'], $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
+    isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
+)->send());
+$router->post('/admin/bookings/{reference}/confirm-without-payment', static fn (array $_query, array $params) => $admin()['bookings']->confirmWithoutPaymentRequest(
+    $params['reference'], $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
+    isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
+)->send());
 $router->post('/admin/bookings/{reference}/{action}', static fn (array $_query, array $params) => $admin()['bookings']->transition(
     $params['reference'], $params['action'], $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
     isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,

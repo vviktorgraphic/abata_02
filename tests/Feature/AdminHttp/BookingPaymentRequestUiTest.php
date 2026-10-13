@@ -11,7 +11,7 @@ use PHPUnit\Framework\TestCase;
 final class BookingPaymentRequestUiTest extends TestCase
 {
     #[DataProvider('pendingStates')]
-    public function testPendingWorkflowRequiresSentRequestAndPreservesOtherActions(?string $state, string $message, bool $canSend, bool $canConfirm): void
+    public function testPendingWorkflowRequiresSentRequestAndPreservesOtherActions(?string $state, string $message, bool $canSend, bool $canConfirm, bool $canBypass): void
     {
         $payment = $state === null ? null : ['status' => $state, 'advance_amount' => '31000.00', 'accommodation_fee'=>'62000.00','taxes'=>'2000.00','payment_reference'=>'AB-000123','sent_at' => $state === 'sent' ? '2026-10-05 12:30:00' : null];
         $html = $this->render('pending', $payment);
@@ -30,6 +30,14 @@ final class BookingPaymentRequestUiTest extends TestCase
                 self::assertSame(1, $xpath->query('input[@name="_csrf" and @value="safe-token"]', $form)->length);
             }
         }
+        $bypass = $xpath->query('//form[@action="/admin/bookings/AB-TEST/confirm-without-payment/prompt"]');
+        self::assertSame($canBypass ? 1 : 0, $bypass->length, 'confirm-without-payment prompt');
+        if ($canBypass) {
+            self::assertSame(1, $xpath->query('input[@name="_csrf" and @value="safe-token"]', $bypass->item(0))->length);
+            self::assertSame(1, $xpath->query('button[contains(@class,"button-secondary")]', $bypass->item(0))->length);
+            self::assertStringContainsString('Megerősítés díjbekérő nélkül', $html);
+            self::assertStringContainsString('Csak kivételes esetben használd', $html);
+        }
         if ($canConfirm) {
             self::assertStringContainsString('Díjbekérő elküldve: 2026-10-05 12:30:00', $html);
             self::assertStringContainsString('Az előleg beérkezésének ellenőrzése után', $html);
@@ -42,11 +50,11 @@ final class BookingPaymentRequestUiTest extends TestCase
 
     public static function pendingStates(): iterable
     {
-        yield 'not requested' => [null, 'Díjbekérő e-mail küldése', true, false];
-        yield 'queued' => ['pending', 'Díjbekérő e-mail küldése', true, false];
-        yield 'failed' => ['failed', 'Díjbekérő újraküldése', true, false];
-        yield 'processing' => ['processing', 'Díjbekérő küldése folyamatban.', false, false];
-        yield 'sent' => ['sent', 'Megerősítés', false, true];
+        yield 'not requested' => [null, 'Díjbekérő e-mail küldése', true, false, true];
+        yield 'queued' => ['pending', 'Díjbekérő e-mail küldése', true, false, false];
+        yield 'failed' => ['failed', 'Díjbekérő újraküldése', true, false, false];
+        yield 'processing' => ['processing', 'Díjbekérő küldése folyamatban.', false, false, false];
+        yield 'sent' => ['sent', 'Megerősítés', false, true, false];
     }
 
     public function testStoredAdvanceOverridesCurrentConfigurationPreview(): void

@@ -6,6 +6,7 @@ namespace Tests\Integration\Booking;
 
 use App\Application\Booking\BookingConflict;
 use App\Application\Booking\BookingNotFound;
+use App\Application\Booking\PaymentRequestAlreadyExists;
 use App\Domain\Booking\BookingTransitionNotAllowed;
 use App\Infrastructure\Database\ConnectionFactory;
 use App\Infrastructure\Persistence\Booking\TransactionalBookingRepository;
@@ -308,11 +309,158 @@ final class TransactionalStateChangesTest extends TestCase
         }
     }
 
+    public function testExceptionalConfirmationWithoutPaymentPersistsExplicitHistoryAuditAndConfirmationOutbox(): void
+    {
+        $id = $this->booking('pending', '2042-08-10', '2042-08-13');
+
+        $result = (new TransactionalBookingRepository($this->pdo))->confirmWithoutPaymentRequest(
+            $this->reference($id), $this->adminId
+        );
+
+        self::assertSame('pending', $result->oldStatus);
+        self::assertSame('confirmed', $result->newStatus);
+        self::assertTrue($result->notificationQueued);
+        self::assertSame('confirmed', $this->bookingStatus($id));
+        $history = $this->row('booking_status_history', $id);
+        self::assertSame('Megerősítve díjbekérő nélkül', $history['note']);
+        self::assertSame($this->adminId, (int) $history['changed_by_admin_id']);
+        $outbox = $this->row('email_outbox', $id);
+        self::assertSame('booking_confirmed', $outbox['message_type']);
+        self::assertSame('pending', $outbox['status']);
+        self::assertSame(0, (int) $outbox['attempts']);
+        self::assertSame(0, $this->paymentRequestCount($id));
+
+        $audit = $this->pdo->prepare(
+            "SELECT event_type, outcome, metadata_json FROM audit_logs
+             WHERE target_type = 'booking' AND target_id = :id ORDER BY id DESC LIMIT 1"
+        );
+        $audit->execute(['id' => (string) $id]);
+        $row = $audit->fetch();
+        self::assertSame('booking.confirmed_without_payment_request', $row['event_type']);
+        self::assertSame('success', $row['outcome']);
+        self::assertEquals([
+            'booking_reference' => $this->reference($id),
+            'old_status' => 'pending',
+            'new_status' => 'confirmed',
+            'confirmation_mode' => 'without_payment_request',
+        ], json_decode($row['metadata_json'], true, 512, JSON_THROW_ON_ERROR));
+    }
+
+    public function testExceptionalConfirmationPreservesOptionalAdminNote(): void
+    {
+        $id = $this->booking('pending', '2042-08-20', '2042-08-23');
+
+        (new TransactionalBookingRepository($this->pdo))->confirmWithoutPaymentRequest(
+            $this->reference($id), $this->adminId, 'Tulajdonosi kivétel jóváhagyva'
+        );
+
+        self::assertSame('Tulajdonosi kivétel jóváhagyva', $this->row('booking_status_history', $id)['note']);
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function paymentRequestStates(): iterable
+    {
+        foreach (['pending', 'processing', 'sent', 'failed'] as $status) {
+            yield $status => [$status];
+        }
+    }
+
+    #[DataProvider('paymentRequestStates')]
+    public function testExceptionalConfirmationRejectsEveryExistingPaymentRequestState(string $status): void
+    {
+        $id = $this->booking('pending', '2042-09-10', '2042-09-13');
+        $this->paymentSent($id);
+        $this->pdo->prepare('UPDATE email_outbox SET status = :status, sent_at = NULL WHERE booking_id = :id')
+            ->execute(['status' => $status, 'id' => $id]);
+
+        try {
+            (new TransactionalBookingRepository($this->pdo))->confirmWithoutPaymentRequest(
+                $this->reference($id), $this->adminId
+            );
+            self::fail('An existing payment-request process must block exceptional confirmation.');
+        } catch (PaymentRequestAlreadyExists $error) {
+            self::assertSame(
+                'Ehhez a foglaláshoz már tartozik díjbekérő-küldési folyamat. Használd a normál megerősítést.',
+                $error->getMessage()
+            );
+        }
+
+        self::assertSame('pending', $this->bookingStatus($id));
+        self::assertSame(0, $this->countRows('booking_status_history', $id));
+        self::assertSame(1, $this->countRows('email_outbox', $id));
+        self::assertSame($status, $this->row('email_outbox', $id)['status']);
+        $audit = $this->pdo->prepare(
+            "SELECT outcome, metadata_json FROM audit_logs
+             WHERE target_id = :id AND event_type = 'booking.confirm_without_payment_request_failed'
+             ORDER BY id DESC LIMIT 1"
+        );
+        $audit->execute(['id' => (string) $id]);
+        $failure = $audit->fetch();
+        self::assertSame('failure', $failure['outcome']);
+        self::assertSame(
+            'payment_request_exists',
+            json_decode($failure['metadata_json'], true, 512, JSON_THROW_ON_ERROR)['reason_code']
+        );
+    }
+
+    public function testExceptionalConfirmationRechecksAvailabilityAndBlockedPeriods(): void
+    {
+        $candidate = $this->booking('pending', '2042-10-10', '2042-10-13');
+        $other = $this->booking('pending', '2042-10-12', '2042-10-15');
+        $repository = new TransactionalBookingRepository($this->pdo);
+
+        try {
+            $repository->confirmWithoutPaymentRequest($this->reference($candidate), $this->adminId);
+            self::fail('Overlapping pending inventory must block exceptional confirmation.');
+        } catch (BookingConflict) {
+            self::assertSame('pending', $this->bookingStatus($candidate));
+        }
+
+        $repository->transition($this->reference($other), 'rejected', $this->adminId);
+        $blocked = $this->pdo->prepare(
+            "INSERT INTO blocked_periods (start_date, end_date, reason)
+             VALUES ('2042-10-11', '2042-10-14', 'exceptional-confirm-test')"
+        );
+        $blocked->execute();
+        $this->blockedIds[] = (int) $this->pdo->lastInsertId();
+
+        $this->expectException(BookingConflict::class);
+        $repository->confirmWithoutPaymentRequest($this->reference($candidate), $this->adminId);
+    }
+
+    public function testExceptionalConfirmationDoubleSubmitCreatesOneTransitionAndOneConfirmationOutbox(): void
+    {
+        $id = $this->booking('pending', '2042-11-10', '2042-11-13');
+        $repository = new TransactionalBookingRepository($this->pdo);
+        $repository->confirmWithoutPaymentRequest($this->reference($id), $this->adminId);
+
+        try {
+            $repository->confirmWithoutPaymentRequest($this->reference($id), $this->adminId);
+            self::fail('The second submit must conflict after the first transition.');
+        } catch (BookingTransitionNotAllowed) {
+            self::assertSame('confirmed', $this->bookingStatus($id));
+        }
+
+        self::assertSame(1, $this->countRows('booking_status_history', $id));
+        self::assertSame(1, $this->countRows('email_outbox', $id));
+        self::assertSame('booking_confirmed', $this->row('email_outbox', $id)['message_type']);
+    }
+
     private function paymentSent(int $bookingId): void
     {
         $this->pdo->prepare("INSERT INTO email_outbox (booking_id, message_type, recipient, subject, payload, status, sent_at)
             VALUES (:id, 'booking_payment_request', 'guest@example.test', 'Test payment', '{}', 'sent', CURRENT_TIMESTAMP)")
             ->execute(['id' => $bookingId]);
+    }
+
+    private function paymentRequestCount(int $bookingId): int
+    {
+        $statement = $this->pdo->prepare(
+            "SELECT COUNT(*) FROM email_outbox
+             WHERE booking_id = :id AND message_type = 'booking_payment_request'"
+        );
+        $statement->execute(['id' => $bookingId]);
+        return (int) $statement->fetchColumn();
     }
 
     private function booking(string $status, string $arrival, string $departure): int
