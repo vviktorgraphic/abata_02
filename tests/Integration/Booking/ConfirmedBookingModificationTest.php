@@ -7,7 +7,15 @@ use App\Application\Booking\BookingModificationNotAllowed;
 use App\Application\Booking\BookingModificationStale;
 use App\Application\Booking\AdminMonthlyOccupancyQuery;
 use App\Application\Booking\ConfirmedBookingModification;
+use App\Application\Mail\BookingModificationMailRenderer;
+use App\Application\Mail\BookingModificationNotificationDispatcher;
+use App\Application\Mail\InMemoryMailer;
+use App\Application\Mail\Mailer;
+use App\Application\Mail\Message;
 use App\Infrastructure\Database\ConnectionFactory;
+use App\Infrastructure\Persistence\Booking\PdoBookingModificationOutbox;
+use App\Infrastructure\Persistence\Booking\PdoAdminBookingQueryRepository;
+use App\Infrastructure\Persistence\Booking\PdoEmailOutboxWorkerRepository;
 use App\Infrastructure\Persistence\Booking\TransactionalConfirmedBookingModificationService;
 use App\Infrastructure\Persistence\Booking\PdoAdminMonthlyOccupancyRepository;
 use App\Infrastructure\Persistence\Calendar\PdoCalendarExportFeedRepository;
@@ -66,9 +74,7 @@ final class ConfirmedBookingModificationTest extends TestCase
         self::assertSame([5],array_map('intval',$this->column('SELECT age FROM booking_child_ages WHERE booking_id=:id ORDER BY position',['id'=>$id])));
         self::assertSame(0,(int)$this->value('SELECT COUNT(*) FROM booking_status_history WHERE booking_id=:id',['id'=>$id]));
         self::assertSame(1,(int)$this->value("SELECT COUNT(*) FROM audit_logs WHERE target_id=:id AND event_type='booking_modified'",['id'=>(string)$id]));
-        $outbox=$this->row("SELECT * FROM email_outbox WHERE booking_id=:id AND message_type='booking_modified'",['id'=>$id]);
-        self::assertSame('pending',$outbox['status']);
-        self::assertSame('modification:'.$result->modificationId,$outbox['deduplication_key']);
+        self::assertSame(0,(int)$this->value("SELECT COUNT(*) FROM email_outbox WHERE booking_id=:id AND message_type='booking_modified'",['id'=>$id]));
         $payment=json_decode((string)$this->value("SELECT payload FROM email_outbox WHERE booking_id=:id AND message_type='booking_payment_request'",['id'=>$id]),true,512,JSON_THROW_ON_ERROR);
         self::assertSame('45000.00',$payment['advance_amount']);
         $snapshot=json_decode((string)$this->value('SELECT snapshot FROM booking_pricing_snapshots WHERE booking_id=:id',['id'=>$id]),true,512,JSON_THROW_ON_ERROR);
@@ -104,7 +110,7 @@ final class ConfirmedBookingModificationTest extends TestCase
         self::assertTrue($second->idempotentReplay);
         self::assertSame($first->modificationId,$second->modificationId);
         self::assertSame(1,(int)$this->value('SELECT COUNT(*) FROM booking_modifications WHERE booking_id=:id',['id'=>$id]));
-        self::assertSame(1,(int)$this->value("SELECT COUNT(*) FROM email_outbox WHERE booking_id=:id AND message_type='booking_modified'",['id'=>$id]));
+        self::assertSame(0,(int)$this->value("SELECT COUNT(*) FROM email_outbox WHERE booking_id=:id AND message_type='booking_modified'",['id'=>$id]));
         $this->expectException(BookingModificationStale::class);
         $staleRequest=new ConfirmedBookingModification('2044-03-17','2044-03-19',2,[]);
         $service->modify($this->reference($id),$staleRequest,0,str_repeat('a',64),'modification-key-0003',$this->adminId);
@@ -152,7 +158,7 @@ final class ConfirmedBookingModificationTest extends TestCase
     public function testInjectedFailureRollsBackBookingChildrenSnapshotAuditAndOutbox(): void
     {
         $id=$this->booking('confirmed','2044-06-10','2044-06-12',[2]);
-        $service=new TransactionalConfirmedBookingModificationService($this->pdo,new PdoPricingEngineAdapter($this->pdo),static function(string $stage):void{if($stage==='outbox_inserted')throw new \RuntimeException('injected');});
+        $service=new TransactionalConfirmedBookingModificationService($this->pdo,new PdoPricingEngineAdapter($this->pdo),static function(string $stage):void{if($stage==='audit_inserted')throw new \RuntimeException('injected');});
         $request=new ConfirmedBookingModification('2044-06-14','2044-06-17',2,[6]);
         $pricingHash=$service->preview($this->reference($id),$request)->pricingHash;
         try{$service->modify($this->reference($id),$request,0,$pricingHash,'modification-key-0004',$this->adminId);self::fail('Failure expected.');}
@@ -165,7 +171,107 @@ final class ConfirmedBookingModificationTest extends TestCase
         self::assertSame(0,(int)$this->value("SELECT COUNT(*) FROM email_outbox WHERE booking_id=:id AND message_type='booking_modified'",['id'=>$id]));
     }
 
+    public function testOnlyLatestModificationCanBeManuallyNotifiedAndDeliveryIsIdempotent(): void
+    {
+        $id=$this->booking('confirmed','2044-08-10','2044-08-12',[]);
+        $service=$this->service();
+        $v1=$this->modifyTo($service,$id,'2044-08-13','2044-08-15','manual-notification-key-0001');
+        $v2=$this->modifyTo($service,$id,'2044-08-14','2044-08-17','manual-notification-key-0002');
+        $v3=$this->modifyTo($service,$id,'2044-08-15','2044-08-19','manual-notification-key-0003');
+        self::assertSame(0,(int)$this->value("SELECT COUNT(*) FROM email_outbox WHERE booking_id=:id AND message_type='booking_modified'",['id'=>$id]));
+        $detail=(new PdoAdminBookingQueryRepository($this->pdo))->fetchBookingDetail(new \App\Application\Booking\AdminBookingDetailQuery($this->reference($id)));
+        self::assertSame([true,false,false],array_column($detail['modifications'],'is_latest'));
+
+        $mailer=new InMemoryMailer();
+        $dispatcher=new BookingModificationNotificationDispatcher(
+            new PdoBookingModificationOutbox($this->pdo),$this->mailRenderer(),$mailer
+        );
+        foreach([$v1->modificationId,$v2->modificationId] as $olderId){
+            try{$dispatcher->dispatch($this->reference($id),$olderId,$this->adminId);self::fail('Older notification must be rejected.');}
+            catch(\DomainException $error){self::assertSame('Csak a legutóbbi módosításról küldhető értesítés.',$error->getMessage());}
+        }
+        self::assertCount(0,$mailer->messages());
+        self::assertSame(0,(int)$this->value("SELECT COUNT(*) FROM email_outbox WHERE booking_id=:id AND message_type='booking_modified'",['id'=>$id]));
+
+        self::assertSame('sent',$dispatcher->dispatch($this->reference($id),$v3->modificationId,$this->adminId)->status);
+        self::assertSame('sent',$dispatcher->dispatch($this->reference($id),$v3->modificationId,$this->adminId)->status);
+        self::assertCount(1,$mailer->messages());
+        self::assertStringContainsString('2044-08-15',$mailer->messages()[0]->textBody);
+        self::assertStringContainsString('2044-08-19',$mailer->messages()[0]->textBody);
+        $outbox=$this->row("SELECT status,attempts,deduplication_key FROM email_outbox WHERE booking_id=:id AND message_type='booking_modified'",['id'=>$id]);
+        self::assertSame('sent',$outbox['status']);
+        self::assertSame(1,(int)$outbox['attempts']);
+        self::assertSame('modification:'.$v3->modificationId,$outbox['deduplication_key']);
+    }
+
+    public function testExplicitManualFailureIsEligibleForPhase10Retry(): void
+    {
+        $id=$this->booking('confirmed','2044-09-10','2044-09-12',[]);
+        $result=$this->modifyTo($this->service(),$id,'2044-09-13','2044-09-16','manual-failure-key-0001');
+        $mailer=new class implements Mailer {
+            public int $calls=0;
+            public function send(Message $message):void{$this->calls++;throw new \RuntimeException('private transport detail');}
+        };
+        $dispatcher=new BookingModificationNotificationDispatcher(
+            new PdoBookingModificationOutbox($this->pdo),$this->mailRenderer(),$mailer
+        );
+        self::assertSame('failed',$dispatcher->dispatch($this->reference($id),$result->modificationId,$this->adminId)->status);
+        self::assertSame(1,$mailer->calls);
+        $outbox=$this->row("SELECT id,status,attempts,UNIX_TIMESTAMP(updated_at) AS updated_epoch FROM email_outbox WHERE booking_id=:id AND message_type='booking_modified'",['id'=>$id]);
+        self::assertSame('failed',$outbox['status']);
+        self::assertSame(1,(int)$outbox['attempts']);
+        $due=(new \DateTimeImmutable('@'.((int)$outbox['updated_epoch']+300)))->setTimezone(new \DateTimeZone('Europe/Budapest'));
+        $claimed=(new PdoEmailOutboxWorkerRepository($this->pdo))->claimNextDue($due,['booking_modified']);
+        self::assertNotNull($claimed);
+        self::assertSame((int)$outbox['id'],$claimed->id);
+        self::assertSame(1,$claimed->attempts);
+    }
+
+    public function testConcurrentManualIntentCreatesAndClaimsExactlyOneOutboxRow():void
+    {
+        if(!function_exists('proc_open'))self::markTestSkipped('proc_open is required for the real concurrency test.');
+        $id=$this->booking('confirmed','2044-10-10','2044-10-12',[]);
+        $result=$this->modifyTo($this->service(),$id,'2044-10-13','2044-10-16','manual-concurrency-key-0001');
+        $barrier=tempnam(sys_get_temp_dir(),'modification-notification-barrier-');
+        self::assertIsString($barrier);
+        unlink($barrier);
+        $worker=__DIR__.'/booking-modification-notification-worker.php';
+        $processes=[];
+        foreach([1,2] as $_){
+            $pipes=[];
+            $process=proc_open([PHP_BINARY,$worker,$this->reference($id),(string)$result->modificationId,$barrier],[1=>['pipe','w'],2=>['pipe','w']],$pipes);
+            self::assertIsResource($process);
+            $processes[]=[$process,$pipes];
+        }
+        touch($barrier);
+        $outputs=[];
+        foreach($processes as [$process,$pipes]){
+            $stdout=stream_get_contents($pipes[1]);$stderr=stream_get_contents($pipes[2]);
+            fclose($pipes[1]);fclose($pipes[2]);
+            self::assertSame(0,proc_close($process),$stderr?:$stdout);
+            $outputs[]=trim($stdout);
+        }
+        unlink($barrier);
+        sort($outputs);
+        self::assertSame(['CLAIMED','NOT_CLAIMED'],$outputs);
+        $outbox=$this->row("SELECT status,attempts FROM email_outbox WHERE booking_id=:id AND message_type='booking_modified'",['id'=>$id]);
+        self::assertSame('processing',$outbox['status']);
+        self::assertSame(0,(int)$outbox['attempts']);
+        self::assertSame(1,(int)$this->value("SELECT COUNT(*) FROM email_outbox WHERE booking_id=:id AND message_type='booking_modified'",['id'=>$id]));
+    }
+
     private function service(): TransactionalConfirmedBookingModificationService{return new TransactionalConfirmedBookingModificationService($this->pdo,new PdoPricingEngineAdapter($this->pdo));}
+    private function modifyTo(TransactionalConfirmedBookingModificationService $service,int $bookingId,string $arrival,string $departure,string $key): \App\Application\Booking\BookingModificationResult
+    {
+        $request=new ConfirmedBookingModification($arrival,$departure,2,[]);
+        $preview=$service->preview($this->reference($bookingId),$request);
+        $version=(int)$this->value('SELECT modification_version FROM bookings WHERE id=:id',['id'=>$bookingId]);
+        return $service->modify($this->reference($bookingId),$request,$version,$preview->pricingHash,$key,$this->adminId);
+    }
+    private function mailRenderer():BookingModificationMailRenderer
+    {
+        return new BookingModificationMailRenderer(dirname(__DIR__,3).'/templates/email','noreply@example.test','A Bata','info@example.test','A Bata');
+    }
     /** @param list<int> $ages */
     private function booking(string $status,string $arrival,string $departure,array $ages):int
     {

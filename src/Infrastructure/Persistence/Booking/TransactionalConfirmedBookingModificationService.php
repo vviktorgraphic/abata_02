@@ -163,24 +163,6 @@ final readonly class TransactionalConfirmedBookingModificationService
             ]);
             ($this->transactionProbe ?? static fn (string $stage): null => null)('audit_inserted');
 
-            $payload = [
-                'booking_reference' => $reference, 'contact_name' => (string) $booking['guest_name'],
-                ...$this->auditState($after), 'unchanged_deposit_amount' => $deposit,
-                'currency' => $pricing->currency, 'modification_id' => $modificationId,
-            ];
-            $outbox = $this->pdo->prepare(
-                'INSERT INTO email_outbox
-                    (booking_id, message_type, deduplication_key, recipient, subject, payload, status)
-                 VALUES (:booking_id, \'booking_modified\', :deduplication_key, :recipient,
-                         \'Foglalásának adatai módosultak\', :payload, \'pending\')'
-            );
-            $outbox->execute([
-                'booking_id' => $bookingId, 'deduplication_key' => 'modification:' . $modificationId,
-                'recipient' => (string) $booking['guest_email'],
-                'payload' => json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-            ]);
-            ($this->transactionProbe ?? static fn (string $stage): null => null)('outbox_inserted');
-
             $this->pdo->commit();
             return new BookingModificationResult($bookingId, $modificationId, $newVersion);
         } catch (Throwable $error) {

@@ -102,7 +102,7 @@ final readonly class BookingManagementController
     {
         $authorization = $this->guard->authorizeForm('booking.modify', $form, $contentType, $contentLength);
         if (!$authorization->allowed()) return $authorization->rejection;
-        if ($this->modifications === null || $this->modificationValidator === null || $this->modificationSigner === null || $this->modificationNotifications === null) {
+        if ($this->modifications === null || $this->modificationValidator === null || $this->modificationSigner === null) {
             return $this->error(503, 'A foglalásmódosítás jelenleg nem érhető el.');
         }
         try {
@@ -114,9 +114,9 @@ final readonly class BookingManagementController
             if ($version === false || !$this->modificationSigner->verify($signature, $reference, (int) $version, $request, $pricingHash)) {
                 throw new BookingModificationStale('Az előnézet lejárt vagy megváltozott. Készítsen új előnézetet.');
             }
-            $result = $this->modifications->modify($reference, $request, (int) $version, $pricingHash, $idempotencyKey, (int) $authorization->admin['id']);
-            $delivery = $this->modificationNotifications->dispatch($result->modificationId, (int) $authorization->admin['id']);
-            return new RedirectResponse('/admin/bookings/' . rawurlencode($reference) . '?modified=' . rawurlencode($delivery->status));
+            $this->modifications->modify($reference, $request, (int) $version, $pricingHash, $idempotencyKey, (int) $authorization->admin['id']);
+            $this->flash?->put($reference, 'A módosítás elmentve. A vendég még nem kapott értesítést.');
+            return new RedirectResponse('/admin/bookings/' . rawurlencode($reference));
         } catch (BookingValidationFailed $error) {
             return $this->renderDetail($reference, 422, $form, null, $error->errors());
         } catch (BookingNotFound) {
@@ -137,17 +137,21 @@ final readonly class BookingManagementController
     }
 
     /** @param array<string,mixed> $form */
-    public function retryModificationNotification(string $reference, string $modificationId, array $form, ?string $contentType, ?int $contentLength): AdminResponse
+    public function sendModificationNotification(string $reference, string $modificationId, array $form, ?string $contentType, ?int $contentLength): AdminResponse
     {
-        $authorization = $this->guard->authorizeForm('email.booking_modified_retry', $form, $contentType, $contentLength);
+        $authorization = $this->guard->authorizeForm('email.booking_modified_send', $form, $contentType, $contentLength);
         if (!$authorization->allowed()) return $authorization->rejection;
         if ($this->modificationNotifications === null || !ctype_digit($modificationId)) return $this->error(404, 'A módosítás nem található.');
-        $booking = $this->queries->fetchBookingDetail(new AdminBookingDetailQuery($reference));
-        if ($booking === null) return $this->error(404, 'A foglalás nem található.');
-        $known = array_filter($booking['modifications'] ?? [], static fn (array $item): bool => $item['id'] === (int) $modificationId);
-        if ($known === []) return $this->error(404, 'A módosítás nem található.');
-        $result = $this->modificationNotifications->dispatch((int) $modificationId, (int) $authorization->admin['id']);
-        return new RedirectResponse('/admin/bookings/' . rawurlencode($reference) . '?modified=' . rawurlencode($result->status));
+        try {
+            $this->modificationNotifications->dispatch($reference, (int) $modificationId, (int) $authorization->admin['id']);
+            return new RedirectResponse('/admin/bookings/' . rawurlencode($reference));
+        } catch (\OutOfBoundsException) {
+            return $this->error(404, 'A módosítás nem található.');
+        } catch (\DomainException $error) {
+            return $this->error(409, $error->getMessage());
+        } catch (\Throwable) {
+            return UnexpectedHttpErrorResponse::create();
+        }
     }
 
     /** @param array<string,mixed> $modificationForm @param array<string,string> $modificationErrors */

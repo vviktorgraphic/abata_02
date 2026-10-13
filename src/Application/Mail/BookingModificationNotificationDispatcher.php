@@ -18,9 +18,9 @@ final readonly class BookingModificationNotificationDispatcher
         private ?AuditLog $audit = null,
     ) {}
 
-    public function dispatch(int $modificationId, ?int $adminId = null): OutboxDeliveryResult
+    public function dispatch(string $bookingReference, int $modificationId, ?int $adminId = null): OutboxDeliveryResult
     {
-        $item = $this->outbox->findForDelivery($modificationId);
+        $item = $this->outbox->claimForManualDelivery($bookingReference, $modificationId);
         if ($item === null) return new OutboxDeliveryResult($this->outbox->status($modificationId));
         try {
             $this->mailer->send($this->renderer->render($item['data']));

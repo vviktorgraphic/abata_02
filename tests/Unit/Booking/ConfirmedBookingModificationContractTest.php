@@ -20,6 +20,7 @@ final class ConfirmedBookingModificationContractTest extends TestCase
         self::assertStringNotContainsString('chargeableGuests', $validator);
         self::assertStringContainsString("event_type, admin_id", $service);
         self::assertStringContainsString('booking_modified', $service);
+        self::assertStringNotContainsString('INSERT INTO email_outbox', $service);
         self::assertStringNotContainsString('booking_status_history', $service);
     }
 
@@ -34,5 +35,21 @@ final class ConfirmedBookingModificationContractTest extends TestCase
         self::assertStringNotContainsString('name="contact_name"',$template);
         self::assertStringNotContainsString('name="email"',$template);
         self::assertStringNotContainsString('name="phone"',$template);
+    }
+
+    public function testModificationNotificationIsExplicitAndManualBookingPreviewUsesNativeFragment():void
+    {
+        $root=dirname(__DIR__,3);
+        $controller=(string)file_get_contents($root.'/src/Http/Controller/Admin/BookingManagementController.php');
+        $routes=(string)file_get_contents($root.'/public/index.php');
+        $worker=(string)file_get_contents($root.'/src/Infrastructure/Persistence/Booking/PdoEmailOutboxWorkerRepository.php');
+        $create=(string)file_get_contents($root.'/templates/admin/booking-create.php');
+        self::assertStringContainsString('A módosítás elmentve. A vendég még nem kapott értesítést.',$controller);
+        self::assertStringContainsString("authorizeForm('email.booking_modified_send'",$controller);
+        self::assertStringContainsString('/modifications/{modificationId}/send-notification',$routes);
+        self::assertStringNotContainsString('/modifications/{modificationId}/retry-email',$routes);
+        self::assertStringContainsString("message_type <> 'booking_modified'",$worker);
+        self::assertStringContainsString('/admin/bookings/create/preview#booking-create-submit',$create);
+        self::assertStringContainsString('id="booking-create-submit"',$create);
     }
 }

@@ -214,6 +214,36 @@ final class AdminBookingUiTest extends TestCase
         self::assertStringContainsString('value="failed-preview-key"', $html);
     }
 
+    public function test_modification_history_only_offers_manual_send_for_latest_unsent_change(): void
+    {
+        $html=$this->renderModificationDetail(['booking'=>['modifications'=>[
+            $this->modification(3,null,0,true),
+            $this->modification(2,null,0,false),
+            $this->modification(1,'sent',1,false),
+        ]]]);
+
+        self::assertSame(2,substr_count($html,'Módosítási értesítés: <strong>Nincs elküldve</strong>'));
+        self::assertSame(1,substr_count($html,'Módosítás értesítés küldése'));
+        self::assertStringContainsString('/modifications/3/send-notification',$html);
+        self::assertStringNotContainsString('/modifications/2/send-notification',$html);
+        self::assertStringContainsString('Módosítási értesítés: <strong>Elküldve</strong> (1 / 5 kísérlet)',$html);
+    }
+
+    public function test_latest_failed_notification_has_retry_until_cap_and_processing_has_no_button(): void
+    {
+        $retry=$this->renderModificationDetail(['booking'=>['modifications'=>[$this->modification(3,'failed',1,true)]]]);
+        self::assertStringContainsString('Módosítás értesítés újraküldése',$retry);
+        self::assertStringContainsString('/modifications/3/send-notification',$retry);
+
+        $capped=$this->renderModificationDetail(['booking'=>['modifications'=>[$this->modification(3,'failed',5,true)]]]);
+        self::assertStringContainsString('Módosítási értesítés: <strong>Küldési korlát elérve</strong> (5 / 5 kísérlet)',$capped);
+        self::assertStringNotContainsString('Módosítás értesítés újraküldése',$capped);
+
+        $processing=$this->renderModificationDetail(['booking'=>['modifications'=>[$this->modification(3,'processing',0,true)]]]);
+        self::assertStringContainsString('Módosítási értesítés: <strong>Küldés folyamatban</strong>',$processing);
+        self::assertStringNotContainsString('/send-notification',$processing);
+    }
+
     /** @return iterable<string, array{string, string, bool}> */
     public static function statusRetryCases(): iterable
     {
@@ -291,32 +321,46 @@ final class AdminBookingUiTest extends TestCase
     /** @param array<string, mixed> $variables */
     private function renderModificationDetail(array $variables): string
     {
+        $booking = array_merge([
+            'id' => 42,
+            'reference' => 'AB-MOD',
+            'status' => 'confirmed',
+            'contact_name' => 'Vendég',
+            'email' => 'guest@example.test',
+            'phone' => '+36 1 234 5678',
+            'arrival_date' => '2026-09-01',
+            'departure_date' => '2026-09-03',
+            'nights' => 2,
+            'adults' => 2,
+            'children' => 0,
+            'children_ages' => [],
+            'total_amount' => '60000.00',
+            'pricing_snapshot' => [],
+            'status_history' => [],
+            'email_outbox' => [],
+            'modifications' => [],
+            'created_at' => '2026-08-01 10:00:00',
+            'updated_at' => '2026-08-01 10:00:00',
+        ],is_array($variables['booking']??null)?$variables['booking']:[]);
+        unset($variables['booking']);
         return $this->view->render('booking-detail', array_merge([
             'csrfToken' => 'safe-token',
-            'booking' => [
-                'id' => 42,
-                'reference' => 'AB-MOD',
-                'status' => 'confirmed',
-                'contact_name' => 'Vendég',
-                'email' => 'guest@example.test',
-                'phone' => '+36 1 234 5678',
-                'arrival_date' => '2026-09-01',
-                'departure_date' => '2026-09-03',
-                'nights' => 2,
-                'adults' => 2,
-                'children' => 0,
-                'children_ages' => [],
-                'total_amount' => '60000.00',
-                'pricing_snapshot' => [],
-                'status_history' => [],
-                'email_outbox' => [],
-                'created_at' => '2026-08-01 10:00:00',
-                'updated_at' => '2026-08-01 10:00:00',
-            ],
+            'booking' => $booking,
             'modificationForm' => [],
             'modificationPreview' => null,
             'modificationErrors' => [],
             'modificationPreviewSignature' => null,
         ], $variables));
+    }
+
+    /** @return array<string,mixed> */
+    private function modification(int $id,?string $status,int $attempts,bool $latest):array
+    {
+        return [
+            'id'=>$id,'version'=>$id,'created_at'=>'2026-09-01 10:00:00','is_latest'=>$latest,
+            'before'=>['arrival_date'=>'2026-09-01','departure_date'=>'2026-09-03','total_amount'=>'60000.00'],
+            'after'=>['arrival_date'=>'2026-09-02','departure_date'=>'2026-09-04','total_amount'=>'70000.00'],
+            'email_status'=>$status,'email_attempts'=>$attempts,
+        ];
     }
 }

@@ -17,6 +17,8 @@ final class ManualEmailRetryCapTest extends TestCase
 {
     private PDO $pdo;
     private int $bookingId;
+    private int $adminId;
+    private int $modificationId;
     private string $reference;
 
     protected function setUp(): void
@@ -28,11 +30,21 @@ final class ManualEmailRetryCapTest extends TestCase
             VALUES(:reference,'pending','2042-01-01','2042-01-03','Cap Test','cap@example.invalid',2,0,50000.00,'HUF')");
         $q->execute(['reference'=>$this->reference]);
         $this->bookingId=(int)$this->pdo->lastInsertId();
+        $this->pdo->prepare("INSERT INTO admins(email,password_hash,name) VALUES(:email,'hash','Cap Admin')")
+            ->execute(['email'=>'cap-'.bin2hex(random_bytes(5)).'@example.invalid']);
+        $this->adminId=(int)$this->pdo->lastInsertId();
+        $snapshot=json_encode(['arrival_date'=>'2042-01-01','departure_date'=>'2042-01-03','nights'=>2,'adults'=>2,'children'=>0,'child_ages'=>[],'accommodation_fee'=>'50000.00','tourism_tax'=>'0.00','total_amount'=>'50000.00','currency'=>'HUF'],JSON_THROW_ON_ERROR);
+        $this->pdo->prepare('INSERT INTO booking_modifications
+            (booking_id,version,changed_by_admin_id,idempotency_key_hash,request_hash,before_snapshot,after_snapshot,currency)
+            VALUES(:booking_id,1,:admin_id,UNHEX(:key_hash),UNHEX(:request_hash),:before_snapshot,:after_snapshot,\'HUF\')')
+            ->execute(['booking_id'=>$this->bookingId,'admin_id'=>$this->adminId,'key_hash'=>str_repeat('1',64),'request_hash'=>str_repeat('2',64),'before_snapshot'=>$snapshot,'after_snapshot'=>$snapshot]);
+        $this->modificationId=(int)$this->pdo->lastInsertId();
     }
 
     protected function tearDown():void
     {
         if(isset($this->bookingId))$this->pdo->prepare('DELETE FROM bookings WHERE id=:id')->execute(['id'=>$this->bookingId]);
+        if(isset($this->adminId))$this->pdo->prepare('DELETE FROM admins WHERE id=:id')->execute(['id'=>$this->adminId]);
     }
 
     public function testEveryManualRetryPathRefusesSixthAttempt():void
@@ -45,7 +57,7 @@ final class ManualEmailRetryCapTest extends TestCase
         self::assertNull((new PdoBookingManualCommunicationOutbox($this->pdo))->claim($this->reference,'booking_payment_reminder',$config));
         $this->pdo->prepare("UPDATE bookings SET status='confirmed' WHERE id=:id")->execute(['id'=>$this->bookingId]);
         self::assertNull((new PdoBookingManualCommunicationOutbox($this->pdo))->claim($this->reference,'booking_arrival_information',$config));
-        self::assertNull((new PdoBookingModificationOutbox($this->pdo))->findForDelivery(123));
+        self::assertNull((new PdoBookingModificationOutbox($this->pdo))->claimForManualDelivery($this->reference,$this->modificationId));
         self::assertSame(5,(int)$this->pdo->query('SELECT MIN(attempts) FROM email_outbox WHERE booking_id='.(int)$this->bookingId)->fetchColumn());
     }
 
@@ -59,7 +71,7 @@ final class ManualEmailRetryCapTest extends TestCase
         self::assertNotNull((new PdoBookingManualCommunicationOutbox($this->pdo))->claim($this->reference,'booking_payment_reminder',$config));
         $this->pdo->prepare("UPDATE bookings SET status='confirmed' WHERE id=:id")->execute(['id'=>$this->bookingId]);
         self::assertNotNull((new PdoBookingManualCommunicationOutbox($this->pdo))->claim($this->reference,'booking_arrival_information',$config));
-        self::assertNotNull((new PdoBookingModificationOutbox($this->pdo))->findForDelivery(123));
+        self::assertNotNull((new PdoBookingModificationOutbox($this->pdo))->claimForManualDelivery($this->reference,$this->modificationId));
     }
 
     private function seed(int $attempts):void
@@ -72,7 +84,7 @@ final class ManualEmailRetryCapTest extends TestCase
         foreach([
             ['booking_confirmed','',$status],['booking_payment_request','',$payment],
             ['booking_payment_reminder','',$reminder],['booking_arrival_information','',$arrival],
-            ['booking_modified','modification:123',$modified],
+            ['booking_modified','modification:'.$this->modificationId,$modified],
         ] as [$type,$key,$payload]){
             $q=$this->pdo->prepare("INSERT INTO email_outbox(booking_id,message_type,deduplication_key,recipient,subject,payload,status,attempts)
                 VALUES(:booking_id,:type,:deduplication_key,'cap@example.invalid','Subject',:payload,'failed',:attempts)");

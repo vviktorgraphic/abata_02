@@ -30,8 +30,8 @@ final class BookingModificationNotificationTest extends TestCase
         $outbox = new FakeModificationOutbox();
         $mailer = new InMemoryMailer();
         $dispatcher = new BookingModificationNotificationDispatcher($outbox, $this->renderer(), $mailer);
-        self::assertSame('sent', $dispatcher->dispatch(8)->status);
-        self::assertSame('sent', $dispatcher->dispatch(8)->status);
+        self::assertSame('sent', $dispatcher->dispatch('AB-1', 8)->status);
+        self::assertSame('sent', $dispatcher->dispatch('AB-1', 8)->status);
         self::assertCount(1, $mailer->messages());
         self::assertSame([12], $outbox->sent);
     }
@@ -40,7 +40,7 @@ final class BookingModificationNotificationTest extends TestCase
     {
         $outbox = new FakeModificationOutbox();
         $mailer = new class implements Mailer { public function send(Message $message): void { throw new \RuntimeException('secret'); } };
-        $result = (new BookingModificationNotificationDispatcher($outbox, $this->renderer(), $mailer))->dispatch(8);
+        $result = (new BookingModificationNotificationDispatcher($outbox, $this->renderer(), $mailer))->dispatch('AB-1', 8);
         self::assertSame('failed', $result->status);
         self::assertSame([[12,'E-mail transport failure.']], $outbox->failed);
     }
@@ -60,7 +60,7 @@ final class FakeModificationOutbox implements BookingModificationOutbox
     public bool $available = true;
     /** @var list<int> */ public array $sent=[];
     /** @var list<array{int,string}> */ public array $failed=[];
-    public function findForDelivery(int $modificationId): ?array
+    public function claimForManualDelivery(string $bookingReference, int $modificationId): ?array
     {
         if (!$this->available) return null;
         $this->available=false;

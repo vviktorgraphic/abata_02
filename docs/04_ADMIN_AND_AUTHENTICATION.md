@@ -178,7 +178,7 @@ A repository hónaponként pontosan két batchelt prepared lekérdezést végez:
 
 ## Megerősített foglalás módosítása — IMPLEMENTED Phase 6
 
-A booking részletoldalon csak `confirmed` státusznál jelenik meg a dátum- és létszámmódosító űrlap. A kapcsolattartási és megjegyzésmezők nem szerkeszthetők. Kötelező szerveroldali ár-előnézet után a mentés CSRF-, admin action rate-limit-, aláírt preview-, idempotencia- és optimista verzióvédelemmel fut. A változtatás nem ír hamis státusztörténetet; külön `booking_modified` audit és before/after módosítási előzmény készül. Részletek: [Phase 6 szerződés](25_CONFIRMED_BOOKING_MODIFICATION.md).
+A booking részletoldalon csak `confirmed` státusznál jelenik meg a dátum- és létszámmódosító űrlap. A kapcsolattartási és megjegyzésmezők nem szerkeszthetők. Kötelező szerveroldali ár-előnézet után a mentés CSRF-, admin action rate-limit-, aláírt preview-, idempotencia- és optimista verzióvédelemmel fut. A változtatás nem ír hamis státusztörténetet; külön `booking_modified` audit és before/after módosítási előzmény készül, de automatikus e-mail/outbox nem. A legutóbbi módosítás vendégértesítését az admin külön CSRF- és rate-limit-védett POST-tal indítja. Részletek: [Phase 6 szerződés](25_CONFIRMED_BOOKING_MODIFICATION.md).
 ## Sprint 10 pricing admin + tulajdonosi UX-javítás – IMPLEMENTED
 
 A teljes 2FA-val védett `GET /admin/pricing` az egyetlen normál árkezelési oldal. Kizárólag a hétköznapi/hétvégi felnőttárat, a minimum életkor szerint rendezett gyermek ársávokat és az üzleti nyelvű előnézetet mutatja; a legacy/person mód, rule type, sorrend, aktív jelző, rule ID és konfigurációverzió nem része a tulajdonosi felületnek. A felnőttár mentése explicit person módra vált; addig a korábbi árak maradnak érvényben.

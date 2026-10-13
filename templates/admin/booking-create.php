@@ -28,7 +28,7 @@ require __DIR__ . '/_layout_start.php';
         <div class="alert" role="alert"><strong>A foglalás még nem rögzíthető.</strong><ul><?php foreach ($errors as $message): ?><li><?= $e($message) ?></li><?php endforeach ?></ul></div>
     <?php endif ?>
 
-    <form method="post" action="/admin/bookings/create/preview" class="booking-create-form" data-admin-booking-create-form>
+    <form method="post" action="/admin/bookings/create/preview#booking-create-submit" class="booking-create-form" data-admin-booking-create-form>
         <input type="hidden" name="_csrf" value="<?= $e($csrfToken) ?>">
         <input type="hidden" name="idempotency_key" value="<?= $e($values['idempotency_key'] ?? '') ?>">
         <fieldset>
@@ -69,7 +69,7 @@ require __DIR__ . '/_layout_start.php';
                 <div><dt>Pénznem</dt><dd><?= $e($pricing->currency) ?></dd></div>
             </dl>
             <p class="notice">A rögzítéskor a rendszer újra ellenőrzi a foglaltságot és az árat. Automatikus e-mail nem kerül kiküldésre.</p>
-            <form method="post" action="/admin/bookings/create">
+            <form id="booking-create-submit" method="post" action="/admin/bookings/create">
                 <input type="hidden" name="_csrf" value="<?= $e($csrfToken) ?>">
                 <input type="hidden" name="preview_signature" value="<?= $e($previewSignature) ?>">
                 <input type="hidden" name="expected_total" value="<?= $e($pricing->totalAmount) ?>">

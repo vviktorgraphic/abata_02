@@ -158,7 +158,7 @@ $router->post('/admin/bookings/{reference}/modify', static fn (array $_query, ar
     $params['reference'], $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
     isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
 )->send());
-$router->post('/admin/bookings/{reference}/modifications/{modificationId}/retry-email', static fn (array $_query, array $params) => $admin()['bookings']->retryModificationNotification(
+$router->post('/admin/bookings/{reference}/modifications/{modificationId}/send-notification', static fn (array $_query, array $params) => $admin()['bookings']->sendModificationNotification(
     $params['reference'], $params['modificationId'], $_POST, $_SERVER['CONTENT_TYPE'] ?? null,
     isset($_SERVER['CONTENT_LENGTH']) && ctype_digit((string) $_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : null,
 )->send());

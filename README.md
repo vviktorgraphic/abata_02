@@ -12,7 +12,7 @@ A kézi Szallas.hu iCal import az explicit `VALUE=DATE` mellett a szolgáltató 
 
 **Sprint 10 IMPLEMENTED az `release/rc2` ágon:** automatikus, lockolt/retry-zó iCal CLI 24 órás reconciliation grace-szel; explicit legacy/személyalapú pricing mód, gyermek ársávok, v3 immutable snapshot és egységes `20 000 Ft` formázás. Részletes szerződés és cPanel cron: [Sprint 10 dokumentáció](docs/18_SPRINT10_AUTOMATIC_ICAL_AND_PERSON_PRICING.md). A production iCal cron és provider feedváltás ettől még külön cutover művelet.
 
-**Phase 6 IMPLEMENTED:** confirmed booking dátum- és létszámmódosítás aláírt előnézettel, stale/concurrency védelemmel, aktuális újraárazással, változatlan korábbi előleggel, módosítástörténettel és vendégértesítéssel. A részletek: [confirmed booking módosítás](docs/25_CONFIRMED_BOOKING_MODIFICATION.md).
+**Phase 6 IMPLEMENTED + kliens UAT-korrekció:** confirmed booking dátum- és létszámmódosítás aláírt előnézettel, stale/concurrency védelemmel, aktuális újraárazással, változatlan korábbi előleggel és módosítástörténettel. A mentés nem küld automatikus levelet; a legutóbbi módosítás vendégértesítését az admin külön indítja. A részletek: [confirmed booking módosítás](docs/25_CONFIRMED_BOOKING_MODIFICATION.md).
 
 **Phase 9 IMPLEMENTED:** a teljes 2FA-val védett admin felület aláírt ár- és foglaltsági előnézet után normál `pending` foglalást rögzíthet. A közös tranzakció inventory lockot, idempotenciát és immutable pricing snapshotot használ; az admin csatorna nem fabrikál publikus jogi elfogadást és nem küld automatikus létrehozáskori e-mailt. Részletek: [admin kézi foglalásrögzítés](docs/28_ADMIN_MANUAL_BOOKING_CREATION.md).
 

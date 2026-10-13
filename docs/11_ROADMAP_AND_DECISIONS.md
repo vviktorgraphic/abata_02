@@ -115,7 +115,7 @@ Nyitott kapuk: abszolút session maximum; production SMTP port/TLS/auth/feladó;
 
 ## Phase 6–7 teljesítési állapot
 
-**IMPLEMENTED Phase 6:** confirmed booking módosítás aláírt előnézettel, stale/concurrency védelemmel, inventory lockkal, aktuális újraárazással, változatlan korábbi előleggel, history/audit/outbox és vendégértesítés támogatással. **IMPLEMENTED Phase 7 readiness:** owner UAT dokumentáció és GET-only read-only smoke. **PRODUCTION DISABLED/PENDING:** lifecycle és cron; Szallas.hu új feedre váltása provider cutover. **IMPLEMENTED Phase 10:** általános outbox retry/stale reclaim. **DEFERRED:** online fizetés.
+**IMPLEMENTED Phase 6 + kliens UAT-korrekció:** confirmed booking módosítás aláírt előnézettel, stale/concurrency védelemmel, inventory lockkal, aktuális újraárazással, változatlan korábbi előleggel és history/audittal. A mentés nem küld automatikus levelet; kizárólag a legutóbbi módosítás immutable snapshotjához indíthat az admin explicit értesítést, amelynek sikertelen kísérletét a Phase 10 retry/stale policy kezeli. **IMPLEMENTED Phase 7 readiness:** owner UAT dokumentáció és GET-only read-only smoke. **PRODUCTION DISABLED/PENDING:** lifecycle és cron; Szallas.hu új feedre váltása provider cutover. **DEFERRED:** online fizetés.
 
 ## Phase 8 teljesítési állapot
 

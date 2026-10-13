@@ -240,7 +240,8 @@ final class PdoAdminBookingQueryRepository
              WHERE m.booking_id = :booking_id ORDER BY m.version DESC'
         );
         $statement->execute(['booking_id' => $bookingId]);
-        return array_map(fn (array $row): array => [
+        $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+        return array_map(fn (array $row, int $index): array => [
             'id' => (int) $row['id'], 'version' => (int) $row['version'],
             'changed_by_admin_id' => (int) $row['changed_by_admin_id'],
             'before' => $this->decodeJson((string) $row['before_snapshot'], 'A régi módosítási pillanatkép érvénytelen.'),
@@ -249,7 +250,8 @@ final class PdoAdminBookingQueryRepository
             'currency' => (string) $row['currency'], 'created_at' => (string) $row['created_at'],
             'email_status' => $row['email_status'] !== null ? (string) $row['email_status'] : null,
             'email_attempts' => (int) ($row['email_attempts'] ?? 0),
-        ], $statement->fetchAll(PDO::FETCH_ASSOC));
+            'is_latest' => $index === 0,
+        ], $rows, array_keys($rows));
     }
 
     /** @return array<string, mixed>|null */

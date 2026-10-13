@@ -54,6 +54,19 @@ final class PdoEmailOutboxWorkerRepositoryTest extends TestCase
         self::assertSame(5,(int)$this->row($final)['attempts']);
     }
 
+    public function testWorkerNeverInitiatesPendingModificationButStillClaimsOtherPendingTypes(): void
+    {
+        $now=$this->now();
+        $unrequested=$this->insert('booking_modified','pending',0,$now,'modified@example.invalid');
+        $normal=$this->insert('booking_confirmed','pending',0,$now,'confirmed@example.invalid');
+        $repository=new PdoEmailOutboxWorkerRepository($this->pdo);
+
+        self::assertSame($normal,$repository->claimNextDue($now,['booking_modified','booking_confirmed'])?->id);
+        self::assertNull($repository->claimNextDue($now,['booking_modified','booking_confirmed']));
+        self::assertSame('pending',$this->row($unrequested)['status']);
+        self::assertSame(0,(int)$this->row($unrequested)['attempts']);
+    }
+
     public function testStaleRecoveryIsConditionalIncrementsAndDoesNotImmediatelyRetry(): void
     {
         $now=$this->now();

@@ -23,6 +23,8 @@ Az admin-validáció a publikus folyamattal közös normalizálást, minimum/max
 4. A `POST /admin/bookings/create` ismét validál és ellenőrzi az aláírást, majd az egyetlen szálláshely `booking_inventory_locks` sorát `FOR UPDATE` zárolja. A tranzakció újraellenőrzi a `pending`/`confirmed` foglalásokat és az aktív blokkolt időszakokat, újraszámolja az árat, és csak változatlan összeg/pénznem esetén ment.
 5. Siker után `303` redirect történik a normál `/admin/bookings/{reference}` részletoldalra, ahol az egyszer használható üzenet: `A foglalás rögzítve.`
 
+A preview űrlap natív URL-fragmenttel a sikeres válasz `#booking-create-submit` mentési űrlapjára érkezik, ezért desktopon és mobilon a „Foglalás rögzítése” művelet azonnal elérhető. Hibás előnézetnél nem készül ilyen célpont vagy mentési gomb; a validációs hibák és a megőrzött mezőértékek a normál űrlapon maradnak.
+
 Ha az időszak vagy az ár az előnézet óta megváltozott, a mentés `409` szemantikával elutasított, részleges adat nem marad, és új előnézet szükséges. Váratlan hiba nem jelenít meg exception-részletet.
 
 ## Tranzakció, idempotencia és árazás

@@ -91,6 +91,9 @@ final class AdminManualBookingControllerTest extends TestCase
         self::assertStringContainsString('5 000 Ft', $response->body);
         self::assertStringContainsString('50 000 Ft', $response->body);
         self::assertStringContainsString('name="preview_signature" value="', $response->body);
+        self::assertStringContainsString('action="/admin/bookings/create/preview#booking-create-submit"', $response->body);
+        self::assertSame(1, substr_count($response->body, 'id="booking-create-submit"'));
+        self::assertMatchesRegularExpression('/<form id="booking-create-submit"[^>]*>.*<button type="submit">Foglalás rögzítése<\/button>/s', $response->body);
         self::assertStringContainsString('&lt;script&gt;alert(1)&lt;/script&gt;', $response->body);
         self::assertStringNotContainsString('<script>alert(1)</script>', $response->body);
         self::assertStringContainsString('Automatikus e-mail nem kerül kiküldésre.', $response->body);
@@ -190,6 +193,8 @@ final class AdminManualBookingControllerTest extends TestCase
         self::assertSame(422, $response->status);
         self::assertStringContainsString('Érvényes e-mail-cím szükséges.', $response->body);
         self::assertStringContainsString('Őrzött &amp; név', $response->body);
+        self::assertStringContainsString('action="/admin/bookings/create/preview#booking-create-submit"', $response->body);
+        self::assertStringNotContainsString('id="booking-create-submit"', $response->body);
         self::assertStringNotContainsString('Foglalás rögzítése', $response->body);
         self::assertSame(0, $workflow->previewCalls);
     }

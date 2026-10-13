@@ -16,7 +16,7 @@ Az előnézet aláírása a foglalási referenciához, a `modification_version` 
 
 A mentés ugyanazt a `booking_inventory_locks` singleton sort zárolja, mint a publikus létrehozás, a megerősítés és a blokkolt időszak létrehozása. Az overlap `[arrival, departure)`; más `pending` vagy `confirmed` foglalás és minden aktív blocked period blokkol, a módosított foglalás saját azonosítója kizárt.
 
-Egyetlen adatbázis-tranzakció frissíti a dátumokat, éjszakaszámot eredményező intervallumot, létszámot, gyermekéletkorokat, aktuális végösszeget és a teljes pricing snapshotot; ugyanitt készül a `booking_modifications` before/after rekord, a `booking_modified` audit és a deduplikált e-mail outbox. A státusz nem változik, ezért státusztörténet nem készül. A művelet nagy entrópiájú, bookinghoz kötött idempotenciakulcsot használ időalapú takarítás nélkül.
+Egyetlen adatbázis-tranzakció frissíti a dátumokat, éjszakaszámot eredményező intervallumot, létszámot, gyermekéletkorokat, aktuális végösszeget és a teljes pricing snapshotot; ugyanitt készül a `booking_modifications` before/after rekord és a `booking_modified` audit. A mentés nem készít e-mail outbox rekordot és nem végez SMTP-műveletet. A státusz nem változik, ezért státusztörténet nem készül. A művelet nagy entrópiájú, bookinghoz kötött idempotenciakulcsot használ időalapú takarítás nélkül.
 
 ## Árazás, előleg és lemondás
 
@@ -26,7 +26,9 @@ A már elküldött díjbekérő payloadja, százaléka és előlegösszege vált
 
 ## Vendégértesítés
 
-Commit után a rendszer `booking_modified` levelet próbál küldeni `Foglalásának adatai módosultak` tárggyal, a központi From/Reply-To konfigurációval. A plain text és HTML levél az új időszakot, létszámot, szállásdíjat, IFA-t, végösszeget és a változatlan korábbi előleget tartalmazza. SMTP-hiba nem görgeti vissza a módosítást; az outbox `failed` marad és az admin részletoldalról újraküldhető. Egy sikeres módosítási levél ugyanahhoz a módosításazonosítóhoz nem küldhető kétszer.
+A mentés után a vendég nem kap automatikus levelet; a részletoldal ezt külön visszajelzi. Az admin kizárólag a legutóbbi módosításhoz indíthatja el a `booking_modified` értesítést a `POST /admin/bookings/{reference}/modifications/{modificationId}/send-notification` művelettel. A szerver a bookinghoz tartozást és a legutolsó verziót is ellenőrzi; régebbi módosításra küldött crafted kérés `409` eredményű.
+
+Az első explicit küldési szándék az immutable `after_snapshot` alapján, egyetlen tranzakcióban hozza létre és rögtön `processing` állapotba claimeli a `modification:{id}` kulcsú outbox rekordot. Kettős vagy párhuzamos kérésből csak egy rekord és egy első SMTP-kísérlet lehet. A plain text és HTML levél az új időszakot, létszámot, szállásdíjat, IFA-t, végösszeget és a változatlan korábbi előleget tartalmazza. Sikertelen explicit kísérlet `failed` állapotban a közös Phase 10 retry policy szerint automatikusan újrapróbálható; öt kísérletnél lezárul. Már elküldött történelmi rekord nem változik.
 
 ## Séma és üzemeltetés
 

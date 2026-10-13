@@ -336,6 +336,6 @@ A publikus `POST /api/bookings` sikeres válasza a kanonikus `total_amount` mell
 
 - `POST /admin/bookings/{reference}/modification-preview`: form payloadként dátumok, felnőtt-/gyermekszám, `child_ages[]` és idempotenciakulcs; sikerre mentési előnézet, validációra `422`, foglaltságra vagy nem confirmed státuszra `409`.
 - `POST /admin/bookings/{reference}/modify`: ugyanazok a mezők, továbbá szerver által aláírt `preview_signature` és `expected_version`; sikerre PRG redirect, stale előnézetre `409`.
-- `POST /admin/bookings/{reference}/modifications/{modificationId}/retry-email`: kizárólag az adott booking sikertelen módosítási levelének újraküldése.
+- `POST /admin/bookings/{reference}/modifications/{modificationId}/send-notification`: a booking legutóbbi módosításának explicit első értesítése vagy ugyanazon failed rekord újraküldése. Régebbi módosításra `409`; kettős kérés nem duplikál rekordot vagy első küldést.
 
 Mindhárom route teljes admin-authot, form Content-Type-ot, body limitet, CSRF-et és action rate limitet követel; JSON publikus API nem készült ehhez az admin művelethez.

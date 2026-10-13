@@ -97,7 +97,7 @@ final readonly class PdoEmailOutboxWorkerRepository implements EmailOutboxWorker
             "SELECT id, booking_id, message_type, recipient, subject, payload, status, attempts
              FROM email_outbox
              WHERE message_type IN ($in) AND (
-                (status = 'pending' AND attempts = 0)
+                (status = 'pending' AND attempts = 0 AND message_type <> 'booking_modified')
                 OR (status = 'failed' AND attempts = 1 AND UNIX_TIMESTAMP(updated_at) <= :cutoff_1)
                 OR (status = 'failed' AND attempts = 2 AND UNIX_TIMESTAMP(updated_at) <= :cutoff_2)
                 OR (status = 'failed' AND attempts = 3 AND UNIX_TIMESTAMP(updated_at) <= :cutoff_3)

@@ -89,7 +89,7 @@ Az URL-ek csak konfigurált HTTPS alkalmazásalapról és útvonalból épülhet
 
 ## 5. Outbox, idempotencia és konzisztencia — IMPLEMENTED
 
-Az üzleti állapotváltozás és az outbox bejegyzés ugyanabban az adatbázis-tranzakcióban történik; SMTP csak commit után fut. A Phase 10 worker kizárólag már létező rekordokat dolgoz fel, nem generál díjbekérőt, emlékeztetőt, érkezési tájékoztatót vagy más opcionális kommunikációt.
+Az automatikus üzleti értesítéseknél az állapotváltozás és az outbox bejegyzés ugyanabban az adatbázis-tranzakcióban történik; SMTP csak commit után fut. A módosítási értesítés ettől szándékosan eltér: a booking módosítás mentése nem hoz létre outbox sort, az első explicit admin küldés pedig külön tranzakcióban hozza létre és rögtön claimeli azt. A Phase 10 worker kizárólag már létező rekordokat dolgoz fel, nem generál díjbekérőt, emlékeztetőt, érkezési tájékoztatót vagy más opcionális kommunikációt.
 
 A worker egy nem blokkoló `GET_LOCK('abata_email_outbox_worker', 0)` kapcsolat-lockot használ. Második példány sikeres no-op. A rekord `processing` állapotba csak az előző `status` és `attempts` értékére feltételes `UPDATE` után kerülhet, ezért a webes azonnali dispatcherrel folytatott versenyben csak az egyik fél küld. Egy futás legfeljebb 25 rekordot érint és sorosan küld.
 
@@ -111,7 +111,7 @@ A stale rekord atomikusan `failed` lesz, `attempts` értéke eggyel nő, `last_e
 
 ### 6.1 Admin újraküldés
 
-A meglévő CSRF-, auth- és rate-limit védett, ugyanazon rekordot használó manuális retry megmarad, és az automatikus várakozást operátori döntéssel megkerülheti. Minden claim útvonal közös korlátja `attempts < 5`; öt próbánál nincs hatodik küldés és a gomb eltűnik. A booking részlet `attempts / 5` formában külön jelzi az automatikus retryra váró failed, a limitet elért failed, a processing és a sent állapotot. Új rekordos manuális resend **DEFERRED**. 2FA esetén továbbra is új kód készül a hitelesítési rate limitekkel.
+A meglévő CSRF-, auth- és rate-limit védett, ugyanazon rekordot használó manuális retry megmarad, és az automatikus várakozást operátori döntéssel megkerülheti. Minden claim útvonal közös korlátja `attempts < 5`; öt próbánál nincs hatodik küldés és a gomb eltűnik. A booking részlet `attempts / 5` formában külön jelzi az automatikus retryra váró failed, a limitet elért failed, a processing és a sent állapotot. A `booking_modified` első rekordja nem resend: kizárólag a legutóbbi immutable módosításhoz, explicit admin szándékra készül és atomikusan `processing` állapotba kerül. Más új rekordos manuális resend **DEFERRED**. 2FA esetén továbbra is új kód készül a hitelesítési rate limitekkel.
 
 ## 7. Naplózás, PII és megőrzés — IMPLEMENTED auditminimum, retention OPEN
 
@@ -208,4 +208,4 @@ A `confirmed -> cancelled` tranzakció cancellation snapshotot és státusz-emai
 
 ## Foglalásmódosítási értesítés — IMPLEMENTED Phase 6
 
-A confirmed booking mentési tranzakciója módosításonként egy `booking_modified` outbox rekordot ír. Az egyediség kulcsa a booking, recipient, message type és `modification:{id}` deduplikációs kulcs. SMTP csak commit után fut; transporthiba `failed`, admin retry lehetséges, sikeres rekord nem claimelhető újra. A tárgy `Foglalásának adatai módosultak`; a levél az új időszakot/létszámot/árakat és a változatlan korábbi előleget tartalmazza, az általános mail identity és Reply-To beállítást használja.
+A confirmed booking módosításának mentése nem ír `booking_modified` outbox rekordot és nem küld levelet. A legutóbbi módosításhoz az admin külön POST művelettel kérheti a küldést; régebbi snapshot első küldése szerveroldalon tiltott. Az explicit művelet az immutable `after_snapshot` alapján egyedileg, `modification:{id}` kulccsal hozza létre és atomikusan claimeli az outbox sort. A worker `booking_modified + pending + attempts=0` rekordot nem kezdeményezhet, de az explicit kísérlet után `failed` 1–4 és stale `processing` állapotot a közös policy szerint kezel. A tárgy `Foglalásának adatai módosultak`; a levél az új időszakot/létszámot/árakat és a változatlan korábbi előleget tartalmazza, az általános mail identity és Reply-To beállítást használja.
