@@ -49,7 +49,7 @@
         <div>
             <p class="eyebrow">Foglalási adatok</p>
             <h2 id="details-title">Mesélj magatokról</h2>
-            <p class="intro">Küldd el foglalási igényedet. A foglalási igény az előleg beérkezése és az ezt követő visszaigazolásunk után válik véglegessé.</p>
+            <p class="intro">Küldd el foglalási igényedet! A foglalás az előleg beérkezését és visszaigazolásunkat követően válik véglegessé. Kérdésed van? Küldj e-mailt az <a href="mailto:info@abata.hu">info@abata.hu</a> címre vagy hívj a +36 70 432 6001 telefonszámon!</p>
         </div>
 
         <form id="booking-form" novalidate>

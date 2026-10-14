@@ -43,6 +43,13 @@ h1 { font-size: clamp(2.2rem, 5vw, 4rem); }
 h2 { font-size: clamp(2rem, 3vw, 3rem); }
 .intro { max-width: 680px; margin: 14px 0 28px; color: var(--color-muted); line-height: 1.65; }
 .form-panel .intro { margin-bottom: 0; color: var(--color-background); }
+.form-panel .intro a {
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-underline-offset: .15em;
+    font-weight: 700;
+}
+.form-panel .intro a:visited { color: var(--color-accent); }
 
 .calendar-toolbar { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; margin-bottom: 20px; }
 .calendar-toolbar p { margin: 0; text-align: center; font-weight: 750; }
@@ -91,6 +98,17 @@ form { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .child-ages { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
 .consent { display: flex; align-items: flex-start; gap: 10px; color: var(--color-background); font-size: .8rem; line-height: 1.5; }
 .consent input { margin-top: 3px; accent-color: var(--color-accent); }
+.consent a {
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-underline-offset: .15em;
+    font-weight: 700;
+}
+.consent a:visited { color: var(--color-accent); }
+.consent a:focus-visible, .form-panel .intro a:focus-visible {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 2px;
+}
 .submit-button { display: flex; justify-content: space-between; border: 0; border-radius: 12px; padding: 17px 20px; color: var(--color-primary); background: var(--color-accent); cursor: pointer; font-weight: 800; }
 .submit-button:hover { filter: brightness(1.08); }
 .submit-button:disabled { cursor: not-allowed; opacity: .72; }

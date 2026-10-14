@@ -21,7 +21,13 @@ final class BookingFrontendTest extends TestCase
         self::assertStringContainsString('alt="A Bata"', $template);
         self::assertStringContainsString('Ugrás A Bata weboldalra', $template);
         self::assertStringContainsString('https://abata.hu/', $template);
-        self::assertStringContainsString('A foglalási igény az előleg beérkezése és az ezt követő visszaigazolásunk után válik véglegessé.', $template);
+        self::assertStringContainsString('Mesélj magatokról', $template);
+        self::assertStringContainsString('Küldd el foglalási igényedet!', $template);
+        self::assertStringContainsString('A foglalás az előleg beérkezését és visszaigazolásunkat követően válik véglegessé.', $template);
+        self::assertStringContainsString('href="mailto:info@abata.hu"', $template);
+        self::assertStringContainsString('info@abata.hu', $template);
+        self::assertStringContainsString('+36 70 432 6001', $template);
+        self::assertStringNotContainsString('Küldd el foglalási igényedet. A foglalási igény az előleg beérkezése és az ezt követő visszaigazolásunk után válik véglegessé.', $template);
         self::assertStringNotContainsString('A foglalás az adminisztrátori jóváhagyás után válik véglegessé.', $template);
         self::assertStringContainsString("\$staticAssets['booking_css']", $template);
         self::assertStringContainsString("\$staticAssets['booking_js']", $template);
@@ -76,6 +82,23 @@ final class BookingFrontendTest extends TestCase
         self::assertStringContainsString("result.public_accommodation_total ?? result.accommodation_fee", $javascript);
         self::assertStringContainsString("lines.push(['IFA/adók', result.taxes])", $javascript);
         self::assertStringContainsString("button.setAttribute('aria-disabled', 'true')", $javascript);
+    }
+
+    public function testDarkPanelLinksUseTheScopedAccentContrastAndFocusTreatment(): void
+    {
+        $stylesheet = (string) file_get_contents(dirname(__DIR__, 2) . '/public/static/css/booking.css');
+
+        self::assertMatchesRegularExpression(
+            '/\.consent a\s*\{[^}]*color:\s*var\(--color-accent\);[^}]*text-decoration:\s*underline;[^}]*font-weight:\s*700;/s',
+            $stylesheet,
+        );
+        self::assertMatchesRegularExpression(
+            '/\.form-panel \.intro a\s*\{[^}]*color:\s*var\(--color-accent\);[^}]*text-decoration:\s*underline;[^}]*font-weight:\s*700;/s',
+            $stylesheet,
+        );
+        self::assertStringContainsString('.consent a:visited { color: var(--color-accent); }', $stylesheet);
+        self::assertStringContainsString('.form-panel .intro a:visited { color: var(--color-accent); }', $stylesheet);
+        self::assertStringContainsString('.consent a:focus-visible, .form-panel .intro a:focus-visible', $stylesheet);
     }
 
     public function testConfiguredRelativeAndHttpsPrivacyUrlsAreRenderedFromTheSameControllerInput(): void
