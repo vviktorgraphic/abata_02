@@ -201,13 +201,27 @@
     const adultCount = document.querySelector('#adult-count');
     const childCount = document.querySelector('#child-count');
     const childAges = document.querySelector('#child-ages');
+    const bookingForm = document.querySelector('#booking-form');
+    const bookingShell = document.querySelector('.booking-shell');
+    const guestFields = document.querySelector('#guest-fields');
+    const guestFieldsAnchor = document.querySelector('#guest-fields-anchor');
+    const bookingTitle = document.querySelector('#booking-title');
+    const guestFieldsMobileQuery = window.matchMedia('(max-width: 640px)');
+
+    function relocateGuestFields() {
+        if (guestFieldsMobileQuery.matches) {
+            bookingTitle.before(guestFields);
+            return;
+        }
+        guestFieldsAnchor.after(guestFields);
+    }
 
     function renderChildAgeFields() {
         childAges.replaceChildren();
         for (let index = 1; index <= Number(childCount.value); index++) {
             const wrapper = document.createElement('div'); wrapper.className = 'field';
             const label = document.createElement('label'); label.htmlFor = `child-age-${index}`; label.textContent = `${index}. gyermek életkora`;
-            const input = document.createElement('input'); input.id = `child-age-${index}`; input.name = 'child_ages[]'; input.type = 'number'; input.min = '0'; input.max = '17'; input.required = true;
+            const input = document.createElement('input'); input.id = `child-age-${index}`; input.name = 'child_ages[]'; input.type = 'number'; input.min = '0'; input.max = '17'; input.required = true; input.setAttribute('form', 'booking-form');
             wrapper.append(label, input); childAges.append(wrapper);
         }
     }
@@ -239,27 +253,34 @@
     });
     childAges.addEventListener('input', scheduleQuote);
     syncGuestSelectors();
+    relocateGuestFields();
+    guestFieldsMobileQuery.addEventListener('change', relocateGuestFields);
 
-    const bookingForm = document.querySelector('#booking-form');
     const submitButton = document.querySelector('#booking-submit');
     const submitLabel = submitButton.querySelector('.submit-label');
     const message = document.querySelector('#form-message');
 
-    bookingForm.addEventListener('input', () => {
+    function resetIdempotencyOnInput() {
         if (!state.bookingSaved && !state.submitting) state.idempotencyKey = null;
-    });
+    }
 
-    function clearFieldErrors(form) {
-        form.querySelectorAll('[aria-invalid="true"]').forEach(field => field.removeAttribute('aria-invalid'));
-        form.querySelectorAll('[data-error-for]').forEach(error => { error.textContent = ''; });
+    bookingForm.addEventListener('input', resetIdempotencyOnInput);
+    guestFields.addEventListener('input', resetIdempotencyOnInput);
+
+    function clearFieldErrors() {
+        bookingShell.querySelectorAll('[aria-invalid="true"]').forEach(field => field.removeAttribute('aria-invalid'));
+        bookingShell.querySelectorAll('[data-error-for]').forEach(error => { error.textContent = ''; });
     }
 
     function showValidationErrors(form, errors) {
         Object.entries(errors || {}).forEach(([name, detail]) => {
-            const field = form.elements.namedItem(name) || form.elements.namedItem(`${name}[]`);
-            const error = form.querySelector(`[data-error-for="${CSS.escape(name)}"]`);
+            const namedField = form.elements.namedItem(name) || form.elements.namedItem(`${name}[]`);
+            const fields = name === 'guests'
+                ? [adultCount, childCount, ...childAges.querySelectorAll('input')]
+                : (namedField instanceof RadioNodeList ? Array.from(namedField) : [namedField]);
+            const error = bookingShell.querySelector(`[data-error-for="${CSS.escape(name)}"]`);
             const text = Array.isArray(detail) ? detail[0] : String(detail);
-            if (field instanceof HTMLElement) field.setAttribute('aria-invalid', 'true');
+            fields.filter(field => field instanceof HTMLElement).forEach(field => field.setAttribute('aria-invalid', 'true'));
             if (error) error.textContent = text;
         });
     }
@@ -277,8 +298,8 @@
         if (!state.arrival || !state.departure) { setMessage('Előbb válassz érkezési és távozási dátumot.', 'error'); return; }
         if (!event.currentTarget.checkValidity()) { event.currentTarget.reportValidity(); return; }
         const form = event.currentTarget;
-        clearFieldErrors(form);
-        const formData = new FormData(form);
+        clearFieldErrors();
+        const formData = new FormData(bookingForm);
         const payload = Object.fromEntries(formData.entries());
         payload.adults = Number(payload.adults);
         payload.children = Number(payload.children);
@@ -315,7 +336,7 @@
                 } else {
                     setMessage(`Köszönjük, a foglalási igényt rögzítettük.${reference}${total} Ez még nem végleges foglalás; az előleg beérkezése és az ezt követő visszaigazolásunk után válik véglegessé.`, 'success');
                 }
-                form.querySelectorAll('input, select, textarea, button').forEach(control => { control.disabled = true; });
+                Array.from(form.elements).forEach(control => { control.disabled = true; });
             } else if (response.status === 409) {
                 setMessage(result.message || 'A kiválasztott időszak időközben foglalttá vált, vagy ez a kérés eltér egy korábbi, azonos azonosítójú kéréstől. Kérjük, ellenőrizd az adatokat.', 'error');
             } else if (response.status === 422 || response.status === 400) {

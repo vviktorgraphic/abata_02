@@ -53,6 +53,23 @@
         </div>
 
         <form id="booking-form" novalidate>
+            <div id="guest-fields-anchor" hidden></div>
+            <div id="guest-fields" class="guest-fields full">
+                <div class="field">
+                    <label for="adult-count">Felnőttek</label>
+                    <select id="adult-count" name="adults" form="booking-form">
+                        <option>1</option><option selected>2</option><option>3</option><option>4</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="child-count">Gyermekek</label>
+                    <select id="child-count" name="children" form="booking-form">
+                        <option selected>0</option><option>1</option><option>2</option><option>3</option><option>4</option>
+                    </select>
+                </div>
+                <div id="child-ages" class="child-ages full" aria-live="polite"></div>
+                <span id="guests-error" class="field-error full" data-error-for="guests" aria-live="polite"></span>
+            </div>
             <div class="field full">
                 <label for="guest-name">Név</label>
                 <input id="guest-name" name="contact_name" autocomplete="name" required aria-describedby="contact-name-error">
@@ -68,20 +85,6 @@
                 <input id="guest-phone" name="phone" type="tel" autocomplete="tel" required aria-describedby="phone-error">
                 <span id="phone-error" class="field-error" data-error-for="phone"></span>
             </div>
-            <div class="field">
-                <label for="adult-count">Felnőttek</label>
-                <select id="adult-count" name="adults">
-                    <option>1</option><option selected>2</option><option>3</option><option>4</option>
-                </select>
-            </div>
-            <div class="field">
-                <label for="child-count">Gyermekek</label>
-                <select id="child-count" name="children">
-                    <option selected>0</option><option>1</option><option>2</option><option>3</option><option>4</option>
-                </select>
-            </div>
-            <div id="child-ages" class="child-ages full" aria-live="polite"></div>
-            <span id="guests-error" class="field-error full" data-error-for="guests" aria-live="polite"></span>
             <div class="field full">
                 <label for="guest-notes">Megjegyzés <span>(opcionális)</span></label>
                 <p class="field-help" id="guest-notes-help">*Please leave a short note if you would like to communicate in English.</p>

@@ -90,6 +90,9 @@ h2 { font-size: clamp(2rem, 3vw, 3rem); }
 
 form { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .full { grid-column: 1 / -1; }
+.guest-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; min-width: 0; }
+.guest-fields .full { grid-column: 1 / -1; }
+.guest-fields .field { min-width: 0; }
 .field label { display: block; margin-bottom: 8px; color: var(--color-background); font-size: .78rem; font-weight: 700; }
 .field label span { color: var(--color-background); font-weight: 400; }
 .field-help { margin: -.2rem 0 .55rem; color: var(--color-background); font-size: .76rem; line-height: 1.45; }
@@ -138,8 +141,19 @@ form { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     .selection-summary .text-button { grid-column: 1 / -1; justify-self: start; }
     form { grid-template-columns: 1fr; }
     .field, .full { grid-column: 1; }
+    .guest-fields { gap: 12px; }
+    .guest-fields .full { grid-column: 1 / -1; }
+    .calendar-panel .guest-fields { margin: 18px 0 20px; }
+    .calendar-panel .guest-fields .field label { color: var(--color-primary); }
+    .calendar-panel .guest-fields .field input,
+    .calendar-panel .guest-fields .field select { border-color: var(--color-line); background: var(--color-background); }
+    .calendar-panel .guest-fields .field-error { color: var(--color-error); }
 }
 .booking-brand { display:flex; align-items:center; justify-content:space-between; gap:1rem; max-width:1180px; margin:0 auto; padding:1rem 1.25rem; }
 .booking-brand img { display:block; width:88px; height:88px; object-fit:contain; }
 .site-link { display:inline-block; background:#19194B; color:#fff; border:2px solid #F0A236; border-radius:.5rem; padding:.7rem 1rem; font-weight:700; text-decoration:none; }
-@media (max-width:640px) { .booking-brand { align-items:flex-start; flex-direction:column; } .booking-brand img { width:72px; height:72px; } }
+@media (max-width:640px) {
+    .booking-brand { flex-direction:row; align-items:center; justify-content:space-between; gap:.75rem; padding:.75rem 1rem; }
+    .booking-brand img { width:64px; height:64px; flex:0 0 auto; }
+    .site-link { flex:0 1 auto; min-width:0; padding:.65rem .75rem; font-size:.82rem; text-align:center; }
+}

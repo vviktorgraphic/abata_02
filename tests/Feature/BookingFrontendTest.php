@@ -44,6 +44,17 @@ final class BookingFrontendTest extends TestCase
         self::assertStringContainsString('name="booking_policy_accepted"', $template);
         self::assertStringContainsString('name="house_rules_accepted"', $template);
         self::assertStringContainsString('id="adult-count" name="adults"', $template);
+        self::assertSame(1, substr_count($template, 'id="adult-count"'));
+        self::assertSame(1, substr_count($template, 'id="child-count"'));
+        self::assertSame(1, substr_count($template, 'id="child-ages"'));
+        self::assertStringContainsString('id="guest-fields" class="guest-fields full"', $template);
+        self::assertStringContainsString('id="guest-fields-anchor" hidden', $template);
+        self::assertLessThan(
+            strpos($template, 'id="guest-name"'),
+            strpos($template, 'id="guest-fields"'),
+        );
+        self::assertStringContainsString('id="adult-count" name="adults" form="booking-form"', $template);
+        self::assertStringContainsString('id="child-count" name="children" form="booking-form"', $template);
         self::assertStringContainsString('<option>4</option>', $template);
         self::assertStringNotContainsString('<option>5</option>', $template);
         self::assertStringContainsString('const MAX_PHYSICAL_GUESTS = 5', $javascript);
@@ -82,6 +93,14 @@ final class BookingFrontendTest extends TestCase
         self::assertStringContainsString("result.public_accommodation_total ?? result.accommodation_fee", $javascript);
         self::assertStringContainsString("lines.push(['IFA/adók', result.taxes])", $javascript);
         self::assertStringContainsString("button.setAttribute('aria-disabled', 'true')", $javascript);
+        self::assertStringContainsString("input.setAttribute('form', 'booking-form')", $javascript);
+        self::assertStringContainsString("window.matchMedia('(max-width: 640px)')", $javascript);
+        self::assertStringContainsString('bookingTitle.before(guestFields)', $javascript);
+        self::assertStringContainsString('guestFieldsAnchor.after(guestFields)', $javascript);
+        self::assertStringNotContainsString('cloneNode(', $javascript);
+        self::assertStringContainsString("guestFields.addEventListener('input', resetIdempotencyOnInput)", $javascript);
+        self::assertStringContainsString('new FormData(bookingForm)', $javascript);
+        self::assertStringContainsString('Array.from(form.elements)', $javascript);
     }
 
     public function testDarkPanelLinksUseTheScopedAccentContrastAndFocusTreatment(): void
@@ -99,6 +118,20 @@ final class BookingFrontendTest extends TestCase
         self::assertStringContainsString('.consent a:visited { color: var(--color-accent); }', $stylesheet);
         self::assertStringContainsString('.form-panel .intro a:visited { color: var(--color-accent); }', $stylesheet);
         self::assertStringContainsString('.consent a:focus-visible, .form-panel .intro a:focus-visible', $stylesheet);
+    }
+
+    public function testResponsiveGuestFieldsAndHeaderUseScopedMobileRules(): void
+    {
+        $stylesheet = (string) file_get_contents(dirname(__DIR__, 2) . '/public/static/css/booking.css');
+
+        self::assertMatchesRegularExpression(
+            '/@media \(max-width:640px\)\s*\{[^}]*\.booking-brand\s*\{[^}]*flex-direction:row;[^}]*align-items:center;[^}]*justify-content:space-between;/s',
+            $stylesheet,
+        );
+        self::assertStringContainsString('.calendar-panel .guest-fields .field label { color: var(--color-primary); }', $stylesheet);
+        self::assertStringContainsString('.calendar-panel .guest-fields .field input,', $stylesheet);
+        self::assertStringContainsString('.guest-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));', $stylesheet);
+        self::assertStringNotContainsString('.booking-brand { align-items:flex-start; flex-direction:column;', $stylesheet);
     }
 
     public function testConfiguredRelativeAndHttpsPrivacyUrlsAreRenderedFromTheSameControllerInput(): void
